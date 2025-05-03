@@ -7,6 +7,7 @@ import {
 import { useRouter, useSearchParams } from 'next/navigation';
 
 const categories = [
+  { name: "All Categories", icon: Search },
   { name: "Furniture", icon: Sofa },
   { name: "Subleases", icon: Home },
   { name: "Tech", icon: Laptop },
@@ -32,7 +33,7 @@ const SearchBar = () => {
     <div className=" w-full flex flex-col gap-4 px-4 ">
       {/* Search Row */}
       <div className="w-full flex justify-center">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full max-w-5xl">
+        <div className="flex items-center gap-2 w-full max-w-5xl">
           <div className="flex items-center w-full max-w-3xl border rounded-full px-4 py-2 bg-white border-gray-200 shadow-sm focus-within:ring-2 ring-ut-orange transition">
             <Search className="text-gray-400 mr-2" size={20} />
             <input
@@ -41,11 +42,11 @@ const SearchBar = () => {
               className="flex-1 outline-none bg-transparent text-gray-700 placeholder-gray-400"
             />
           </div>
-          <button className="w-full sm:w-auto flex items-center gap-2 border rounded-md px-4 py-2 bg-white shadow-sm border-gray-200 hover:bg-gray-100 transition">
+          <button className="flex items-center gap-2 border rounded-md px-4 py-2 bg-white shadow-sm border-gray-200 hover:bg-gray-100 transition ">
             <Filter size={16} />
             <span className="text-sm text-gray-700 font-semibold">Filters</span>
           </button>
-          <select className="w-full sm:w-auto border border-gray-200 font-semibold rounded-md px-4 py-2 bg-white shadow-sm text-sm text-gray-700">
+          <select className="border border-gray-200 font-semibold rounded-md px-4 py-2 bg-white shadow-sm text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-ut-orange">
             <option>Sort: Newest first</option>
             <option>Sort: Oldest first</option>
           </select>

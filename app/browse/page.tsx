@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import { useSearchParams } from "next/navigation";
 import SearchBar from "./components/SearchBar";
 import ListingCard from "./components/ListingCard";
 
@@ -35,12 +36,20 @@ const mockListings = [
 ];
 
 const Browse = () => {
+  const searchParams = useSearchParams();
+  const queryCategory = searchParams.get("category");
+
+  const filteredListings =
+    !queryCategory || queryCategory === "All"
+      ? mockListings
+      : mockListings.filter((listing) => listing.category === queryCategory);
+
   return (
     <div className="h-screen bg-gray-50">
       <div className="p-8">
         <SearchBar />
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-8">
-          {mockListings.map((listing, index) => (
+          {filteredListings.map((listing, index) => (
             <ListingCard key={index} {...listing} />
           ))}
         </div>
