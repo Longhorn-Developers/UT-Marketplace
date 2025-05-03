@@ -1,19 +1,43 @@
 import React from "react";
 
-type ListingCardProps = {
+interface ListingCardProps {
   title: string;
   price: number;
   location: string;
   category: string;
   timePosted: string;
-};
+  images?: string[];
+  user: {
+    name: string;
+    image?: string;
+  };
+  condition: string;
+}
 
-const ListingCard = ({ title, price, location, category, timePosted }: ListingCardProps) => {
+const ListingCard: React.FC<ListingCardProps> = ({
+  title,
+  price,
+  location,
+  category,
+  timePosted,
+  images,
+  user,
+  condition,
+}) => {
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
-      {/* Image Section */}
-      <div className="relative h-48 bg-gray-100 flex items-center justify-center">
-        <span className="text-gray-400">Image</span>
+      <div className="relative aspect-[4/3] bg-gray-100 overflow-hidden">
+        {images && images.length > 0 ? (
+          <img
+            src={images[0]}
+            alt={title}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
+            Image
+          </div>
+        )}
         <div className="absolute top-2 left-2 bg-[#bf5700] text-white text-xs font-semibold px-2 py-1 rounded">
           {category}
         </div>
@@ -28,9 +52,17 @@ const ListingCard = ({ title, price, location, category, timePosted }: ListingCa
           <span className="text-[#bf5700] font-bold text-sm">${price}</span>
         </div>
         <p className="text-xs text-gray-500">{location}</p>
+        <p className="text-xs text-gray-500">
+          {category === "Subleases" ? "Lease Duration" : "Condition"}: {condition}
+        </p>
         <div className="flex items-center justify-between text-xs text-gray-400 mt-2">
+          <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full border border-gray-200 bg-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                <span>{user.name?.[0] || '?'}</span>
+              </div>
+            <span className="text-gray-700 font-medium">{user.name}</span>
+          </div>
           <span>{timePosted}</span>
-          <span className="text-[#bf5700] text-sm">💬</span>
         </div>
       </div>
     </div>
