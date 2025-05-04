@@ -13,13 +13,12 @@ import {
 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { useSession } from "next-auth/react";
-import ImageUploader from "./ImageUpload";
+import ImageUploader from "./components/ImageUpload";
 
 const Create = () => {
   const [images, setImages] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const { data: session, status } = useSession();
-
+  const { data: session } = useSession();
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [price, setPrice] = useState(0);
@@ -104,9 +103,7 @@ const Create = () => {
       created_at: new Date().toISOString(),
       images: uploadedImageUrls,
     };
-
     console.log("Insert payload:", payload);
-
     const { data, error } = await supabase.from("listings").insert([payload]);
 
     if (error) {

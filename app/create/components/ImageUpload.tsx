@@ -13,7 +13,6 @@ interface ImageUploadProps {
 
 const ImageUpload: React.FC<ImageUploadProps> = ({
   images,
-  setImages,
   fileInputRef,
   handleFileChange,
   handleAddPhotoClick,

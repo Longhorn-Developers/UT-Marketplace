@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabaseClient";
 import SearchBar from "./components/SearchBar";
 import ListingCard from "./components/ListingCard";
 import * as timeago from "timeago.js";
+import Link from "next/link";
 
 const Browse = () => {
   const searchParams = useSearchParams();
@@ -55,17 +56,21 @@ const Browse = () => {
         <SearchBar />
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-8">
           {filteredListings.map((listing) => (
-            <ListingCard
-              key={listing.id}
-              title={listing.title}
-              price={listing.price}
-              location={listing.location}
-              category={listing.category}
-              timePosted={timeago.format(listing.created_at)}
-              images={listing.images}
-              user={{ name: listing.user_name}}
-              condition={listing.condition}
-            />
+            <Link key={listing.id} href={`/listing/${listing.id}`}>
+
+              <ListingCard
+                key={listing.id}
+                title={listing.title}
+                price={listing.price}
+                location={listing.location}
+                category={listing.category}
+                timePosted={timeago.format(listing.created_at)}
+                images={listing.images}
+                user={{ name: listing.user_name}}
+                condition={listing.condition}
+              />
+            </Link>
+              
           ))}
         </div>
       </div>
