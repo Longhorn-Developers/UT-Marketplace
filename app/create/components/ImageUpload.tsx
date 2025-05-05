@@ -1,15 +1,7 @@
 "use client";
 import React from "react";
 import { ImagePlus, UploadCloud, X } from "lucide-react";
-
-interface ImageUploadProps {
-  images: File[];
-  setImages: React.Dispatch<React.SetStateAction<File[]>>;
-  fileInputRef: React.RefObject<HTMLInputElement>;
-  handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleAddPhotoClick: () => void;
-  handleRemoveImage: (index: number) => void;
-}
+import { ImageUploadProps } from "../../props/image-upload";
 
 const ImageUpload: React.FC<ImageUploadProps> = ({
   images,
@@ -25,7 +17,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         Photos
       </h2>
       <p className="text-sm text-gray-500 mb-4">
-        Add up to 5 photos to showcase your item. The first photo will be your listing’s cover image.
+        Add up to 5 photos to showcase your item. The first photo will be your listing's cover image.
       </p>
       <div className="flex items-center gap-4 mb-4">
         {images.map((file, index) => (

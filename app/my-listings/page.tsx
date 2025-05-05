@@ -1,76 +1,140 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { supabase } from "../lib/supabaseClient";
 import ListingCard from "../browse/components/ListingCard";
+import SoldListingCard from "../browse/components/SoldListingCard";
 import * as timeago from "timeago.js";
-import Link from "next/link";
+import { Listing } from "../props/listing";
 
-const MyListings = () => {
+export default function MyListings() {
   const { data: session } = useSession();
-  const [listings, setListings] = useState<any[]>([]);
+  const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!session?.user?.email) return;
     const fetchListings = async () => {
-      const { data, error } = await supabase
-        .from("listings")
-        .select(`
-          id,
-          title,
-          price,
-          location,
-          category,
-          created_at,
-          user_id,
-          user_name,
-          user_image,
-          images,
-          condition
-        `)
-        .eq("user_id", session.user.email)
-        .order("created_at", { ascending: false });
-      if (!error) setListings(data);
-      setLoading(false);
-    };
-    fetchListings();
-  }, [session?.user?.email]);
+      if (!session?.user?.email) return;
 
-  if (!session?.user?.email) {
-    return <div className="p-8 text-center text-gray-500">Please sign in to view your listings.</div>;
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from("listings")
+          .select("*")
+          .eq("user_id", session.user.email)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        setListings(data || []);
+      } catch (err) {
+        console.error("Error fetching listings:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (session) {
+      fetchListings();
+    }
+  }, [session]);
+
+  const activeListings = listings.filter((listing) => !listing.is_sold);
+  const soldListings = listings.filter((listing) => listing.is_sold);
+
+  if (loading) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(3)].map((_, index) => (
+            <div
+              key={index}
+              className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm animate-pulse"
+            >
+              <div className="aspect-[4/3] bg-gray-200" />
+              <div className="p-4 space-y-3">
+                <div className="h-4 bg-gray-200 rounded w-3/4" />
+                <div className="h-3 bg-gray-200 rounded w-1/4" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="p-8">
-        <h1 className="text-3xl font-bold mb-6 text-[#bf5700]">My Listings</h1>
-        {loading ? (
-          <div>Loading...</div>
-        ) : listings.length === 0 ? (
-          <div className="text-gray-500">You have not posted any listings yet.</div>
+    <div className="max-w-6xl mx-auto px-4 py-8">
+      {/* Active Listings Section */}
+      <div className="mb-12">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold text-gray-900">Active Listings</h2>
+          <a
+            href="/create"
+            className="px-4 py-2 rounded-lg bg-[#bf5700] text-white text-sm hover:bg-[#a54700] transition"
+          >
+            Create New Listing
+          </a>
+        </div>
+        {activeListings.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
+            <p className="text-gray-600 mb-4">
+              You haven't created any active listings yet.
+            </p>
+            <a
+              href="/create"
+              className="inline-block px-4 py-2 rounded-lg bg-[#bf5700] text-white text-sm hover:bg-[#a54700] transition"
+            >
+              Create Your First Listing
+            </a>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
-            {listings.map((listing) => (
-              <Link key={listing.id} href={`/listing/${listing.id}`}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {activeListings.map((listing) => (
+              <div
+                key={listing.id}
+                onClick={() => window.location.href = `/listing/${listing.id}`}
+                className="cursor-pointer"
+              >
                 <ListingCard
-                  key={listing.id}
                   title={listing.title}
                   price={listing.price}
                   location={listing.location}
                   category={listing.category}
                   timePosted={timeago.format(listing.created_at)}
                   images={listing.images}
-                  user={{ name: listing.user_name }}
                   condition={listing.condition}
+                  user={{ name: listing.user_name, user_id: listing.user_id }}
                 />
-              </Link>
+              </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Sold Listings Section */}
+      {soldListings.length > 0 && (
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 mb-6">
+            Sold Listings
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {soldListings.map((listing) => (
+              <SoldListingCard
+                key={listing.id}
+                title={listing.title}
+                price={listing.price}
+                location={listing.location}
+                category={listing.category}
+                timePosted={timeago.format(listing.created_at)}
+                images={listing.images}
+                user={{ name: listing.user_name, user_id: listing.user_id }}
+                condition={listing.condition}
+                onClick={() => window.location.href = `/listing/${listing.id}`}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
-};
-
-export default MyListings;
+}

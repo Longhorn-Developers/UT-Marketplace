@@ -18,7 +18,7 @@ const Navbar = () => {
 
       <div className="hidden md:flex space-x-6 absolute left-1/2 transform -translate-x-1/2">
         <Link
-          href="browse"
+          href="/browse"
           title="Browse"
           className="flex items-center gap-2 bg-ut-orange hover:bg-[#d95e00] text-white px-4 py-2 rounded-full font-semibold transition duration-200"
         >

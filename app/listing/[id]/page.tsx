@@ -1,16 +1,19 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import ListingPage from "../components/ListingPage";
 import OwnerPage from "../components/OwnerPage";
 import { supabase } from "../../lib/supabaseClient";
 import { useSession } from "next-auth/react";
+import RelatedListings from "../../browse/components/RelatedListings";
 
 const Listing = () => {
   const { id } = useParams();
+  const router = useRouter();
   const [listing, setListing] = useState<any>(null);
   const { data: sessionData } = useSession();
   const [isLoading, setIsLoading] = useState(true);
+  const [listingCount, setListingCount] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -24,6 +27,13 @@ const Listing = () => {
         console.error("Error fetching listing:", error);
       } else {
         setListing(listingData);
+
+        const { count } = await supabase
+          .from("listings")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", listingData.user_id);
+
+        setListingCount(count || 0);
       }
 
       setIsLoading(false);
@@ -55,12 +65,25 @@ const Listing = () => {
   };
 
   return (
-    <div>
-      {isOwner ? (
-        <OwnerPage {...commonProps} />
-      ) : (
-        <ListingPage {...commonProps} user={userProps} />
-      )}
+    <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="bg-white rounded-xl shadow-md overflow-hidden">
+        {/* ... existing image gallery code ... */}
+      </div>
+
+      <div className="mt-8 bg-white rounded-xl shadow-md p-6">
+        {isOwner ? (
+          <OwnerPage {...commonProps} />
+        ) : (
+          <ListingPage {...commonProps} user={userProps} listingCount={listingCount} listingUserName={listing.user_name} listingUserEmail={listing.user_id} />
+        )}
+      </div>
+
+      <RelatedListings
+        currentListingId={listing.id}
+        category={listing.category}
+        title={listing.title}
+        excludeSold={true}
+      />
     </div>
   );
 };

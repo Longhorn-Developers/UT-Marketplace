@@ -17,22 +17,9 @@ const Browse = () => {
     const fetchListings = async () => {
       const { data, error } = await supabase
         .from("listings")
-        .select(`
-          id,
-          title,
-          price,
-          location,
-          category,
-          created_at,
-          user_id,
-          user_name,
-          user_image,
-          images,
-          condition
-        `)
+        .select("*")
+        .eq("is_sold", false)
         .order("created_at", { ascending: false });
-
-      console.log(data);
 
       if (error) {
         console.error("Upload error:", error); // already there
@@ -56,8 +43,11 @@ const Browse = () => {
         <SearchBar />
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-8">
           {filteredListings.map((listing) => (
-            <Link key={listing.id} href={`/listing/${listing.id}`}>
-
+            <div
+              key={listing.id}
+              onClick={() => (window.location.href = `/listing/${listing.id}`)}
+              className="cursor-pointer"
+            >
               <ListingCard
                 key={listing.id}
                 title={listing.title}
@@ -66,11 +56,10 @@ const Browse = () => {
                 category={listing.category}
                 timePosted={timeago.format(listing.created_at)}
                 images={listing.images}
-                user={{ name: listing.user_name}}
+                user={{ name: listing.user_name, user_id: listing.user_id }}
                 condition={listing.condition}
               />
-            </Link>
-              
+            </div>
           ))}
         </div>
       </div>
