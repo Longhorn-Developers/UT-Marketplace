@@ -2,6 +2,14 @@ import React from "react";
 import Link from "next/link";
 import { ListingCardProps } from "../../props/listing";
 
+const highlight = (text: string, searchTerm?: string) => {
+  if (!searchTerm) return text;
+  const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'ig');
+  return text.split(regex).map((part, i) =>
+    regex.test(part) ? <mark key={i} className="bg-yellow-200 px-0.5 rounded">{part}</mark> : part
+  );
+};
+
 const ListingCard: React.FC<ListingCardProps> = ({
   title,
   price,
@@ -11,6 +19,7 @@ const ListingCard: React.FC<ListingCardProps> = ({
   images,
   user,
   condition,
+  searchTerm,
 }) => {
   return (
     <div className="group bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
@@ -35,13 +44,13 @@ const ListingCard: React.FC<ListingCardProps> = ({
       <div className="p-4 space-y-1">
         <div className="flex justify-between items-center">
           <h3 className="text-sm font-semibold text-gray-900 truncate group-hover:text-[#bf5700] transition-colors duration-200">
-            {title}
+            {highlight(title, searchTerm)}
           </h3>
           <span className="text-[#bf5700] font-bold text-sm">${price}</span>
         </div>
-        <p className="text-xs text-gray-500">{location}</p>
+        <p className="text-xs text-gray-500">{highlight(location, searchTerm)}</p>
         <p className="text-xs text-gray-500">
-          {category === "Subleases" ? "Lease Duration" : "Condition"}: {condition}
+          {category === "Subleases" ? "Lease Duration" : "Condition"}: {highlight(condition, searchTerm)}
         </p>
         <div className="flex items-center justify-between text-xs text-gray-400 mt-2">
           <div className="flex items-center gap-2">

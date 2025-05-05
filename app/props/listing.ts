@@ -11,6 +11,7 @@ export interface ListingCardProps {
     image?: string;
   };
   condition: string;
+  searchTerm?: string;
 }
 
 export interface ListingPageProps {
