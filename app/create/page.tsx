@@ -12,13 +12,15 @@ import {
   Send,
 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
-import { useSession } from "next-auth/react";
+import { useAuth } from '../context/AuthContext';
+import { useRouter } from 'next/navigation';
 import ImageUploader from "./components/ImageUpload";
 
 const Create = () => {
   const [images, setImages] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const { data: session } = useSession();
+  const { user } = useAuth();
+  const router = useRouter();
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [price, setPrice] = useState(0);
@@ -42,26 +44,9 @@ const Create = () => {
   };
 
   const handleSubmit = async () => {
-    console.log("Form values:", {
-      title,
-      category,
-      price,
-      description,
-      location,
-      email: session?.user?.email,
-      name: session?.user?.name,
-      condition,
-    });
-    console.log("Session object:", session);
-
-    if (!session || !session.user?.email || !session.user?.name) {
+    if (!user) {
       toast.error("You must be logged in to create a listing.");
-      if (!session) {
-        console.warn("Session is null or undefined.");
-      } else {
-        if (!session.user?.email) console.warn("Session user email is missing.");
-        if (!session.user?.name) console.warn("Session user name is missing.");
-      }
+      router.push('/auth/signin');
       return;
     }
 
@@ -73,7 +58,7 @@ const Create = () => {
     // Upload images to Supabase Storage
     const uploadedImageUrls: string[] = [];
     for (const image of images) {
-      const fileName = `${session.user.email}-${Date.now()}-${image.name}`;
+      const fileName = `${user.email}-${Date.now()}-${image.name}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("listing-images")
         .upload(fileName, image);
@@ -98,12 +83,13 @@ const Create = () => {
       description,
       location,
       condition,
-      user_id: session.user.email,
-      user_name: session.user.name,
+      user_id: user.email,
+      user_name: user.email.split('@')[0], // Fallback if name not available
       created_at: new Date().toISOString(),
       images: uploadedImageUrls,
+      is_sold: false,
     };
-    console.log("Insert payload:", payload);
+
     const { data, error } = await supabase.from("listings").insert([payload]);
 
     if (error) {
@@ -111,7 +97,7 @@ const Create = () => {
       toast.error("Something went wrong while uploading.");
     } else {
       toast.success("🎉 Listing created successfully!");
-      console.log(data);
+      router.push('/my-listings');
     }
   };
 

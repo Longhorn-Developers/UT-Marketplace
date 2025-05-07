@@ -1,40 +1,32 @@
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import Navbar from "../components/Navbar";
+import { AuthProvider } from './context/AuthContext';
 import Footer from "../components/Footer";
-import { Providers } from "./providers";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+const inter = Inter({ subsets: ["latin"] });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata = {
+export const metadata: Metadata = {
   title: "UT Marketplace",
-  icons: {
-    icon: "/icons/logo.svg",
-  },
-  description: "A marketplace for UT students",
+  description: "Buy and sell items within the UT community",
 };
 
-export default function RootLayout({ children }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}
-      >
-        <Navbar />
-        <Providers>
-          <main className="flex-1 flex flex-col">
+      <body className={inter.className}>
+        <div className="flex flex-col min-h-screen">
+          <AuthProvider>
+            <Navbar />
             {children}
-          </main>
-        </Providers>
-        <Footer />
+            <Footer />
+          </AuthProvider>
+        </div>
       </body>
     </html>
   );

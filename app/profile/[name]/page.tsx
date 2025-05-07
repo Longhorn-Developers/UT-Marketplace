@@ -5,14 +5,14 @@ import { supabase } from "../../lib/supabaseClient";
 import ListingCard from "../../browse/components/ListingCard";
 import * as timeago from "timeago.js";
 import { Mail, Star, CheckCircle2 } from "lucide-react";
-import { useSession } from "next-auth/react";
+import { useAuth } from '../../context/AuthContext';
 import { Listing } from "../../props/listing";
 import { Rating } from "../../props/rating";
 
 const PublicProfile = () => {
   const params = useParams();
   const router = useRouter();
-  const { data: session } = useSession();
+  const { user } = useAuth();
   const [listings, setListings] = useState<Listing[]>([]);
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,8 +63,8 @@ const PublicProfile = () => {
           });
           uniqueRatings = Array.from(latestByRater.values());
           // Check if current user has rated
-          if (session?.user?.email) {
-            foundUserRating = uniqueRatings.find(r => r.rater_id === session.user.email) || null;
+          if (user?.email) {
+            foundUserRating = uniqueRatings.find(r => r.rater_id === user.email) || null;
           }
         }
         setRatings(uniqueRatings);
@@ -86,16 +86,16 @@ const PublicProfile = () => {
     if (params.name) {
       fetchUserData();
     }
-  }, [params.name, session]);
+  }, [params.name, user]);
 
   const handleSubmitRating = async () => {
-    if (!session?.user?.email || !userEmail) return;
+    if (!user?.email || !userEmail) return;
     try {
       // Check if a review exists
       const { data: existing, error: fetchError } = await supabase
         .from("ratings")
         .select("*")
-        .eq("rater_id", session.user.email)
+        .eq("rater_id", user.email)
         .eq("rated_id", userEmail)
         .single();
 
@@ -114,7 +114,7 @@ const PublicProfile = () => {
         await supabase
           .from("ratings")
           .insert({
-            rater_id: session.user.email,
+            rater_id: user.email,
             rated_id: userEmail,
             rating: userRating,
             comment: ratingComment,
@@ -171,7 +171,7 @@ const PublicProfile = () => {
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="text-center py-12">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Profile Not Found</h2>
-          <p className="text-gray-600">The profile you're looking for doesn't exist or has been removed.</p>
+          <p className="text-gray-600">The profile you&apos;re looking for doesn&apos;t exist or has been removed.</p>
         </div>
       </div>
     );
@@ -188,10 +188,7 @@ const PublicProfile = () => {
           <div className="flex-1 text-center md:text-left">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">{userName}</h1>
             <div className="flex flex-wrap gap-4 justify-center md:justify-start text-sm text-gray-600">
-              <div className="flex items-center gap-1">
-                <Mail size={16} className="text-[#bf5700]" />
-                <span>{userEmail}</span>
-              </div>
+              {/* Removed email display */}
             </div>
             <div className="mt-4 flex items-center gap-4 justify-center md:justify-start">
               <div className="flex items-center gap-2">
@@ -209,7 +206,7 @@ const PublicProfile = () => {
               </div>
             </div>
             {/* Rating Section */}
-            {session?.user?.email && session.user.email !== userEmail && (
+            {user?.email && user.email !== userEmail && (
               <div className="mt-6">
                 {!showRatingForm ? (
                   userHasRated ? (

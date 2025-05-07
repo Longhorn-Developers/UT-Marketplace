@@ -55,7 +55,7 @@ const Mascot = () => (
     transition={{ duration: 2, repeat: Infinity }}
   >
     <span className="text-[80px] md:text-[120px]">🤘</span>
-    <span className="text-[#bf5700] font-bold text-lg mt-2">Hook 'em!</span>
+    <span className="text-[#bf5700] font-bold text-lg mt-2">Hook&apos;em!</span>
   </motion.div>
 );
 

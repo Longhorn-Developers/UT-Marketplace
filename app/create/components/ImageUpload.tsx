@@ -2,6 +2,7 @@
 import React from "react";
 import { ImagePlus, UploadCloud, X } from "lucide-react";
 import { ImageUploadProps } from "../../props/image-upload";
+import Image from "next/image";
 
 const ImageUpload: React.FC<ImageUploadProps> = ({
   images,
@@ -17,7 +18,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         Photos
       </h2>
       <p className="text-sm text-gray-500 mb-4">
-        Add up to 5 photos to showcase your item. The first photo will be your listing's cover image.
+        Add up to 5 photos to showcase your item. The first photo will be your listing&apos;s cover image.
       </p>
       <div className="flex items-center gap-4 mb-4">
         {images.map((file, index) => (
@@ -25,10 +26,12 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
             key={index}
             className="w-24 h-24 bg-gray-100 rounded-md flex items-center justify-center border relative overflow-hidden"
           >
-            <img
+            <Image
               src={URL.createObjectURL(file)}
               alt={`Uploaded ${index}`}
-              className="object-cover w-full h-full rounded-md"
+              fill
+              className="object-cover rounded-md"
+              sizes="96px"
             />
             <span
               onClick={() => handleRemoveImage(index)}

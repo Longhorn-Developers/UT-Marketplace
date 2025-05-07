@@ -22,17 +22,49 @@ const Browse = () => {
 
   useEffect(() => {
     const fetchListings = async () => {
-      const { data, error } = await supabase
-        .from("listings")
-        .select("*")
-        .eq("is_sold", false)
-        .order("created_at", { ascending: sortOrder === "oldest" });
+      try {
+        // console.log("Fetching listings...");
 
-      if (error) {
-        console.error("Upload error:", error);
-        alert(`Upload error: ${JSON.stringify(error, null, 2)}`);
-      } else {
-        setListings(data);
+        const { data, error } = await supabase
+          .from("listings")
+          .select("*")
+          .eq("is_sold", false)
+          .order("created_at", { ascending: sortOrder === "oldest" });
+
+        // console.log("Raw response:", { data, error });
+
+        if (error) {
+          console.error("Supabase error:", error);
+          throw error;
+        }
+
+        if (!data) {
+          console.log("No data returned");
+          setListings([]);
+          return;
+        }
+
+        // console.log("All listings:", data);
+
+        // Type check and validate each listing
+        const validListings = data.filter((listing: any) => {
+          const isValid = 
+            listing.id &&
+            listing.title &&
+            listing.price !== undefined &&
+            listing.user_id &&
+            listing.user_name;
+          
+          if (!isValid) {
+            console.warn("Invalid listing found:", listing);
+          }
+          return isValid;
+        });
+
+        // console.log("Valid listings:", validListings);
+        setListings(validListings);
+      } catch (error) {
+        console.error("Error fetching listings:", error);
       }
     };
 

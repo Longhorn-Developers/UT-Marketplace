@@ -1,27 +1,32 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
 import { supabase } from "../lib/supabaseClient";
 import ListingCard from "../browse/components/ListingCard";
 import SoldListingCard from "../browse/components/SoldListingCard";
 import * as timeago from "timeago.js";
 import { Listing } from "../props/listing";
+import { useAuth } from '../context/AuthContext';
+import { useRouter } from 'next/navigation';
 
 export default function MyListings() {
-  const { data: session } = useSession();
+  const { user } = useAuth();
+  const router = useRouter();
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchListings = async () => {
-      if (!session?.user?.email) return;
+    if (!user?.email) {
+      router.push('/auth/signin');
+      return;
+    }
 
+    const fetchListings = async () => {
       try {
         setLoading(true);
         const { data, error } = await supabase
           .from("listings")
           .select("*")
-          .eq("user_id", session.user.email)
+          .eq("user_id", user.email)
           .order("created_at", { ascending: false });
 
         if (error) throw error;
@@ -33,10 +38,8 @@ export default function MyListings() {
       }
     };
 
-    if (session) {
-      fetchListings();
-    }
-  }, [session]);
+    fetchListings();
+  }, [user, router]);
 
   const activeListings = listings.filter((listing) => !listing.is_sold);
   const soldListings = listings.filter((listing) => listing.is_sold);
@@ -78,7 +81,7 @@ export default function MyListings() {
         {activeListings.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
             <p className="text-gray-600 mb-4">
-              You haven't created any active listings yet.
+              You haven&apos;t created any active listings yet.
             </p>
             <a
               href="/create"

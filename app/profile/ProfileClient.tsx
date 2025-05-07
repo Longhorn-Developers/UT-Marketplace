@@ -1,5 +1,4 @@
 "use client";
-import { useSession, signIn, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import ListingCard from "../browse/components/ListingCard";
@@ -8,16 +7,22 @@ import * as timeago from "timeago.js";
 import { Mail, Star, CheckCircle2 } from "lucide-react";
 import { Listing } from "../props/listing";
 import { Rating } from "../props/rating";
+import { useAuth } from '../context/AuthContext';
+import { useRouter } from 'next/navigation';
 
 export default function ProfileClient() {
-  const { data: session, status } = useSession();
+  const { user } = useAuth();
+  const router = useRouter();
   const [listings, setListings] = useState<Listing[]>([]);
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchUserData = async () => {
-      if (!session?.user?.email) return;
+      if (!user?.email) {
+        router.push('/auth/signin');
+        return;
+      }
 
       try {
         setLoading(true);
@@ -25,7 +30,7 @@ export default function ProfileClient() {
         const { data: listingsData, error: listingsError } = await supabase
           .from("listings")
           .select("*")
-          .eq("user_name", session.user.name)
+          .eq("user_name", user.user_metadata.full_name)
           .order("created_at", { ascending: false });
 
         if (listingsError) throw listingsError;
@@ -35,7 +40,7 @@ export default function ProfileClient() {
         const { data: ratingsData, error: ratingsError } = await supabase
           .from("ratings")
           .select("*")
-          .eq("rated_id", session.user.email);
+          .eq("rated_id", user.email);
 
         if (ratingsError) throw ratingsError;
         setRatings(ratingsData || []);
@@ -46,10 +51,10 @@ export default function ProfileClient() {
       }
     };
 
-    if (session) {
+    if (user) {
       fetchUserData();
     }
-  }, [session]);
+  }, [user, router]);
 
   const activeListings = listings.filter((listing) => !listing.is_sold);
   const soldListings = listings.filter((listing) => listing.is_sold);
@@ -58,7 +63,7 @@ export default function ProfileClient() {
       ? ratings.reduce((acc, curr) => acc + curr.rating, 0) / ratings.length
       : 0;
 
-  if (status === "loading") {
+  if (loading) {
     return (
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="animate-pulse space-y-8">
@@ -69,26 +74,12 @@ export default function ProfileClient() {
               <div className="h-4 bg-gray-200 rounded w-1/4" />
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(3)].map((_, index) => (
-              <div
-                key={index}
-                className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm"
-              >
-                <div className="aspect-[4/3] bg-gray-200" />
-                <div className="p-4 space-y-3">
-                  <div className="h-4 bg-gray-200 rounded w-3/4" />
-                  <div className="h-3 bg-gray-200 rounded w-1/4" />
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
     );
   }
 
-  if (!session) {
+  if (!user) {
     return (
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
@@ -99,10 +90,10 @@ export default function ProfileClient() {
             Sign in to view your profile and manage your listings.
           </p>
           <button
-            onClick={() => signIn("google")}
+            onClick={() => router.push('/auth/signin')}
             className="px-6 py-3 rounded-lg bg-[#bf5700] text-white font-medium hover:bg-[#a54700] transition"
           >
-            Sign in with Google
+            Sign in
           </button>
         </div>
       </div>
@@ -115,17 +106,14 @@ export default function ProfileClient() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
         <div className="flex flex-col md:flex-row gap-6 items-center md:items-start">
           <div className="w-32 h-32 rounded-full bg-gray-100 flex items-center justify-center text-4xl font-bold text-gray-400">
-            {session.user?.name?.[0]?.toUpperCase() || "?"}
+            {user.user_metadata.full_name?.[0]?.toUpperCase() || "?"}
           </div>
           <div className="flex-1 text-center md:text-left">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              {session.user?.name}
+              {user.user_metadata.full_name}
             </h1>
             <div className="flex flex-wrap gap-4 justify-center md:justify-start text-sm text-gray-600">
-              <div className="flex items-center gap-1">
-                <Mail size={16} className="text-[#bf5700]" />
-                <span>{session.user?.email}</span>
-              </div>
+              {/* Removed email display */}
             </div>
             <div className="mt-4 flex items-center gap-4 justify-center md:justify-start">
               <div className="flex items-center gap-2">
@@ -147,7 +135,10 @@ export default function ProfileClient() {
               </div>
             </div>
             <button
-              onClick={() => signOut()}
+              onClick={() => {
+                supabase.auth.signOut();
+                router.push('/');
+              }}
               className="mt-4 px-4 py-2 rounded-lg bg-red-500 text-white text-sm hover:bg-red-600 transition"
             >
               Sign out
@@ -185,7 +176,7 @@ export default function ProfileClient() {
         ) : activeListings.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
             <p className="text-gray-600 mb-4">
-              You haven't created any active listings yet.
+              You haven&apos;t created any active listings yet.
             </p>
             <a
               href="/create"
@@ -199,9 +190,7 @@ export default function ProfileClient() {
             {activeListings.map((listing) => (
               <div
                 key={listing.id}
-                onClick={() =>
-                  (window.location.href = `/listing/${listing.id}`)
-                }
+                onClick={() => router.push(`/listing/${listing.id}`)}
                 className="cursor-pointer"
               >
                 <ListingCard
@@ -239,7 +228,7 @@ export default function ProfileClient() {
                 images={listing.images}
                 user={{ name: listing.user_name, user_id: listing.user_id }}
                 condition={listing.condition}
-                onClick={() => window.location.href = `/listing/${listing.id}`}
+                onClick={() => router.push(`/listing/${listing.id}`)}
               />
             ))}
           </div>

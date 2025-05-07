@@ -4,48 +4,100 @@ import { useParams, useRouter } from "next/navigation";
 import ListingPage from "../components/ListingPage";
 import OwnerPage from "../components/OwnerPage";
 import { supabase } from "../../lib/supabaseClient";
-import { useSession } from "next-auth/react";
+import { useAuth } from '../../context/AuthContext';
 import RelatedListings from "../../browse/components/RelatedListings";
+import { Loader2 } from "lucide-react";
+
+interface Listing {
+  id: string;
+  title: string;
+  price: number;
+  location: string;
+  category: string;
+  created_at: string;
+  images: string[];
+  condition: string;
+  description: string;
+  user_id: string;
+  user_name: string;
+  user_image?: string;
+}
 
 const Listing = () => {
   const { id } = useParams();
   const router = useRouter();
-  const [listing, setListing] = useState<any>(null);
-  const { data: sessionData } = useSession();
+  const { user } = useAuth();
+  const [listing, setListing] = useState<Listing | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [listingCount, setListingCount] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
-      const { data: listingData, error } = await supabase
-        .from("listings")
-        .select("*")
-        .eq("id", id)
-        .single();
+      try {
+        setIsLoading(true);
+        setError(null);
 
-      if (error) {
-        console.error("Error fetching listing:", error);
-      } else {
+        const { data: listingData, error: listingError } = await supabase
+          .from("listings")
+          .select("*")
+          .eq("id", id)
+          .single();
+
+        if (listingError) throw listingError;
+        if (!listingData) throw new Error("Listing not found");
+
         setListing(listingData);
 
-        const { count } = await supabase
+        // Get count of other listings by same user
+        const { count, error: countError } = await supabase
           .from("listings")
           .select("*", { count: "exact", head: true })
           .eq("user_id", listingData.user_id);
 
+        if (countError) throw countError;
         setListingCount(count || 0);
+      } catch (err) {
+        console.error("Error fetching listing:", err);
+        setError(err instanceof Error ? err.message : "Failed to load listing");
+      } finally {
+        setIsLoading(false);
       }
-
-      setIsLoading(false);
     };
 
-    fetchData();
+    if (id) {
+      fetchData();
+    }
   }, [id]);
 
-  if (isLoading) return <div>Loading...</div>;
-  if (!listing) return <div>Listing not found.</div>;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-6 w-6 animate-spin text-[#bf5700]" />
+          <span className="text-gray-600">Loading listing...</span>
+        </div>
+      </div>
+    );
+  }
 
-  const isOwner = sessionData?.user?.email === listing.user_id;
+  if (error || !listing) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error || "Listing not found"}</p>
+          <button
+            onClick={() => router.push("/browse")}
+            className="px-4 py-2 rounded bg-[#bf5700] text-white hover:bg-[#a54700]"
+          >
+            Back to Browse
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const isOwner = user?.email === listing.user_id;
 
   const commonProps = {
     title: listing.title,
@@ -56,7 +108,7 @@ const Listing = () => {
     images: listing.images,
     condition: listing.condition,
     description: listing.description || '',
-    id: listing.id, // pass id for delete/edit
+    id: listing.id,
   };
 
   const userProps = {
@@ -74,7 +126,13 @@ const Listing = () => {
         {isOwner ? (
           <OwnerPage {...commonProps} />
         ) : (
-          <ListingPage {...commonProps} user={userProps} listingCount={listingCount} listingUserName={listing.user_name} listingUserEmail={listing.user_id} />
+          <ListingPage 
+            {...commonProps} 
+            user={userProps} 
+            listingCount={listingCount} 
+            listingUserName={listing.user_name} 
+            listingUserEmail={listing.user_id} 
+          />
         )}
       </div>
 

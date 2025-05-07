@@ -6,6 +6,7 @@ import * as timeago from 'timeago.js';
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import { ListingPageProps } from '../../props/listing';
+import { useAuth } from '../../context/AuthContext';
 
 const ListingPage: React.FC<ListingPageProps> = ({
   title,
@@ -23,7 +24,7 @@ const ListingPage: React.FC<ListingPageProps> = ({
 }) => {
   const [selectedImageIdx, setSelectedImageIdx] = useState(0);
   const [relatedListings, setRelatedListings] = useState<any[]>([]);
-
+  const { user: currentUser } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -42,6 +43,33 @@ const ListingPage: React.FC<ListingPageProps> = ({
 
     fetchRelatedListings();
   }, [category, title]);
+
+  const handleMessageSeller = async () => {
+    if (!currentUser?.email) {
+      router.push('/auth/signin');
+      return;
+    }
+
+    try {
+      // Create initial message
+      const { error } = await supabase
+        .from('messages')
+        .insert([{
+          sender_id: currentUser.email,
+          receiver_id: listingUserEmail,
+          content: `Hi, I'm interested in your listing: ${title}`,
+          created_at: new Date().toISOString(),
+          read: false
+        }]);
+
+      if (error) throw error;
+
+      // Redirect to messages page
+      router.push('/messages');
+    } catch (error) {
+      console.error('Error starting conversation:', error);
+    }
+  };
 
   return (
     <>
@@ -140,8 +168,23 @@ const ListingPage: React.FC<ListingPageProps> = ({
         </div>
 
         <div className="mt-auto flex flex-col gap-4">
-          <button className="w-full bg-[#bf5700] hover:bg-[#a54700] text-white font-semibold py-2 rounded transition">
-            Message Seller
+          <button 
+            onClick={handleMessageSeller}
+            disabled={!currentUser || currentUser.email === listingUserEmail}
+            className={`w-full font-semibold py-2 rounded transition ${
+              !currentUser 
+                ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                : currentUser.email === listingUserEmail
+                ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                : 'bg-[#bf5700] hover:bg-[#a54700] text-white'
+            }`}
+          >
+            {!currentUser 
+              ? 'Sign in to Message'
+              : currentUser.email === listingUserEmail
+              ? 'This is your listing'
+              : 'Message Seller'
+            }
           </button>
           <div className="flex gap-2">
             <button className="flex-1 border border-gray-300 py-2 rounded text-sm hover:bg-gray-50 transition">♡ Save</button>
