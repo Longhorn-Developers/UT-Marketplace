@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { FaUser, FaBars } from "react-icons/fa";
-import { MessageCircle, Settings, LogOut } from "lucide-react";
+import { MessageCircle, Settings, LogOut, Plus } from "lucide-react";
 import NavSearch from "./NavSearch";
 import { useAuth } from '../app/context/AuthContext';
 import Notifications from "../app/components/Notifications";
@@ -50,7 +50,13 @@ const Navbar = () => {
           href="/my-listings"
           className="text-white hover:text-white/80 transition font-semibold"
         >
-          My List
+          My Listings
+        </Link>
+        <Link 
+          href="/create"
+          className="text-white hover:text-white/80 transition font-semibold"
+        >
+          Create <Plus size={16} className="inline-block" />
         </Link>
         
         {user ? (

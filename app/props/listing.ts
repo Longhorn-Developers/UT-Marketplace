@@ -62,11 +62,7 @@ export interface Listing {
   user_name: string;
   user_image?: string;
   is_sold: boolean;
-<<<<<<< HEAD
 } 
-=======
-}
->>>>>>> fe9644c3dc589216b1dbd540185586439b079ae5
 
 export interface Message {
   id: string;
@@ -81,16 +77,12 @@ export interface Message {
 export interface Conversation {
   user_id: string;
   user_name: string;
-<<<<<<< HEAD
-=======
   user_image?: string;
->>>>>>> fe9644c3dc589216b1dbd540185586439b079ae5
   listing_id: string;
   listing_title: string;
   last_message?: string;
   last_message_time?: string;
   unread_count: number;
-<<<<<<< HEAD
 }
 
 export interface Notification {
@@ -100,6 +92,3 @@ export interface Notification {
   created_at: string;
   read: boolean;
 }
-=======
-} 
->>>>>>> fe9644c3dc589216b1dbd540185586439b079ae5
