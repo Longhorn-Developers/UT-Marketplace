@@ -1,11 +1,9 @@
-
-
 # UT Marketplace
 
 A modern, full-featured marketplace web application for the UT Austin community. Built with Next.js, React, Supabase, and Tailwind CSS.
 
 ---
-
+![Marketplace Screenshot](public/splash_page.png)
 ## Features
 
 - **User Authentication**: Secure sign-in and session management with Supabase.
