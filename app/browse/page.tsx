@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "../lib/supabaseClient";
 import SearchBar from "./components/SearchBar";
@@ -153,4 +153,10 @@ const Browse = () => {
   );
 };
 
-export default Browse;
+export default function BrowsePageWrapper() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <Browse />
+    </Suspense>
+  );
+}

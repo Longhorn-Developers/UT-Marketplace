@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -315,4 +315,10 @@ const MessagesPage = () => {
   );
 };
 
-export default MessagesPage;
+export default function MessagesPageWrapper() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <MessagesPage />
+    </Suspense>
+  );
+}

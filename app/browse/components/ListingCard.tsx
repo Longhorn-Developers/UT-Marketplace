@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ListingCardProps } from "../../props/listing";
 import UserRatingDisplay from "../../../components/UserRatingDisplay";
 import Image from 'next/image';
+import { Suspense } from "react";
 
 const highlight = (text: string, searchTerm?: string) => {
   if (!searchTerm) return text;
