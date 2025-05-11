@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabaseClient';
 import { MapPin, Calendar, Tag } from "lucide-react";
-import ListingCard from '../../browse/components/ListingCard';
-import * as timeago from 'timeago.js';
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import { ListingPageProps } from '../../props/listing';
 import { useAuth } from '../../context/AuthContext';
+import UserRatingDisplay from "../../../components/UserRatingDisplay";
+import Image from "next/image";
 
 const ListingPage: React.FC<ListingPageProps> = ({
   title,
@@ -17,32 +17,64 @@ const ListingPage: React.FC<ListingPageProps> = ({
   images,
   condition,
   description,
-  user,
   listingCount,
   listingUserName,
   listingUserEmail,
 }) => {
   const [selectedImageIdx, setSelectedImageIdx] = useState(0);
-  const [relatedListings, setRelatedListings] = useState<any[]>([]);
   const { user: currentUser } = useAuth();
   const router = useRouter();
+  const [sellerRating, setSellerRating] = useState<number | null>(null);
+  const [ratingLoading, setRatingLoading] = useState(true);
+  const [sellerDisplayName, setSellerDisplayName] = useState<string | null>(null);
+  const [sellerProfileImage, setSellerProfileImage] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchRelatedListings = async () => {
+    const fetchSellerRating = async () => {
+      if (!listingUserEmail) return;
+      setRatingLoading(true);
       const { data, error } = await supabase
-        .from("listings")
-        .select("id, title, price, images")
-        .eq("category", category)
-        .neq("title", title)
-        .limit(4);
+        .from('ratings')
+        .select('rating')
+        .eq('rated_id', listingUserEmail);
+      if (error) {
+        setSellerRating(null);
+        setRatingLoading(false);
+        return;
+      }
+      if (data && data.length > 0) {
+        const avg = data.reduce((acc, curr) => acc + curr.rating, 0) / data.length;
+        setSellerRating(avg);
+      } else {
+        setSellerRating(null);
+      }
+      setRatingLoading(false);
+    };
+    fetchSellerRating();
+  }, [listingUserEmail]);
 
-      if (!error) {
-        setRelatedListings(data || []);
+  useEffect(() => {
+    const fetchSellerDisplayName = async () => {
+      if (!listingUserEmail) return;
+      const normalizedEmail = listingUserEmail.trim().toLowerCase();
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('display_name, profile_image_url')
+        .eq('email', normalizedEmail)
+        .single();
+      
+      console.log(data);
+      console.log(normalizedEmail);
+      if (!error && data) {
+        setSellerDisplayName(data.display_name || null);
+        setSellerProfileImage(data.profile_image_url || null);
+      } else {
+        setSellerDisplayName(null);
+        setSellerProfileImage(null);
       }
     };
-
-    fetchRelatedListings();
-  }, [category, title]);
+    fetchSellerDisplayName();
+  }, [listingUserEmail]);
 
   const handleMessageSeller = async () => {
     if (!currentUser?.email) {
@@ -51,7 +83,22 @@ const ListingPage: React.FC<ListingPageProps> = ({
     }
 
     try {
-      // Create initial message
+      // Check if a message already exists between these users
+      const { data: existingMessages, error: fetchError } = await supabase
+        .from('messages')
+        .select('id')
+        .or(`and(sender_id.eq.${currentUser.email},receiver_id.eq.${listingUserEmail}),and(sender_id.eq.${listingUserEmail},receiver_id.eq.${currentUser.email})`)
+        .limit(1);
+
+      if (fetchError) throw fetchError;
+
+      if (existingMessages && existingMessages.length > 0) {
+        // Conversation exists, just redirect
+        router.push('/messages');
+        return;
+      }
+
+      // No conversation, send the automated message
       const { error } = await supabase
         .from('messages')
         .insert([{
@@ -88,11 +135,13 @@ const ListingPage: React.FC<ListingPageProps> = ({
       <div className="flex flex-col gap-4">
         <div className="aspect-[4/3] bg-gray-100 rounded-xl overflow-hidden">
           {images && images[selectedImageIdx] ? (
-            <img
+            <Image
               src={images[selectedImageIdx]}
               alt={title}
+              width={100}
+              height={100}
               className="w-full h-full object-cover"
-            />
+            /> 
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-400 text-2xl">
               No Image
@@ -110,9 +159,11 @@ const ListingPage: React.FC<ListingPageProps> = ({
                   selectedImageIdx === idx ? "border-[#bf5700]" : "border-transparent"
                 }`}
               >
-                <img
+                <Image
                   src={img}
                   alt={`Thumbnail ${idx + 1}`}
+                  width={100}
+                  height={100}
                   className="w-full h-[80px] object-cover"
                 />
               </button>
@@ -155,15 +206,27 @@ const ListingPage: React.FC<ListingPageProps> = ({
           className="flex items-center gap-4 mb-2 hover:underline"
         >
           <div className="w-10 h-10 rounded-full border bg-gray-200 flex items-center justify-center text-gray-400 text-lg">
-            <span>{listingUserName?.[0] || '?'}</span>
+            {sellerProfileImage ? (
+              <Image
+                src={sellerProfileImage}
+                alt={sellerDisplayName || listingUserName || 'User'}
+                width={40}
+                height={40}
+                className="w-10 h-10 rounded-full object-cover"
+              />
+            ) : (
+              <span>{(sellerDisplayName || listingUserName)?.[0] || '?'}</span>
+            )}
           </div>
           <div>
-            <div className="text-gray-900 font-semibold text-sm">{listingUserName}</div>
+            <div className="text-gray-900 font-semibold text-sm">{sellerDisplayName || listingUserName}</div>
             <div className="text-gray-500 text-xs">Seller</div>
           </div>
         </Link>
         <div className="text-sm text-gray-500 mt-1 mb-6">
-          <div>Rating: ⭐ 4.8/5</div>
+          <div>
+            Rating: <UserRatingDisplay userId={listingUserEmail} rating={sellerRating} />
+          </div>
           <div>Listings: {listingCount}</div>
         </div>
 
@@ -194,32 +257,6 @@ const ListingPage: React.FC<ListingPageProps> = ({
         </div>
       </div>
     </div>
-
-    {relatedListings.length > 0 && (
-      <div className="max-w-6xl mx-auto mt-6 pt-6 border-t mb-10">
-        <h2 className="text-xl font-bold mb-4 text-gray-900">Related Listings</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          {relatedListings.map((item) => (
-            <div
-              key={item.id}
-              onClick={() => router.push(`/listing/${item.id}`)}
-              className="cursor-pointer"
-            >
-              <ListingCard
-                title={item.title}
-                price={item.price}
-                location=""
-                category={category}
-                timePosted={timeago.format(new Date())}
-                images={item.images}
-                condition=""
-                user={{ name: listingUserName, user_id: listingUserEmail }}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-    )}
     </>
   )
 }

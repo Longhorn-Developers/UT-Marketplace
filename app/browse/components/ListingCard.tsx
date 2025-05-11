@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { ListingCardProps } from "../../props/listing";
+import UserRatingDisplay from "../../../components/UserRatingDisplay";
 
 const highlight = (text: string, searchTerm?: string) => {
   if (!searchTerm) return text;
@@ -20,6 +21,7 @@ const ListingCard: React.FC<ListingCardProps> = ({
   user,
   condition,
   searchTerm,
+  userRating,
 }) => {
   return (
     <div className="group bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
@@ -53,15 +55,24 @@ const ListingCard: React.FC<ListingCardProps> = ({
           {category === "Subleases" ? "Lease Duration" : "Condition"}: {highlight(condition, searchTerm)}
         </p>
         <div className="flex items-center justify-between text-xs text-gray-400 mt-2">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-row items-center gap-2">
             <Link href={`/profile/${encodeURIComponent(user.user_id)}`}>
-              <div className="w-6 h-6 rounded-full border border-gray-200 bg-gray-200 flex items-center justify-center text-gray-400 text-xs">
-                <span>{user.name?.[0] || '?'}</span>
-              </div>
+              {user.image ? (
+                <img
+                  src={user.image}
+                  alt={user.name || 'User'}
+                  className="w-6 h-6 rounded-full border border-gray-200 object-cover"
+                />
+              ) : (
+                <div className="w-6 h-6 rounded-full border border-gray-200 bg-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                  <span>{user.name?.[0] || '?'}</span>
+                </div>
+              )}
             </Link>
             <Link href={`/profile/${encodeURIComponent(user.user_id)}`}>
               <span className="text-gray-700 font-medium">{user.name}</span>
             </Link>
+            <UserRatingDisplay userId={user.user_id} rating={user.userRating} className="" />
           </div>
           <span>{timePosted}</span>
         </div>

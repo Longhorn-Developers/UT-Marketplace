@@ -53,18 +53,21 @@ export default function SettingsPage() {
 
       if (error) {
         if (error.code === 'PGRST116') {
-          // If settings don't exist, create them
+          // If settings don't exist, create them with default values
+          const defaultSettings = {
+            email: user.email,
+            display_name: user.user_metadata?.name || user.email.split('@')[0],
+            bio: '',
+            notification_preferences: {
+              email_notifications: true,
+              browser_notifications: true,
+            },
+            profile_image_url: null,
+          };
+
           const { error: insertError } = await supabase
             .from('user_settings')
-            .insert({
-              email: user.email,
-              display_name: user.user_metadata?.name || '',
-              bio: '',
-              notification_preferences: {
-                email_notifications: true,
-                browser_notifications: true,
-              },
-            });
+            .insert(defaultSettings);
           
           if (insertError) {
             console.error('Error creating initial user settings:', insertError);
@@ -85,7 +88,18 @@ export default function SettingsPage() {
           console.error('Error fetching user settings:', error);
         }
       } else if (data) {
-        setSettings(data);
+        // Ensure all fields have default values if they're null
+        const settingsWithDefaults = {
+          ...data,
+          display_name: data.display_name || user.user_metadata?.name || user.email.split('@')[0],
+          bio: data.bio || '',
+          notification_preferences: {
+            email_notifications: data.notification_preferences?.email_notifications ?? true,
+            browser_notifications: data.notification_preferences?.browser_notifications ?? true,
+          },
+          profile_image_url: data.profile_image_url || null,
+        };
+        setSettings(settingsWithDefaults);
       }
     } catch (error) {
       console.error('Error in fetchUserSettings:', error);

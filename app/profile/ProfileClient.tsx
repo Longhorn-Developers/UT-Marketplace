@@ -9,6 +9,7 @@ import { Listing } from "../props/listing";
 import { Rating } from "../props/rating";
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'next/navigation';
+import UserRatingDisplay from "../../components/UserRatingDisplay";
 
 export default function ProfileClient() {
   const { user } = useAuth();
@@ -16,6 +17,9 @@ export default function ProfileClient() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [loading, setLoading] = useState(true);
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [bio, setBio] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -26,11 +30,26 @@ export default function ProfileClient() {
 
       try {
         setLoading(true);
+        // Fetch display name and profile image from user_settings
+        const { data: userSettings, error: userSettingsError } = await supabase
+          .from('user_settings')
+          .select('display_name, profile_image_url, bio')
+          .eq('email', user.email)
+          .single();
+        if (!userSettingsError && userSettings) {
+          setDisplayName(userSettings.display_name || null);
+          setProfileImage(userSettings.profile_image_url || null);
+          setBio(userSettings.bio || null);
+        } else {
+          setDisplayName(null);
+          setProfileImage(null);
+          setBio(null);
+        }
         // Fetch user's listings
         const { data: listingsData, error: listingsError } = await supabase
           .from("listings")
           .select("*")
-          .eq("user_name", user.user_metadata.full_name)
+          .eq("user_id", user.email)
           .order("created_at", { ascending: false });
 
         if (listingsError) throw listingsError;
@@ -106,20 +125,27 @@ export default function ProfileClient() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
         <div className="flex flex-col md:flex-row gap-6 items-center md:items-start">
           <div className="w-32 h-32 rounded-full bg-gray-100 flex items-center justify-center text-4xl font-bold text-gray-400">
-            {user.user_metadata.full_name?.[0]?.toUpperCase() || "?"}
+            {profileImage ? (
+              <img src={profileImage} alt={displayName || user.email} className="w-32 h-32 rounded-full object-cover" />
+            ) : (
+              <span>{(displayName || user.email)?.[0]?.toUpperCase() || "?"}</span>
+            )}
           </div>
           <div className="flex-1 text-center md:text-left">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              {user.user_metadata.full_name}
+              {displayName || user.email}
             </h1>
+            {bio && (
+              <div className="text-gray-600 text-sm mb-2 whitespace-pre-line">{bio}</div>
+            )}
             <div className="flex flex-wrap gap-4 justify-center md:justify-start text-sm text-gray-600">
               {/* Removed email display */}
             </div>
             <div className="mt-4 flex items-center gap-4 justify-center md:justify-start">
               <div className="flex items-center gap-2">
-                <Star size={16} className="text-yellow-400 fill-yellow-400" />
+                <UserRatingDisplay userId={user.email} rating={averageRating} />
                 <span className="text-sm font-medium text-gray-700">
-                  {averageRating.toFixed(1)}/5 ({ratings.length} ratings)
+                  ({ratings.length} ratings)
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -202,7 +228,7 @@ export default function ProfileClient() {
                   timePosted={timeago.format(listing.created_at)}
                   images={listing.images}
                   condition={listing.condition}
-                  user={{ name: listing.user_name, user_id: listing.user_id }}
+                  user={{ name: displayName || listing.user_name, user_id: listing.user_id, image: profileImage }}
                 />
               </div>
             ))}
@@ -226,7 +252,7 @@ export default function ProfileClient() {
                 category={listing.category}
                 timePosted={timeago.format(listing.created_at)}
                 images={listing.images}
-                user={{ name: listing.user_name, user_id: listing.user_id }}
+                user={{ name: displayName || listing.user_name, user_id: listing.user_id, image: profileImage }}
                 condition={listing.condition}
                 onClick={() => router.push(`/listing/${listing.id}`)}
               />

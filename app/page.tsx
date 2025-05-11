@@ -6,6 +6,7 @@ import Testomonials from "../components/Testomonials";
 import RecentListings from "../components/Recents";
 import CategorySection from "../components/CategorySection";
 import { ShieldCheck, Zap, MessageCircle, Users, Star, CheckCircle, Flame, TrendingUp, Smile } from 'lucide-react';
+import BetaPopup from './components/BetaPopup';
 
 const LiveTicker = () => {
   const [messages] = useState([
@@ -130,6 +131,7 @@ const Home = () => {
         <HowItWorks />
         <Testomonials />
         <RecentListings />
+        <BetaPopup />
       </div>
     </div>
   );

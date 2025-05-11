@@ -23,42 +23,61 @@ const RelatedListings: React.FC<RelatedListingsProps> = ({
 
   useEffect(() => {
     const fetchRelated = async () => {
-      if (!category || !title) return;
+      if (!category) return;
 
-      let query = supabase
-        .from("listings")
-        .select("*")
-        .eq("category", category)
-        .neq("id", currentListingId)
-        .neq("title", title);
+      try {
+        console.log('Fetching related listings for:', { category, currentListingId });
+        
+        let query = supabase
+          .from("listings")
+          .select("*")
+          .eq("category", category)
+          .neq("id", currentListingId);
 
-      if (excludeSold) {
-        query = query.eq("is_sold", false);
-      }
+        if (excludeSold) {
+          query = query.eq("is_sold", false);
+        }
 
-      const { data, error } = await query.limit(4);
+        const { data, error } = await query.limit(4);
+        
+        console.log('Related listings response:', { data, error });
 
-      if (!error) {
-        setRelatedListings(data || []);
+        if (error) {
+          console.error('Error fetching related listings:', error);
+          return;
+        }
+
+        if (data) {
+          setRelatedListings(data);
+        }
+      } catch (err) {
+        console.error('Error in fetchRelated:', err);
       }
     };
 
     fetchRelated();
-  }, [category, title, currentListingId, excludeSold]);
+  }, [category, currentListingId, excludeSold]);
 
+  // Only hide if we have no listings at all
   if (relatedListings.length === 0) return null;
 
   return (
-    <div className="max-w-6xl mx-auto mt-12 pt-6 border-t border-gray-200 mb-10">
-      <h2 className="text-xl font-bold mb-4 text-gray-900">
-        Related Listings
-      </h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="mt-12 bg-white rounded-xl shadow-md p-8">
+      <div className="border-b border-gray-200 pb-4 mb-8">
+        <h2 className="text-2xl font-semibold text-gray-900">
+          Similar Listings
+        </h2>
+        <p className="text-sm text-gray-500 mt-2">
+          More items from the {category} category
+        </p>
+      </div>
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
         {relatedListings.map((item) => (
           <div
             key={item.id}
             onClick={() => router.push(`/listing/${item.id}`)}
-            className="cursor-pointer"
+            className="transform transition duration-200 hover:scale-105 hover:shadow-lg cursor-pointer"
           >
             <ListingCard
               title={item.title}

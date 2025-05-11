@@ -1,14 +1,32 @@
 "use client";
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { Search, Filter, CalendarDays, DollarSign, XCircle } from 'lucide-react';
+import React, {
+  useState,
+  useEffect,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
 import {
-  Sofa, Home, Laptop, Car, Book, Shirt, Utensils, ShoppingBag
-} from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import SearchInput from './SearchInput';
-import SortDropdown from './SortDropdown';
-import FilterModal from './FilterModal';
-import CategoryButtons from './CategoryButtons';
+  Search,
+  Filter,
+  CalendarDays,
+  DollarSign,
+  XCircle,
+} from "lucide-react";
+import {
+  Sofa,
+  Home,
+  Laptop,
+  Car,
+  Book,
+  Shirt,
+  Utensils,
+  ShoppingBag,
+} from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import SearchInput from "./SearchInput";
+import SortDropdown from "./SortDropdown";
+import FilterModal from "./FilterModal";
+import CategoryButtons from "./CategoryButtons";
 
 const categories = [
   { name: "All Categories", icon: Search },
@@ -25,13 +43,13 @@ const categories = [
 const SearchBar = forwardRef((props, ref) => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const query = searchParams.get('category') || '';
-  const search = searchParams.get('search') || '';
-  const sort = searchParams.get('sort') || 'newest';
-  const minPrice = searchParams.get('minPrice') || '';
-  const maxPrice = searchParams.get('maxPrice') || '';
-  const postedAfter = searchParams.get('postedAfter') || '';
-  const postedBefore = searchParams.get('postedBefore') || '';
+  const query = searchParams.get("category") || "";
+  const search = searchParams.get("search") || "";
+  const sort = searchParams.get("sort") || "newest";
+  const minPrice = searchParams.get("minPrice") || "";
+  const maxPrice = searchParams.get("maxPrice") || "";
+  const postedAfter = searchParams.get("postedAfter") || "";
+  const postedBefore = searchParams.get("postedBefore") || "";
 
   const [searchValue, setSearchValue] = useState(search);
   const [sortValue, setSortValue] = useState(sort);
@@ -72,7 +90,7 @@ const SearchBar = forwardRef((props, ref) => {
       postedAfter: postedAfterValue,
       postedBefore: postedBeforeValue,
     });
-    router.push(`/browse${params.toString() ? `?${params.toString()}` : ''}`);
+    router.push(`/browse${params.toString() ? `?${params.toString()}` : ""}`);
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -86,7 +104,7 @@ const SearchBar = forwardRef((props, ref) => {
       postedAfter: postedAfterValue,
       postedBefore: postedBeforeValue,
     });
-    router.push(`/browse${params.toString() ? `?${params.toString()}` : ''}`);
+    router.push(`/browse${params.toString() ? `?${params.toString()}` : ""}`);
   };
 
   const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -100,7 +118,7 @@ const SearchBar = forwardRef((props, ref) => {
       postedAfter: postedAfterValue,
       postedBefore: postedBeforeValue,
     });
-    router.push(`/browse${params.toString() ? `?${params.toString()}` : ''}`);
+    router.push(`/browse${params.toString() ? `?${params.toString()}` : ""}`);
   };
 
   const handleApplyFilters = () => {
@@ -113,19 +131,18 @@ const SearchBar = forwardRef((props, ref) => {
       postedAfter: postedAfterValue,
       postedBefore: postedBeforeValue,
     });
-    router.push(`/browse${params.toString() ? `?${params.toString()}` : ''}`);
+    router.push(`/browse${params.toString() ? `?${params.toString()}` : ""}`);
     setShowFilters(false);
   };
 
   const handleClearFilters = () => {
-    setMinPriceValue('');
-    setMaxPriceValue('');
-    setPostedAfterValue('');
-    setPostedBeforeValue('');
-    setSearchValue('');
-    setSortValue('newest');
-    const params = buildQueryParams({ category: query });
-    router.push(`/browse${params.toString() ? `?${params.toString()}` : ''}`);
+    setMinPriceValue("");
+    setMaxPriceValue("");
+    setPostedAfterValue("");
+    setPostedBeforeValue("");
+    setSearchValue("");
+    setSortValue("newest");
+    router.push(`/browse`);
     setShowFilters(false);
   };
 
@@ -182,4 +199,5 @@ const SearchBar = forwardRef((props, ref) => {
   );
 });
 
+SearchBar.displayName = "SearchBar";
 export default SearchBar;

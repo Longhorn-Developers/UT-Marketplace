@@ -12,6 +12,7 @@ export interface ListingCardProps {
   };
   condition: string;
   searchTerm?: string;
+  userRating?: number;
 }
 
 export interface ListingPageProps {
@@ -26,6 +27,7 @@ export interface ListingPageProps {
   user: {
     name: string;
     image?: string;
+    rating?: number;
   };
   listingCount: number;
   listingUserName: string;
@@ -54,7 +56,9 @@ export interface Listing {
   created_at: string;
   images: string[];
   condition: string;
-  user_name: string;
+  description: string;
   user_id: string;
+  user_name: string;
+  user_image?: string;
   is_sold: boolean;
 } 

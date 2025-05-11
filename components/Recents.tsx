@@ -7,7 +7,11 @@ import * as timeago from "timeago.js"
 
 const RecentListings = () => {
   const [listings, setListings] = useState<any[]>([]);
+  const [ratings, setRatings] = useState<{ [user_id: string]: number }>({});
   const [loading, setLoading] = useState(true);
+  const [ratingsLoading, setRatingsLoading] = useState(true);
+  const [displayNames, setDisplayNames] = useState<{ [user_id: string]: string }>({});
+  const [profileImages, setProfileImages] = useState<{ [user_id: string]: string | undefined }>({});
 
   useEffect(() => {
     const fetchRecentListings = async () => {
@@ -42,6 +46,63 @@ const RecentListings = () => {
     fetchRecentListings();
   }, []);
 
+  useEffect(() => {
+    const fetchRatings = async () => {
+      if (listings.length === 0) {
+        setRatingsLoading(false);
+        return;
+      }
+      const userIds = Array.from(new Set(listings.map(l => l.user_id)));
+      const { data, error } = await supabase
+        .from("ratings")
+        .select("rated_id, rating");
+      if (error) {
+        console.error("Error fetching ratings:", error);
+        setRatingsLoading(false);
+        return;
+      }
+      // Calculate average rating for each user
+      const ratingMap: { [user_id: string]: number } = {};
+      userIds.forEach(user_id => {
+        const userRatings = (data || []).filter(r => r.rated_id === user_id);
+        if (userRatings.length > 0) {
+          const avg = userRatings.reduce((acc, curr) => acc + curr.rating, 0) / userRatings.length;
+          ratingMap[user_id] = avg;
+        } else {
+          ratingMap[user_id] = 0;
+        }
+      });
+      setRatings(ratingMap);
+      setRatingsLoading(false);
+    };
+    if (!loading) fetchRatings();
+  }, [loading, listings]);
+
+  useEffect(() => {
+    const fetchDisplayNamesAndImages = async () => {
+      if (listings.length === 0) return;
+      const userIds = Array.from(new Set(listings.map(l => l.user_id)));
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('email, display_name, profile_image_url')
+        .in('email', userIds);
+      if (error) {
+        setDisplayNames({});
+        setProfileImages({});
+        return;
+      }
+      const nameMap: { [user_id: string]: string } = {};
+      const imageMap: { [user_id: string]: string | undefined } = {};
+      (data || []).forEach(u => {
+        nameMap[u.email] = u.display_name;
+        imageMap[u.email] = u.profile_image_url;
+      });
+      setDisplayNames(nameMap);
+      setProfileImages(imageMap);
+    };
+    if (!loading) fetchDisplayNamesAndImages();
+  }, [loading, listings]);
+
   return (
     <section className="py-12 px-4 md:px-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
@@ -50,7 +111,7 @@ const RecentListings = () => {
           View All
         </Link>
       </div>
-      {loading ? (
+      {loading || ratingsLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {[...Array(6)].map((_, index) => (
             <div key={index} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm animate-pulse">
@@ -76,8 +137,9 @@ const RecentListings = () => {
                 category={listing.category}
                 timePosted={timeago.format(listing.created_at)}
                 images={listing.images}
-                user={{ name: listing.user_name, user_id: listing.user_id }}
+                user={{ name: displayNames[listing.user_id] || listing.user_name, user_id: listing.user_id, image: profileImages[listing.user_id] }}
                 condition={listing.condition}
+                userRating={ratings[listing.user_id]}
               />
             </div>
           ))}

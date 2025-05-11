@@ -22,14 +22,31 @@ const PublicProfile = () => {
   const [userName, setUserName] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userHasRated, setUserHasRated] = useState(false);
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [bio, setBio] = useState<string | null>(null);
+  const [raterProfiles, setRaterProfiles] = useState<{ [email: string]: { display_name: string, profile_image_url: string | null } }>({});
 
   useEffect(() => {
     const fetchUserData = async () => {
       setLoading(true);
       const rawParam = Array.isArray(params.name) ? params.name[0] : params.name;
       const emailParam = decodeURIComponent(rawParam);
-      console.log("params.name", params.name);
-      console.log("emailParam", emailParam);
+      // Fetch display_name and profile_image_url from user_settings
+      const { data: userSettings, error: userSettingsError } = await supabase
+        .from('user_settings')
+        .select('display_name, profile_image_url, bio')
+        .eq('email', emailParam)
+        .single();
+      if (!userSettingsError && userSettings) {
+        setDisplayName(userSettings.display_name || null);
+        setProfileImage(userSettings.profile_image_url || null);
+        setBio(userSettings.bio || null);
+      } else {
+        setDisplayName(null);
+        setProfileImage(null);
+        setBio(null);
+      }
       // Fetch user's listings by email
       const { data: listingsData, error: listingsError } = await supabase
         .from("listings")
@@ -53,6 +70,7 @@ const PublicProfile = () => {
           .eq("rated_id", listingsData[0].user_id);
         let uniqueRatings: Rating[] = [];
         let foundUserRating: Rating | null = null;
+        let raterEmails: string[] = [];
         if (ratingsData) {
           const latestByRater = new Map<string, Rating>();
           ratingsData.forEach((rating: Rating) => {
@@ -62,6 +80,7 @@ const PublicProfile = () => {
             }
           });
           uniqueRatings = Array.from(latestByRater.values());
+          raterEmails = uniqueRatings.map(r => r.rater_id);
           // Check if current user has rated
           if (user?.email) {
             foundUserRating = uniqueRatings.find(r => r.rater_id === user.email) || null;
@@ -76,6 +95,18 @@ const PublicProfile = () => {
           setUserHasRated(false);
           setUserRating(0);
           setRatingComment("");
+        }
+        // Fetch rater profiles (display_name, profile_image_url)
+        if (raterEmails.length > 0) {
+          const { data: raterProfilesData } = await supabase
+            .from('user_settings')
+            .select('email, display_name, profile_image_url')
+            .in('email', raterEmails);
+          const raterMap: { [email: string]: { display_name: string, profile_image_url: string | null } } = {};
+          (raterProfilesData || []).forEach((r: any) => {
+            raterMap[r.email] = { display_name: r.display_name, profile_image_url: r.profile_image_url };
+          });
+          setRaterProfiles(raterMap);
         }
       } else {
         setUserName(null);
@@ -183,10 +214,17 @@ const PublicProfile = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
         <div className="flex flex-col md:flex-row gap-6 items-center md:items-start">
           <div className="w-32 h-32 rounded-full bg-gray-100 flex items-center justify-center text-4xl font-bold text-gray-400">
-            {userName?.[0]?.toUpperCase() || '?'}
+            {profileImage ? (
+              <img src={profileImage} alt={displayName || 'User'} className="w-32 h-32 rounded-full object-cover" />
+            ) : (
+              <span>{displayName?.[0]?.toUpperCase() || '?'}</span>
+            )}
           </div>
           <div className="flex-1 text-center md:text-left">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">{userName}</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">{displayName}</h1>
+            {bio && (
+              <div className="text-gray-600 text-sm mb-2 whitespace-pre-line">{bio}</div>
+            )}
             <div className="flex flex-wrap gap-4 justify-center md:justify-start text-sm text-gray-600">
               {/* Removed email display */}
             </div>
@@ -270,6 +308,13 @@ const PublicProfile = () => {
                   {ratings.slice(0, 3).map((rating) => (
                     <div key={rating.id} className="bg-gray-50 rounded-lg p-4">
                       <div className="flex items-center gap-2 mb-2">
+                        {raterProfiles[rating.rater_id]?.profile_image_url ? (
+                          <img src={raterProfiles[rating.rater_id].profile_image_url} alt={raterProfiles[rating.rater_id].display_name || rating.rater_id} className="w-6 h-6 rounded-full object-cover border border-gray-200" />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full border border-gray-200 bg-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                            <span>{(raterProfiles[rating.rater_id]?.display_name || rating.rater_id)?.[0]?.toUpperCase() || '?'}</span>
+                          </div>
+                        )}
                         <div className="flex">
                           {[1, 2, 3, 4, 5].map((star) => (
                             <span
@@ -283,7 +328,7 @@ const PublicProfile = () => {
                         <span className="text-sm text-gray-500">
                           {timeago.format(rating.created_at)}
                         </span>
-                        <span className="text-xs text-gray-700 ml-2">by {rating.rater_id}</span>
+                        <span className="text-xs text-gray-700 ml-2">by {raterProfiles[rating.rater_id]?.display_name || rating.rater_id}</span>
                       </div>
                       {rating.comment && (
                         <p className="text-sm text-gray-600">{rating.comment}</p>
@@ -318,7 +363,7 @@ const PublicProfile = () => {
                   category={listing.category}
                   timePosted={timeago.format(listing.created_at)}
                   images={listing.images}
-                  user={{ name: listing.user_name, user_id: listing.user_id }}
+                  user={{ name: displayName || listing.user_name, user_id: listing.user_id, image: profileImage }}
                   condition={listing.condition}
                 />
               </div>
@@ -346,7 +391,7 @@ const PublicProfile = () => {
                   category={listing.category}
                   timePosted={timeago.format(listing.created_at)}
                   images={listing.images}
-                  user={{ name: listing.user_name, user_id: listing.user_id }}
+                  user={{ name: displayName || listing.user_name, user_id: listing.user_id, image: profileImage }}
                   condition={listing.condition}
                 />
               </div>
