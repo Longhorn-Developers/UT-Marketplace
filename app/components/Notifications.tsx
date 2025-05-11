@@ -4,14 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 import * as timeago from 'timeago.js';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
-
-interface Notification {
-  id: string;
-  sender_name: string;
-  content: string;
-  created_at: string;
-  read: boolean;
-}
+import { Message, type Notification } from '../props/listing';
 
 const Notifications = () => {
   const { user } = useAuth();

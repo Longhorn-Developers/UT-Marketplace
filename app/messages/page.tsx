@@ -5,26 +5,7 @@ import { Send, Search, ChevronDown, Trash2, Edit2 } from "lucide-react";
 import * as timeago from "timeago.js";
 import { useAuth } from '../context/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
-
-interface Message {
-  id: string;
-  sender_id: string;
-  receiver_id: string;
-  content: string;
-  created_at: string;
-  read: boolean;
-  listing_id?: string;
-}
-
-interface Conversation {
-  user_id: string;
-  user_name: string;
-  listing_id: string;
-  listing_title: string;
-  last_message?: string;
-  last_message_time?: string;
-  unread_count: number;
-}
+import { Message, Conversation } from '../props/listing';
 
 const MessagesPage = () => {
   const { user, loading: authLoading } = useAuth();
