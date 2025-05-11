@@ -10,6 +10,7 @@ import { Rating } from "../props/rating";
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'next/navigation';
 import UserRatingDisplay from "../../components/UserRatingDisplay";
+import Image from 'next/image';
 
 export default function ProfileClient() {
   const { user } = useAuth();
@@ -126,7 +127,7 @@ export default function ProfileClient() {
         <div className="flex flex-col md:flex-row gap-6 items-center md:items-start">
           <div className="w-32 h-32 rounded-full bg-gray-100 flex items-center justify-center text-4xl font-bold text-gray-400">
             {profileImage ? (
-              <img src={profileImage} alt={displayName || user.email} className="w-32 h-32 rounded-full object-cover" />
+              <Image src={profileImage} alt={displayName || user.email} width={128} height={128} className="w-32 h-32 rounded-full object-cover" />
             ) : (
               <span>{(displayName || user.email)?.[0]?.toUpperCase() || "?"}</span>
             )}

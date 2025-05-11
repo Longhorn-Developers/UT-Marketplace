@@ -20,6 +20,7 @@ const ListingPage: React.FC<ListingPageProps> = ({
   listingCount,
   listingUserName,
   listingUserEmail,
+  id,
 }) => {
   const [selectedImageIdx, setSelectedImageIdx] = useState(0);
   const { user: currentUser } = useAuth();
@@ -76,46 +77,13 @@ const ListingPage: React.FC<ListingPageProps> = ({
     fetchSellerDisplayName();
   }, [listingUserEmail]);
 
-  const handleMessageSeller = async () => {
+  const handleMessageSeller = () => {
     if (!currentUser?.email) {
       router.push('/auth/signin');
       return;
     }
-
-    try {
-      // Check if a message already exists between these users
-      const { data: existingMessages, error: fetchError } = await supabase
-        .from('messages')
-        .select('id')
-        .or(`and(sender_id.eq.${currentUser.email},receiver_id.eq.${listingUserEmail}),and(sender_id.eq.${listingUserEmail},receiver_id.eq.${currentUser.email})`)
-        .limit(1);
-
-      if (fetchError) throw fetchError;
-
-      if (existingMessages && existingMessages.length > 0) {
-        // Conversation exists, just redirect
-        router.push('/messages');
-        return;
-      }
-
-      // No conversation, send the automated message
-      const { error } = await supabase
-        .from('messages')
-        .insert([{
-          sender_id: currentUser.email,
-          receiver_id: listingUserEmail,
-          content: `Hi, I'm interested in your listing: ${title}`,
-          created_at: new Date().toISOString(),
-          read: false
-        }]);
-
-      if (error) throw error;
-
-      // Redirect to messages page
-      router.push('/messages');
-    } catch (error) {
-      console.error('Error starting conversation:', error);
-    }
+    // Redirect to messages page with listing id as a query param
+    router.push(`/messages?listing=${encodeURIComponent(id)}`);
   };
 
   return (

@@ -16,6 +16,7 @@ export interface ListingCardProps {
 }
 
 export interface ListingPageProps {
+  id: string;
   title: string;
   price: number;
   location: string;

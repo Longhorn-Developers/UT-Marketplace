@@ -127,7 +127,8 @@ const Listing = () => {
           <OwnerPage {...commonProps} />
         ) : (
           <ListingPage 
-            {...commonProps} 
+            {...commonProps}
+            id={listing.id}
             user={userProps} 
             listingCount={listingCount} 
             listingUserName={listing.user_name} 

@@ -19,17 +19,21 @@
     "next": "15.3.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-hot-toast": "^2.5.2",
     "react-icons": "^5.5.0",
     "react-toastify": "^11.0.5",
     "timeago.js": "^4.0.2"
   },
   "devDependencies": {
+    "@commitlint/config-conventional": "^19.8.1",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "22.15.3",
     "@types/react": "19.1.2",
+    "commitlint": "^19.8.1",
     "eslint": "^9",
     "eslint-config-next": "15.3.1",
+    "husky": "^9.1.7",
     "tailwindcss": "^4"
   }
 }

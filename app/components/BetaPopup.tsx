@@ -7,6 +7,8 @@ import Link from 'next/link';
 export default function BetaPopup() {
   const [isVisible, setIsVisible] = useState(true);
 
+  if (!isVisible) return null;
+
   return (
     <div className="fixed bottom-4 right-4 max-w-sm bg-white rounded-lg shadow-lg border border-gray-200 p-6 z-50 animate-fade-in">
       <button

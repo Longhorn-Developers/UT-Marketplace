@@ -6,6 +6,7 @@ import SearchBar from "./components/SearchBar";
 import ListingCard from "./components/ListingCard";
 import * as timeago from "timeago.js";
 import Link from "next/link";
+import { toast } from "react-hot-toast";
 
 const Browse = () => {
   const searchParams = useSearchParams();
@@ -19,57 +20,40 @@ const Browse = () => {
 
   const [listings, setListings] = useState<any[]>([]);
   const searchBarRef = useRef<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchListings = async () => {
       try {
-        // console.log("Fetching listings...");
-
-        const { data, error } = await supabase
+        let query = supabase
           .from("listings")
           .select("*")
           .eq("is_sold", false)
-          .order("created_at", { ascending: sortOrder === "oldest" });
+          .eq("is_draft", false)
+          .order("created_at", { ascending: false });
 
-        // console.log("Raw response:", { data, error });
-
-        if (error) {
-          console.error("Supabase error:", error);
-          throw error;
+        if (queryCategory) {
+          query = query.eq("category", queryCategory);
         }
 
-        if (!data) {
-          console.log("No data returned");
-          setListings([]);
-          return;
+        if (searchTerm) {
+          query = query.ilike("title", `%${searchTerm}%`);
         }
 
-        // console.log("All listings:", data);
+        const { data, error } = await query;
 
-        // Type check and validate each listing
-        const validListings = data.filter((listing: any) => {
-          const isValid = 
-            listing.id &&
-            listing.title &&
-            listing.price !== undefined &&
-            listing.user_id &&
-            listing.user_name;
-          
-          if (!isValid) {
-            console.warn("Invalid listing found:", listing);
-          }
-          return isValid;
-        });
-
-        // console.log("Valid listings:", validListings);
-        setListings(validListings);
+        if (error) throw error;
+        setListings(data || []);
       } catch (error) {
         console.error("Error fetching listings:", error);
+        toast.error("Failed to load listings");
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchListings();
-  }, [sortOrder]);
+  }, [queryCategory, searchTerm]);
 
   let filteredListings = listings;
   if (queryCategory && queryCategory !== "All") {
@@ -107,7 +91,11 @@ const Browse = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="p-8">
         <SearchBar ref={searchBarRef} />
-        {filteredListings.length === 0 ? (
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <span className="text-gray-500 text-lg mb-4">Loading listings...</span>
+          </div>
+        ) : filteredListings.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
             <span className="text-gray-500 text-lg mb-4">No listings match your search or filters.</span>
             <button

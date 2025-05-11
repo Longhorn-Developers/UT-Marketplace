@@ -27,6 +27,7 @@ const Create = () => {
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [condition, setCondition] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -43,6 +44,74 @@ const Create = () => {
     setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const uploadImages = async () => {
+    if (!user?.email) return [];
+    
+    const uploadedImageUrls: string[] = [];
+    for (const image of images) {
+      const fileName = `${user.email}-${Date.now()}-${image.name}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("listing-images")
+        .upload(fileName, image);
+
+      if (uploadError) {
+        console.error("Image upload failed:", uploadError?.message || uploadError);
+        throw new Error(`Failed to upload image: ${uploadError?.message || "Unknown error"}`);
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from("listing-images")
+        .getPublicUrl(fileName);
+
+      uploadedImageUrls.push(publicUrlData.publicUrl);
+    }
+    return uploadedImageUrls;
+  };
+
+  const handleSaveDraft = async () => {
+    if (!user) {
+      toast.error("You must be logged in to save a draft.");
+      router.push('/auth/signin');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      let uploadedImageUrls: string[] = [];
+      
+      if (images.length > 0) {
+        uploadedImageUrls = await uploadImages();
+      }
+
+      const payload = {
+        title: title || "Untitled Draft",
+        category: category || null,
+        price: price || 0,
+        description: description || "",
+        location: location || null,
+        condition: condition || null,
+        user_id: user.email,
+        user_name: user.email.split('@')[0],
+        created_at: new Date().toISOString(),
+        images: uploadedImageUrls,
+        is_sold: false,
+        is_draft: true,
+      };
+
+      const { error } = await supabase.from("listings").insert([payload]);
+
+      if (error) throw error;
+      
+      toast.success("Draft saved successfully!");
+      router.push('/my-listings');
+    } catch (error) {
+      console.error("Error saving draft:", error);
+      toast.error("Failed to save draft. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!user) {
       toast.error("You must be logged in to create a listing.");
@@ -55,49 +124,36 @@ const Create = () => {
       return;
     }
 
-    // Upload images to Supabase Storage
-    const uploadedImageUrls: string[] = [];
-    for (const image of images) {
-      const fileName = `${user.email}-${Date.now()}-${image.name}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("listing-images")
-        .upload(fileName, image);
+    try {
+      setSaving(true);
+      const uploadedImageUrls = await uploadImages();
 
-      if (uploadError) {
-        console.error("Image upload failed:", uploadError?.message || uploadError);
-        toast.error(`Failed to upload image: ${uploadError?.message || "Unknown error"}`);
-        return;
-      }
+      const payload = {
+        title,
+        category,
+        price,
+        description,
+        location,
+        condition,
+        user_id: user.email,
+        user_name: user.email.split('@')[0],
+        created_at: new Date().toISOString(),
+        images: uploadedImageUrls,
+        is_sold: false,
+        is_draft: false,
+      };
 
-      const { data: publicUrlData } = supabase.storage
-        .from("listing-images")
-        .getPublicUrl(fileName);
+      const { error } = await supabase.from("listings").insert([payload]);
 
-      uploadedImageUrls.push(publicUrlData.publicUrl);
-    }
-
-    const payload = {
-      title,
-      category,
-      price,
-      description,
-      location,
-      condition,
-      user_id: user.email,
-      user_name: user.email.split('@')[0], // Fallback if name not available
-      created_at: new Date().toISOString(),
-      images: uploadedImageUrls,
-      is_sold: false,
-    };
-
-    const { data, error } = await supabase.from("listings").insert([payload]);
-
-    if (error) {
-      console.error("Upload error:", error);
-      toast.error("Something went wrong while uploading.");
-    } else {
+      if (error) throw error;
+      
       toast.success("🎉 Listing created successfully!");
       router.push('/my-listings');
+    } catch (error) {
+      console.error("Error creating listing:", error);
+      toast.error("Failed to create listing. Please try again.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -166,61 +222,54 @@ const Create = () => {
                 <DollarSign size={14} />
                 Price ($)
               </label>
-              <input
-                type="number"
-                className="w-full border rounded-md px-3 py-2 text-sm"
-                value={price}
-                onChange={(e) => setPrice(Number(e.target.value))}
-              />
-            </div>
-            <div className="w-1/3">
-              <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                <Tag size={14} />
-                {category === "Subleases" ? "Lease Duration" : "Condition"}
-              </label>
-              <select
-                className="w-full border rounded-md px-3 py-2 text-sm"
-                value={condition}
-                onChange={(e) => setCondition(e.target.value)}
-              >
-                <option value="">
-                  {category === "Subleases" ? "Select lease duration" : "Select condition"}
-                </option>
-                {category === "Subleases" ? (
-                  <>
-                    <option value="Summer Only">Summer Only</option>
-                    <option value="Fall Only">Fall Only</option>
-                    <option value="Full Year">Full Year</option>
-                    <option value="Month-to-Month">Month-to-Month</option>
-                  </>
-                ) : (
-                  <>
-                    <option value="New">New</option>
-                    <option value="Like New">Like New</option>
-                    <option value="Good">Good</option>
-                    <option value="Used">Used</option>
-                    <option value="Heavily Used">Heavily Used</option>
-                  </>
-                )}
-              </select>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  className="w-full border rounded-md px-7 py-2 text-sm"
+                  value={price === 0 ? "" : price}
+                  placeholder="0.00"
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    if (isNaN(val) || val < 0) {
+                      setPrice(0);
+                    } else {
+                      setPrice(val);
+                    }
+                  }}
+                  onBlur={() => {
+                    if (price < 0.01) setPrice(0.01);
+                  }}
+                />
+              </div>
+              {price < 0.01 && (
+                <p className="text-xs text-red-500 mt-1">Price must be at least $0.01</p>
+              )}
             </div>
           </div>
 
           <div className="mb-4">
             <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
               <Text size={14} />
-              Description
+              Condition
             </label>
-            <textarea
+            <select
               className="w-full border rounded-md px-3 py-2 text-sm"
-              rows={5}
-              placeholder="Describe your item in detail. Include condition, features, and any other relevant information."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
+              value={condition}
+              onChange={(e) => setCondition(e.target.value)}
+            >
+              <option>Select condition</option>
+              <option>New</option>
+              <option>Like New</option>
+              <option>Good</option>
+              <option>Fair</option>
+              <option>Poor</option>
+            </select>
           </div>
 
-          <div className="mb-6">
+          <div className="mb-4">
             <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
               <MapPin size={14} />
               Location
@@ -245,17 +294,35 @@ const Create = () => {
             </select>
           </div>
 
+          <div className="mb-6">
+            <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+              <Text size={14} />
+              Description
+            </label>
+            <textarea
+              className="w-full border rounded-md px-3 py-2 text-sm h-32"
+              placeholder="Describe your item..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+
           <div className="flex justify-end gap-2">
-            <button className="flex items-center gap-2 px-4 py-2 border rounded-md shadow-sm text-sm bg-white hover:bg-gray-100 transition">
+            <button 
+              onClick={handleSaveDraft}
+              disabled={saving}
+              className="flex items-center gap-2 px-4 py-2 border rounded-md shadow-sm text-sm bg-white hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <Save size={16} />
-              Save as Draft
+              {saving ? 'Saving...' : 'Save as Draft'}
             </button>
             <button
               onClick={handleSubmit}
-              className="flex items-center gap-2 px-4 py-2 border rounded-md shadow-sm text-sm bg-[#bf5700] text-white hover:bg-[#a54700] transition"
+              disabled={saving}
+              className="flex items-center gap-2 px-4 py-2 border rounded-md shadow-sm text-sm bg-[#bf5700] text-white hover:bg-[#a54700] transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send size={16} />
-              Publish Listing
+              {saving ? 'Publishing...' : 'Publish Listing'}
             </button>
           </div>
         </div>
