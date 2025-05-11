@@ -62,4 +62,25 @@ export interface Listing {
   user_name: string;
   user_image?: string;
   is_sold: boolean;
+}
+
+export interface Message {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  content: string;
+  created_at: string;
+  read: boolean;
+  listing_id?: string;
+}
+
+export interface Conversation {
+  user_id: string;
+  user_name: string;
+  user_image?: string;
+  listing_id: string;
+  listing_title: string;
+  last_message?: string;
+  last_message_time?: string;
+  unread_count: number;
 } 

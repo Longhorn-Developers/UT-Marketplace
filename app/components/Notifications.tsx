@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Bell } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import * as timeago from 'timeago.js';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
+import { Message } from '../props/listing';
 
 interface Notification {
   id: string;
@@ -19,6 +20,7 @@ const Notifications = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const router = useRouter();
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!user?.email) return;
@@ -166,13 +168,27 @@ const Notifications = () => {
     }
   }, []);
 
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!showDropdown) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDropdown]);
+
   return (
-    <div className="relative">
+    <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setShowDropdown(!showDropdown)}
-        className="relative p-2 hover:bg-gray-100 rounded-full transition"
+        className="relative p-2 hover:bg-white/10 rounded-full transition"
       >
-        <Bell size={20} className="text-gray-600" />
+        <Bell size={20} className="text-white" />
         {unreadCount > 0 && (
           <span className="absolute top-0 right-0 bg-[#bf5700] text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
             {unreadCount}
@@ -190,7 +206,7 @@ const Notifications = () => {
               notifications.map((notification) => (
                 <div
                   key={notification.id}
-                  onClick={() => handleNotificationClick(notification)}
+                  onClick={() => { handleNotificationClick(notification); setShowDropdown(false); }}
                   className={`p-4 border-b cursor-pointer hover:bg-gray-50 transition ${
                     !notification.read ? 'bg-orange-50' : ''
                   }`}
