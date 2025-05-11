@@ -30,7 +30,7 @@ const Browse = () => {
           .select("*")
           .eq("is_sold", false)
           .eq("is_draft", false)
-          .order("created_at", { ascending: false });
+          .order("created_at", { ascending: sortOrder === "oldest" });
 
         if (queryCategory) {
           query = query.eq("category", queryCategory);
@@ -41,9 +41,27 @@ const Browse = () => {
         }
 
         const { data, error } = await query;
-
         if (error) throw error;
-        setListings(data || []);
+
+        // Fetch user_settings for all unique user_ids
+        const userIds = [...new Set((data || []).map(l => l.user_id))];
+        const { data: userSettings } = await supabase
+          .from("user_settings")
+          .select("email, display_name, profile_image_url")
+          .in("email", userIds);
+        const userMap = {};
+        (userSettings || []).forEach(u => {
+          userMap[u.email] = {
+            name: u.display_name || u.email,
+            image: u.profile_image_url || null,
+          };
+        });
+        const listingsWithUser = (data || []).map(listing => ({
+          ...listing,
+          user_name: userMap[listing.user_id]?.name || listing.user_name,
+          user_image: userMap[listing.user_id]?.image || null,
+        }));
+        setListings(listingsWithUser);
       } catch (error) {
         console.error("Error fetching listings:", error);
         toast.error("Failed to load listings");
@@ -53,7 +71,7 @@ const Browse = () => {
     };
 
     fetchListings();
-  }, [queryCategory, searchTerm]);
+  }, [queryCategory, searchTerm, sortOrder]);
 
   let filteredListings = listings;
   if (queryCategory && queryCategory !== "All") {
@@ -122,7 +140,7 @@ const Browse = () => {
                   category={listing.category}
                   timePosted={timeago.format(listing.created_at)}
                   images={listing.images}
-                  user={{ name: listing.user_name, user_id: listing.user_id }}
+                  user={{ name: listing.user_name, user_id: listing.user_id, image: listing.user_image }}
                   condition={listing.condition}
                   searchTerm={searchTerm}
                 />
