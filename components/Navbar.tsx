@@ -2,8 +2,7 @@
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { FaUser, FaBars } from "react-icons/fa";
-import { MessageCircle, Settings, LogOut, Plus } from "lucide-react";
-import NavSearch from "./NavSearch";
+import { MessageCircle, Settings, LogOut, Plus, X } from "lucide-react";
 import { useAuth } from '../app/context/AuthContext';
 import Notifications from "../app/components/Notifications";
 
@@ -30,7 +29,7 @@ const Navbar = () => {
   };
 
   return (
-    <div className="bg-ut-orange p-4 text-white flex justify-between items-center shadow-md">
+    <div className="bg-ut-orange p-4 text-white flex justify-between items-center shadow-md sticky top-0 z-50">
       <Link
         href="/"
         className="flex items-center gap-2 text-white text-3xl tracking-tight font-bold"
@@ -119,61 +118,82 @@ const Navbar = () => {
         className="md:hidden text-white"
         onClick={() => setMenuOpen(!menuOpen)}
       >
-        <FaBars size={24} />
+        {menuOpen ? <X size={24} /> : <FaBars size={24} />}
       </button>
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="absolute top-full left-0 right-0 bg-ut-orange md:hidden p-4 z-50">
+        <div className="absolute top-full left-0 right-0 bg-ut-orange md:hidden p-4 z-40 shadow-lg">
           <div className="flex flex-col space-y-4">
             <Link
               href="/browse"
-              className="text-white hover:text-white/80 transition font-semibold"
+              className="text-white hover:text-white/80 transition font-semibold flex items-center"
               onClick={() => setMenuOpen(false)}
             >
               Browse
             </Link>
             <Link
               href="/my-listings"
-              className="text-white hover:text-white/80 transition font-semibold"
+              className="text-white hover:text-white/80 transition font-semibold flex items-center"
               onClick={() => setMenuOpen(false)}
             >
-              My List
+              My Listings
+            </Link>
+            <Link
+              href="/create"
+              className="text-white hover:text-white/80 transition font-semibold flex items-center"
+              onClick={() => setMenuOpen(false)}
+            >
+              Create <Plus size={16} className="ml-1" />
             </Link>
             {user ? (
               <>
-                <Link
-                  href="/messages"
-                  className="text-white hover:text-white/80 transition font-semibold"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Messages
-                </Link>
-                <Link
-                  href="/profile"
-                  className="text-white hover:text-white/80 transition font-semibold"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Profile
-                </Link>
-                <Link
-                  href="/settings"
-                  className="text-white hover:text-white/80 transition font-semibold"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Settings
-                </Link>
-                <button
-                  onClick={handleSignOut}
-                  className="text-white hover:text-white/80 transition font-semibold text-left"
-                >
-                  Sign out
-                </button>
+                <div className="flex items-center space-y-0 space-x-4 border-t border-white/20 pt-4">
+                  <Link
+                    href="/messages"
+                    className="text-white hover:text-white/80 transition font-semibold flex items-center p-2 hover:bg-white/10 rounded-full"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <MessageCircle size={20} className="text-white" />
+                  </Link>
+                  <div onClick={() => setMenuOpen(false)} className="flex items-center">
+                    <Notifications />
+                  </div>
+                  <Link
+                    href="/profile"
+                    className="text-white hover:text-white/80 transition font-semibold flex items-center p-2 hover:bg-white/10 rounded-full"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <FaUser size={20} className="text-white" />
+                  </Link>
+                </div>
+                <div className="pt-4 space-y-3">
+                  <Link
+                    href="/profile"
+                    className="text-white hover:text-white/80 transition font-semibold flex items-center"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <FaUser size={16} className="mr-2" /> Profile
+                  </Link>
+                  <Link
+                    href="/settings"
+                    className="text-white hover:text-white/80 transition font-semibold flex items-center"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <Settings size={16} className="mr-2" /> Settings
+                  </Link>
+                  <button
+                    onClick={handleSignOut}
+                    className="text-white hover:text-white/80 transition font-semibold text-left flex items-center"
+                  >
+                    <LogOut size={16} className="mr-2" /> Sign out
+                  </button>
+                </div>
               </>
             ) : (
               <Link
                 href="/auth/signin"
-                className="text-white hover:text-white/80 transition font-semibold"
+                className="text-white hover:text-white/80 transition font-semibold flex items-center"
                 onClick={() => setMenuOpen(false)}
               >
                 Sign In
