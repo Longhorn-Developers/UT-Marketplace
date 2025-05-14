@@ -15,6 +15,7 @@ const Recents = () => {
           .from("listings")
           .select("*")
           .eq("is_sold", false)
+          .eq("is_draft", false)
           .order("created_at", { ascending: false })
           .limit(4);
 

@@ -46,6 +46,7 @@ export interface OwnerPageProps {
   description: string;
   id?: string;
   is_sold?: boolean;
+  is_draft?: boolean;
 }
 
 export interface Listing {

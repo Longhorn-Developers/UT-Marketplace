@@ -21,6 +21,8 @@ interface Listing {
   user_id: string;
   user_name: string;
   user_image?: string;
+  is_draft: boolean;
+  is_sold: boolean;
 }
 
 const Listing = () => {
@@ -98,6 +100,25 @@ const Listing = () => {
   }
 
   const isOwner = user?.email === listing.user_id;
+  const isDraft = listing.is_draft;
+
+  // If the listing is a draft and the current user is not the owner, show 404
+  if (isDraft && !isOwner) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">404 - Listing Not Found</h2>
+          <p className="text-gray-600 mb-6">This listing either doesn't exist or is not available for viewing.</p>
+          <button
+            onClick={() => router.push("/browse")}
+            className="px-4 py-2 rounded bg-[#bf5700] text-white hover:bg-[#a54700]"
+          >
+            Browse Other Listings
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const commonProps = {
     title: listing.title,
@@ -109,6 +130,8 @@ const Listing = () => {
     condition: listing.condition,
     description: listing.description || '',
     id: listing.id,
+    is_sold: listing.is_sold,
+    is_draft: listing.is_draft,
   };
 
   const userProps = {
@@ -117,32 +140,30 @@ const Listing = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="bg-white rounded-xl shadow-md overflow-hidden">
-        {/* ... existing image gallery code ... */}
-      </div>
-
-      <div className="mt-8 bg-white rounded-xl shadow-md p-6">
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-6xl mx-auto px-4">
         {isOwner ? (
           <OwnerPage {...commonProps} />
         ) : (
           <ListingPage 
             {...commonProps}
-            id={listing.id}
             user={userProps} 
             listingCount={listingCount} 
             listingUserName={listing.user_name} 
             listingUserEmail={listing.user_id} 
           />
         )}
+        
+        {/* Only show related listings if the current listing is not a draft or if the user is the owner */}
+        {(!isDraft || isOwner) && (
+          <RelatedListings
+            currentListingId={listing.id}
+            category={listing.category}
+            title={listing.title}
+            excludeSold={true}
+          />
+        )}
       </div>
-
-      <RelatedListings
-        currentListingId={listing.id}
-        category={listing.category}
-        title={listing.title}
-        excludeSold={true}
-      />
     </div>
   );
 };

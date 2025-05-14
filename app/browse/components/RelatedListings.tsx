@@ -37,6 +37,9 @@ const RelatedListings: React.FC<RelatedListingsProps> = ({
         if (excludeSold) {
           query = query.eq("is_sold", false);
         }
+        
+        // Always exclude draft listings
+        query = query.eq("is_draft", false);
 
         const { data, error } = await query.limit(4);
         

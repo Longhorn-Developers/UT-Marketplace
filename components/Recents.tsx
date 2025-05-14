@@ -33,6 +33,7 @@ const RecentListings = () => {
         `)
         .order("created_at", { ascending: false })
         .eq("is_sold", false)
+        .eq("is_draft", false)
         .limit(6);
 
       if (error) {

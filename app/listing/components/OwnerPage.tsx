@@ -4,7 +4,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import EditForm from "./EditForm";
-import { MapPin, Calendar, Tag, CheckCircle2 } from "lucide-react";
+import { MapPin, Calendar, Tag, CheckCircle2, Send } from "lucide-react";
 import ListingCard from '../../browse/components/ListingCard';
 import * as timeago from 'timeago.js';
 import { OwnerPageProps } from "../../props/listing";
@@ -36,10 +36,12 @@ const OwnerPage: React.FC<OwnerPageProps> = ({
   description,
   id,
   is_sold = false,
+  is_draft = false,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSold, setIsSold] = useState(is_sold);
+  const [isDraft, setIsDraft] = useState(is_draft);
   const [form, setForm] = useState({
     title,
     price,
@@ -59,6 +61,11 @@ const OwnerPage: React.FC<OwnerPageProps> = ({
   useEffect(() => {
     setIsSold(is_sold);
   }, [is_sold]);
+
+  // Update isDraft state when is_draft prop changes
+  useEffect(() => {
+    setIsDraft(is_draft);
+  }, [is_draft]);
 
   const fetchListing = async () => {
     if (!id) return;
@@ -80,6 +87,7 @@ const OwnerPage: React.FC<OwnerPageProps> = ({
         images: data.images || [],
       });
       setIsSold(data.is_sold);
+      setIsDraft(data.is_draft);
       setSelectedImageIdx(0);
     }
   };
@@ -163,6 +171,42 @@ const OwnerPage: React.FC<OwnerPageProps> = ({
     }
   };
 
+  const handlePublishDraft = async () => {
+    if (!id) return toast.error("Listing ID not found.");
+    
+    // Validate if all required fields are filled
+    const requiredFields = [
+      "title", "category", "price", "condition", "location", "description"
+    ];
+    
+    for (const field of requiredFields) {
+      if (!form[field] || (typeof form[field] === 'string' && form[field].trim() === '')) {
+        toast.error(`Please fill in the ${field} field before publishing.`);
+        return;
+      }
+    }
+    
+    if (Number(form.price) <= 0) {
+      toast.error("Price must be greater than 0.");
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from("listings")
+        .update({ is_draft: false })
+        .eq("id", id);
+
+      if (error) throw error;
+      
+      setIsDraft(false);
+      toast.success("Listing published successfully!");
+      await fetchListing(); // Refresh the listing data
+    } catch (err) {
+      toast.error("Error publishing listing");
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="bg-white rounded-xl shadow-md overflow-hidden">
@@ -190,6 +234,13 @@ const OwnerPage: React.FC<OwnerPageProps> = ({
                       <div className="bg-gray-800/80 text-white px-6 py-3 rounded-full flex items-center gap-2">
                         <CheckCircle2 size={20} />
                         <span className="font-semibold">Sold</span>
+                      </div>
+                    </div>
+                  )}
+                  {isDraft && (
+                    <div className="absolute top-2 left-2">
+                      <div className="bg-yellow-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                        Draft
                       </div>
                     </div>
                   )}
@@ -261,16 +312,26 @@ const OwnerPage: React.FC<OwnerPageProps> = ({
               </div>
             </div>
             <div className="mt-auto flex flex-col gap-4">
-              <button
-                onClick={handleToggleSold}
-                className={`w-full font-semibold py-2 rounded transition ${
-                  isSold 
-                    ? 'bg-green-500 hover:bg-green-600 text-white'
-                    : 'bg-[#bf5700] hover:bg-[#a54700] text-white'
-                }`}
-              >
-                {isSold ? 'Mark as Available' : 'Mark as Sold'}
-              </button>
+              {isDraft && (
+                <button
+                  onClick={handlePublishDraft}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded transition flex items-center justify-center gap-2"
+                >
+                  <Send size={16} /> Publish Listing
+                </button>
+              )}
+              {!isDraft && (
+                <button
+                  onClick={handleToggleSold}
+                  className={`w-full font-semibold py-2 rounded transition ${
+                    isSold 
+                      ? 'bg-green-500 hover:bg-green-600 text-white'
+                      : 'bg-[#bf5700] hover:bg-[#a54700] text-white'
+                  }`}
+                >
+                  {isSold ? 'Mark as Available' : 'Mark as Sold'}
+                </button>
+              )}
               <button
                 className="w-full bg-[#bf5700] hover:bg-[#a54700] text-white font-semibold py-2 rounded transition"
                 onClick={() => setIsEditing(true)}

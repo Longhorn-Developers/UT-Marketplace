@@ -136,6 +136,7 @@ const MyListings = () => {
       condition: listing.condition,
       description: listing.description,
       images: listing.images || [],
+      is_draft: listing.is_draft,
     });
     setEditId(listing.id);
     setIsEditing(true);
@@ -143,10 +144,21 @@ const MyListings = () => {
 
   const handleEditSubmit = async (formData: any) => {
     if (!editId) return toast.error("Listing ID not found.");
+    
+    // Find the current listing to get its draft status
+    const currentListing = listings.find(listing => listing.id === editId);
+    
+    // Ensure is_draft status is preserved unless explicitly changed
+    const updatedData = {
+      ...formData,
+      is_draft: formData.is_draft !== undefined ? formData.is_draft : (currentListing?.is_draft || false)
+    };
+    
     const { error } = await supabase
       .from("listings")
-      .update({ ...formData })
+      .update(updatedData)
       .eq("id", editId);
+      
     if (error) {
       toast.error("Error updating listing.");
     } else {
@@ -190,17 +202,20 @@ const MyListings = () => {
                 key={listing.id}
                 className="bg-white rounded-lg shadow-sm overflow-hidden"
               >
-                <div className="relative h-48">
+                <div className="relative h-48 cursor-pointer group" onClick={() => router.push(`/listing/${listing.id}`)}>
                   {listing.images && listing.images.length > 0 ? (
-                    <Image
-                      src={listing.images[0]}
-                      alt={listing.title}
-                      className="w-full h-full object-cover"
-                      width={500}
-                      height={500}
-                    />
+                    <div className="relative w-full h-full overflow-hidden">
+                      <Image
+                        src={listing.images[0]}
+                        alt={listing.title}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        width={500}
+                        height={500}
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300"></div>
+                    </div>
                   ) : (
-                    <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                    <div className="w-full h-full bg-gray-200 flex items-center justify-center group-hover:bg-gray-300 transition-colors duration-300">
                       <span className="text-gray-400">No image</span>
                     </div>
                   )}
@@ -216,7 +231,12 @@ const MyListings = () => {
                   )}
                 </div>
                 <div className="p-4">
-                  <h3 className="font-semibold text-lg mb-1">{listing.title}</h3>
+                  <h3 
+                    className="font-semibold text-lg mb-1 cursor-pointer hover:text-[#bf5700] transition" 
+                    onClick={() => router.push(`/listing/${listing.id}`)}
+                  >
+                    {listing.title}
+                  </h3>
                   <p className="text-gray-600 text-sm mb-2">
                     {listing.category} • ${listing.price}
                   </p>

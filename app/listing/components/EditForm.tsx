@@ -51,7 +51,15 @@ const EditForm = ({
     e.preventDefault();
     setForm(localForm);
     // If new images are uploaded, add them to the form (you may want to handle upload to storage in parent)
-    handleEditSubmit({ ...localForm, images });
+    
+    // Preserve the draft status in the submission
+    const dataToSubmit = { 
+      ...localForm, 
+      is_draft: typeof localForm.is_draft !== 'undefined' ? localForm.is_draft : form.is_draft,
+      images 
+    };
+    
+    handleEditSubmit(dataToSubmit);
   };
 
   return (
