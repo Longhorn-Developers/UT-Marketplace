@@ -151,19 +151,21 @@ const SearchBar = forwardRef((props, ref) => {
   }));
 
   return (
-    <div className=" w-full flex flex-col gap-4 px-4 ">
+    <div className="w-full flex flex-col gap-4 px-4">
       {/* Search Row */}
       <div className="w-full flex justify-center">
-        <div className="flex items-center gap-2 w-full max-w-5xl">
+        <div className="flex flex-col sm:flex-row items-center gap-2 w-full max-w-5xl">
           <SearchInput value={searchValue} onChange={handleSearchChange} />
-          <button
-            className="flex items-center gap-2 border rounded-md px-4 py-2 bg-white shadow-sm border-gray-200 hover:bg-gray-100 transition "
-            onClick={() => setShowFilters((v) => !v)}
-          >
-            <Filter size={16} />
-            <span className="text-sm text-gray-700 font-semibold">Filters</span>
-          </button>
-          <SortDropdown value={sortValue} onChange={handleSortChange} />
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              className="flex items-center gap-2 border rounded-md px-4 py-2 bg-white shadow-sm border-gray-200 hover:bg-gray-100 transition w-full sm:w-auto justify-center"
+              onClick={() => setShowFilters((v) => !v)}
+            >
+              <Filter size={16} />
+              <span className="text-sm text-gray-700 font-semibold">Filters</span>
+            </button>
+            <SortDropdown value={sortValue} onChange={handleSortChange} />
+          </div>
         </div>
       </div>
 

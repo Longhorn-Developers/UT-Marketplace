@@ -64,7 +64,7 @@ const EditForm = ({
 
   return (
     <div>
-      <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden border border-[#bf5700]/10 mt-8 p-6 relative">
+      <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden border border-[#bf5700]/10 mt-8 p-6 relative max-h-screen overflow-y-auto">
         <button
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
           onClick={(e) => {

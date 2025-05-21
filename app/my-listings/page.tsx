@@ -283,7 +283,7 @@ const MyListings = () => {
       </div>
       <ToastContainer position="top-center" autoClose={3000} />
       {isEditing && editForm && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/20 backdrop-blur-sm">
+        <div className="fixed inset-0 z-40 flex justify-center bg-black/20 backdrop-blur-sm overflow-y-auto">
           <EditForm
             setIsEditing={setIsEditing}
             handleEditChange={() => {}}

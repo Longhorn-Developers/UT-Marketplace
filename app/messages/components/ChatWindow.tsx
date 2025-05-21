@@ -145,7 +145,7 @@ export const ChatWindow = ({
       {/* Messages */}
       <div
         ref={chatContainerRef}
-        className="flex-1 overflow-y-auto p-4 space-y-4 relative"
+        className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4 relative bg-gray-50"
         style={{ minHeight: 0 }}
         onScroll={handleScroll}
       >
@@ -154,17 +154,18 @@ export const ChatWindow = ({
             key={message.id}
             className={`flex ${
               message.sender_id === currentUserEmail ? "justify-end" : "justify-start"
-            }`}
+            } px-1 sm:px-0`}
           >
             <div
-              className={`max-w-[70%] px-4 py-2 rounded-lg relative ${
-                message.sender_id === currentUserEmail
+              className={`px-3 py-2 sm:px-4 sm:py-2 rounded-2xl relative shadow-sm
+                ${message.sender_id === currentUserEmail
                   ? "bg-[#bf5700] text-white"
-                  : "bg-gray-200 text-gray-900"
-              }`}
+                  : "bg-gray-200 text-gray-900"}
+                max-w-xs sm:max-w-md md:max-w-lg
+              `}
             >
-              <p className="whitespace-pre-wrap break-words">{message.content}</p>
-              <p className="text-xs mt-1 opacity-70">
+              <p className="whitespace-pre-wrap break-words text-sm sm:text-base">{message.content}</p>
+              <p className="text-[11px] sm:text-xs mt-1 opacity-60 text-right">
                 {timeago.format(message.created_at)}
               </p>
               {editMode && message.sender_id === currentUserEmail && (
@@ -189,14 +190,14 @@ export const ChatWindow = ({
       {showScrollButton && (
         <button
           onClick={() => scrollToBottom("smooth")}
-          className="absolute bottom-20 right-8 bg-[#bf5700] text-white p-2 rounded-full shadow-lg hover:bg-[#a54700] transition-colors"
+          className="fixed sm:absolute bottom-24 right-4 sm:right-8 bg-[#bf5700] text-white p-2 rounded-full shadow-lg hover:bg-[#a54700] transition-colors z-30"
         >
           <ChevronDown size={24} />
         </button>
       )}
 
       {/* Message Input */}
-      <div className="p-4 border-t bg-white sticky bottom-0 z-20">
+      <div className="p-2 sm:p-4 border-t bg-white sticky bottom-0 z-20">
         <div className="flex gap-2">
           <input
             type="text"
@@ -204,12 +205,12 @@ export const ChatWindow = ({
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyPress={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
             placeholder="Type a message..."
-            className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:border-[#bf5700]"
+            className="flex-1 px-3 py-2 sm:px-4 border rounded-lg focus:outline-none focus:border-[#bf5700] text-sm sm:text-base"
           />
           <button
             onClick={handleSendMessage}
             disabled={!newMessage.trim()}
-            className="px-4 py-2 bg-[#bf5700] text-white rounded-lg hover:bg-[#a54700] transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 sm:px-4 py-2 bg-[#bf5700] text-white rounded-lg hover:bg-[#a54700] transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send size={20} />
           </button>

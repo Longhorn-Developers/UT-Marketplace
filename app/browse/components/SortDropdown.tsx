@@ -7,7 +7,7 @@ interface SortDropdownProps {
 
 const SortDropdown: React.FC<SortDropdownProps> = ({ value, onChange }) => (
   <select
-    className="border border-gray-200 font-semibold rounded-md px-4 py-2 bg-white shadow-sm text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-ut-orange"
+    className="border border-gray-200 font-semibold rounded-md px-3 sm:px-4 py-2 bg-white shadow-sm text-xs sm:text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-ut-orange w-full sm:w-auto"
     value={value}
     onChange={onChange}
   >
