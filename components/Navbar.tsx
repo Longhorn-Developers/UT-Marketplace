@@ -1,9 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
-import { FaUser, FaBars } from "react-icons/fa";
-import { MessageCircle, Settings, LogOut, Plus, X } from "lucide-react";
-import { useAuth } from '../app/context/AuthContext';
+import { MessageCircle, Settings, LogOut, Plus, X, User, Menu } from "lucide-react";
+import { useAuth } from "../app/context/AuthContext";
 import Notifications from "../app/components/Notifications";
 
 const Navbar = () => {
@@ -14,13 +13,16 @@ const Navbar = () => {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+      if (
+        profileMenuRef.current &&
+        !profileMenuRef.current.contains(event.target as Node)
+      ) {
         setProfileMenuOpen(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const handleSignOut = async () => {
@@ -41,38 +43,45 @@ const Navbar = () => {
       <div className="hidden md:flex items-center space-x-6">
         <Link
           href="/browse"
-          className="text-white hover:text-white/80 transition font-semibold"
+          className="text-white transition duration-100 font-semibold relative group hover:scale-110"
         >
           Browse
+          <span className="absolute left-0 bottom-0 w-0 h-0.5 bg-white group-hover:w-full transition-all duration-300 " />
         </Link>
         <Link
           href="/my-listings"
-          className="text-white hover:text-white/80 transition font-semibold"
+          className="text-white hover:text-white transition duration-100 font-semibold relative group hover:scale-110"
         >
           My Listings
+          <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-white group-hover:w-full transition-all duration-300" />
         </Link>
-        <Link 
+        <Link
           href="/create"
-          className="text-white hover:text-white/80 transition font-semibold"
+          className="text-white hover:text-white transition duration-100 font-semibold relative group hover:scale-110"
         >
-          Create <Plus size={16} className="inline-block" />
+          <Plus size={16} className="inline-block mb-1" /> Create
+          <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-white group-hover:w-full transition-all duration-300" />
         </Link>
-        
+
         {user ? (
           <div className="flex items-center space-x-4">
             <Link
               href="/messages"
-              className="relative p-2 hover:bg-white/10 rounded-full transition"
+              className="relative p-2 rounded-full transition-all duration-300 group"
             >
-              <MessageCircle size={20} className="text-white" />
+              <MessageCircle size={20} className="text-white relative z-10 group-hover:text-white transition-colors duration-300" />
+              <span className="absolute inset-0 bg-white/10 rounded-full scale-0 group-hover:scale-100 transition-transform duration-300 origin-center" />
             </Link>
-            <Notifications />
+            <div className="relative">
+              <Notifications/>
+            </div>
             <div className="relative" ref={profileMenuRef}>
               <button
                 onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                className="p-2 hover:bg-white/10 rounded-full transition"
+                className="relative p-2 rounded-full transition-all duration-300 group"
               >
-                <FaUser size={20} className="text-white" />
+                <User size={20} className="text-white relative z-10 group-hover:text-white transition-colors duration-300" />
+                <span className="absolute inset-0 bg-white/10 rounded-full scale-0 group-hover:scale-100 transition-transform duration-300 origin-center" />
               </button>
               {profileMenuOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-50">
@@ -81,7 +90,7 @@ const Navbar = () => {
                     className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     onClick={() => setProfileMenuOpen(false)}
                   >
-                    <FaUser size={16} className="mr-2" />
+                    <User size={16} className="mr-2" />
                     Profile
                   </Link>
                   <Link
@@ -118,7 +127,7 @@ const Navbar = () => {
         className="md:hidden text-white"
         onClick={() => setMenuOpen(!menuOpen)}
       >
-        {menuOpen ? <X size={24} /> : <FaBars size={24} />}
+        {menuOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
 
       {/* Mobile menu */}
@@ -151,20 +160,22 @@ const Navbar = () => {
                 <div className="flex items-center space-y-0 space-x-4 border-t border-white/20 pt-4">
                   <Link
                     href="/messages"
-                    className="text-white hover:text-white/80 transition font-semibold flex items-center p-2 hover:bg-white/10 rounded-full"
+                    className="relative p-2 rounded-full transition-all duration-300 group"
                     onClick={() => setMenuOpen(false)}
                   >
-                    <MessageCircle size={20} className="text-white" />
+                    <MessageCircle size={20} className="text-white relative z-10 group-hover:text-white transition-colors duration-300" />
+                    <span className="absolute inset-0 bg-white/10 rounded-full scale-0 group-hover:scale-100 transition-transform duration-300 origin-center" />
                   </Link>
                   <div onClick={() => setMenuOpen(false)} className="flex items-center">
                     <Notifications />
                   </div>
                   <Link
                     href="/profile"
-                    className="text-white hover:text-white/80 transition font-semibold flex items-center p-2 hover:bg-white/10 rounded-full"
+                    className="relative p-2 rounded-full transition-all duration-300 group"
                     onClick={() => setMenuOpen(false)}
                   >
-                    <FaUser size={20} className="text-white" />
+                    <User size={20} className="text-white relative z-10 group-hover:text-white transition-colors duration-300" />
+                    <span className="absolute inset-0 bg-white/10 rounded-full scale-0 group-hover:scale-100 transition-transform duration-300 origin-center" />
                   </Link>
                 </div>
                 <div className="pt-4 space-y-3">
@@ -173,7 +184,7 @@ const Navbar = () => {
                     className="text-white hover:text-white/80 transition font-semibold flex items-center"
                     onClick={() => setMenuOpen(false)}
                   >
-                    <FaUser size={16} className="mr-2" /> Profile
+                    <User size={16} className="mr-2" /> Profile
                   </Link>
                   <Link
                     href="/settings"

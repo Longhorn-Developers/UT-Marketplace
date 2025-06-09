@@ -178,9 +178,10 @@ const Notifications = () => {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setShowDropdown(!showDropdown)}
-        className="relative p-2 hover:bg-white/10 rounded-full transition"
+        className="relative p-2 rounded-full transition-all duration-300 group"
       >
-        <Bell size={20} className="text-white" />
+        <Bell size={20} className="text-white relative z-10 group-hover:text-white transition-colors duration-300" />
+        <span className="absolute inset-0 bg-white/10 rounded-full scale-0 group-hover:scale-100 transition-transform duration-300 origin-center" />
         {unreadCount > 0 && (
           <span className="absolute top-0 right-0 bg-[#bf5700] text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
             {unreadCount}
