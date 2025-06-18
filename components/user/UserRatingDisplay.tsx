@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { supabase } from "../app/lib/supabaseClient";
+import { supabase } from "../../app/lib/supabaseClient";
 
 interface UserRatingDisplayProps {
   userId: string;

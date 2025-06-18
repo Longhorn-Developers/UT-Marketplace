@@ -1,8 +1,8 @@
 "use client"
 import Link from "next/link"
-import ListingCard from "../app/browse/components/ListingCard"
+import ListingCard from "../../app/browse/components/ListingCard"
 import { useEffect, useState } from "react"
-import { supabase } from "../app/lib/supabaseClient"
+import { supabase } from "../../app/lib/supabaseClient"
 import * as timeago from "timeago.js"
 
 const RecentListings = () => {

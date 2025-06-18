@@ -9,7 +9,7 @@ import { Listing } from "../props/listing";
 import { Rating } from "../props/rating";
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'next/navigation';
-import UserRatingDisplay from "../../components/UserRatingDisplay";
+import UserRatingDisplay from "../../components/user/UserRatingDisplay";
 import Image from 'next/image';
 
 export default function ProfileClient() {

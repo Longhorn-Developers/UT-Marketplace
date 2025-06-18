@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { Bell } from 'lucide-react';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../../app/lib/supabaseClient';
 import * as timeago from 'timeago.js';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../context/AuthContext';
-import { Message, type Notification } from '../props/listing';
+import { useAuth } from '../../app/context/AuthContext';
+import { Message, type Notification } from '../../app/props/listing';
 
 const Notifications = () => {
   const { user } = useAuth();
