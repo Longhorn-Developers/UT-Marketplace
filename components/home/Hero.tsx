@@ -181,10 +181,3 @@ const Hero = () => {
 };
 
 export default Hero;
-
-// Tailwind custom animations (add to tailwind.config.js if not present):
-// .animate-pop { animation: pop 0.7s cubic-bezier(0.34,1.56,0.64,1) both; }
-// .animate-wiggle { animation: wiggle 1.2s infinite alternate; }
-// .animate-bounce-slow { animation: bounce 2.2s infinite; }
-// @keyframes pop { 0% { transform: scale(0.7); } 80% { transform: scale(1.1); } 100% { transform: scale(1); } }
-// @keyframes wiggle { 0% { transform: rotate(-6deg); } 100% { transform: rotate(6deg); } }
