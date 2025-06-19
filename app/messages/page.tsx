@@ -1,11 +1,19 @@
 "use client";
 import { useEffect, useState, useCallback, Suspense } from "react";
+import { motion } from "framer-motion";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ConversationList } from "./components/ConversationList";
 import { ChatWindow } from "./components/ChatWindow";
 import { Message, Conversation } from "../props/listing";
+import {
+  containerVariants,
+  headerVariants,
+  itemVariants,
+  emptyStateVariants,
+  loadingVariants
+} from "../props/animations";
 
 const MessagesPage = () => {
   const { user, loading: authLoading } = useAuth();
@@ -15,6 +23,7 @@ const MessagesPage = () => {
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const updateConversations = useCallback(async () => {
     if (!user?.email) return;
@@ -280,12 +289,18 @@ const MessagesPage = () => {
 
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center bg-gray-50">
+      <motion.div 
+        className="flex items-center justify-center h-[calc(100vh-64px)] bg-gradient-to-br from-orange-50 to-white"
+        variants={loadingVariants}
+        initial="hidden"
+        animate="visible"
+      >
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Loading...</h2>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#bf5700] mx-auto mb-4"></div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Loading Messages</h2>
           <p className="text-gray-600">Please wait while we check your session.</p>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
@@ -294,11 +309,19 @@ const MessagesPage = () => {
   );
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden min-h-0">
+    <motion.div 
+      className="flex h-[calc(100vh-64px)] bg-gradient-to-br from-orange-50 via-white to-orange-50 overflow-hidden"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
       <ConversationList
         conversations={conversations}
         selectedConversation={selectedConversation}
         onSelectConversation={setSelectedConversation}
+        loading={loading}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
       <ChatWindow
         selectedConversation={selectedConversation}
@@ -310,14 +333,20 @@ const MessagesPage = () => {
         onSendMessage={sendMessage}
         onDeleteMessage={handleDeleteMessage}
         onDeleteConversation={handleDeleteConversation}
+        sidebarCollapsed={sidebarCollapsed}
+        onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
-    </div>
+    </motion.div>
   );
 };
 
 export default function MessagesPageWrapper() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-[calc(100vh-64px)] bg-gradient-to-br from-orange-50 to-white">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#bf5700]"></div>
+      </div>
+    }>
       <MessagesPage />
     </Suspense>
   );

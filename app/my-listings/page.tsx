@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 import { useRouter } from "next/navigation";
@@ -8,6 +9,14 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import EditForm from "../listing/components/EditForm";
 import Image from "next/image";
+import {
+  containerVariants,
+  headerVariants,
+  itemVariants,
+  emptyStateVariants,
+  overlayVariants,
+  modalVariants,
+} from "../props/animations";
 
 interface Listing {
   id: number;
@@ -172,16 +181,24 @@ const MyListings = () => {
 
   if (loading) {
     return (
-      <div className="bg-gray-50 flex items-center justify-center">
+      <div className="flex items-center justify-center h-[calc(100vh-64px)] bg-gray-50">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#bf5700]"></div>
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-50 py-8">
+    <motion.div 
+      className="bg-gray-50 py-8"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center mb-6">
+        <motion.div 
+          className="flex justify-between items-center mb-6"
+          variants={headerVariants}
+        >
           <h1 className="text-2xl font-bold text-gray-900">My Listings</h1>
           <button
             onClick={() => router.push("/create")}
@@ -189,20 +206,28 @@ const MyListings = () => {
           >
             Create New Listing
           </button>
-        </div>
+        </motion.div>
 
         {listings.length === 0 ? (
-          <div className="text-center py-12">
+          <motion.div 
+            className="text-center py-12"
+            variants={emptyStateVariants}
+          >
             <p className="text-gray-500">You haven&apos;t created any listings yet.</p>
-          </div>
+          </motion.div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {listings.map((listing) => (
-              <div
+          <motion.div 
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            variants={containerVariants}
+          >
+            {listings.map((listing, index) => (
+              <motion.div
                 key={listing.id}
-                className="bg-white rounded-lg shadow-sm overflow-hidden"
+                className="bg-white rounded-lg shadow-sm overflow-hidden group cursor-pointer"
+                variants={itemVariants}
+                onClick={() => router.push(`/listing/${listing.id}`)}
               >
-                <div className="relative h-48 cursor-pointer group" onClick={() => router.push(`/listing/${listing.id}`)}>
+                <div className="relative h-48">
                   {listing.images && listing.images.length > 0 ? (
                     <div className="relative w-full h-full overflow-hidden">
                       <Image
@@ -241,33 +266,45 @@ const MyListings = () => {
                     {listing.category} • ${listing.price}
                   </p>
                   <p className="text-gray-500 text-sm mb-4">
-                    Listed on{" "}
+                    Listed on
                     {new Date(listing.created_at).toLocaleDateString()}
                   </p>
                   <div className="flex justify-between items-center">
                     <div className="flex gap-2">
                       <button
-                        onClick={() => handleEditClick(listing)}
-                        className="p-2 text-gray-600 hover:text-[#bf5700] transition"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditClick(listing);
+                        }}
+                        className="p-2 text-gray-600 hover:text-[#bf5700] transition cursor-pointer"
                       >
                         <Edit size={18} />
                       </button>
                       <button
-                        onClick={() => router.push(`/listing/${listing.id}`)}
-                        className="p-2 text-gray-600 hover:text-[#bf5700] transition"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/listing/${listing.id}`);
+                        }}
+                        className="p-2 text-gray-600 hover:text-[#bf5700] transition cursor-pointer"
                       >
                         <Eye size={18} />
                       </button>
                       <button
-                        onClick={() => handleDelete(listing.id)}
-                        className="p-2 text-gray-600 hover:text-red-500 transition"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(listing.id);
+                        }}
+                        className="p-2 text-gray-600 hover:text-red-500 transition cursor-pointer"
                       >
                         <Trash2 size={18} />
                       </button>
                     </div>
                     {listing.is_draft && (
                       <button
-                        onClick={() => handlePublishDraft(listing)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePublishDraft(listing);
+                        }}
                         className="flex items-center gap-1 px-3 py-1 bg-[#bf5700] text-white rounded hover:bg-[#a54700] transition text-sm"
                       >
                         <Send size={14} />
@@ -276,28 +313,41 @@ const MyListings = () => {
                     )}
                   </div>
                 </div>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
       </div>
       <ToastContainer position="top-center" autoClose={3000} />
       {isEditing && editForm && (
-        <div className="fixed inset-0 z-40 flex justify-center bg-black/20 backdrop-blur-sm overflow-y-auto">
-          <EditForm
-            setIsEditing={setIsEditing}
-            handleEditChange={() => {}}
-            handleEditSubmit={handleEditSubmit}
-            form={editForm}
-            setForm={setEditForm}
-            initialFormState={editForm}
-            categoryOptions={categoryOptions}
-            conditionOptions={conditionOptions}
-            leaseOptions={leaseOptions}
-          />
-        </div>
+        <motion.div 
+          className="fixed inset-0 z-40 flex justify-center bg-black/20 backdrop-blur-sm overflow-y-auto pt-16"
+          variants={overlayVariants}
+          initial="hidden"
+          animate="visible"
+          exit="hidden"
+        >
+          <motion.div
+            variants={modalVariants}
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
+          >
+            <EditForm
+              setIsEditing={setIsEditing}
+              handleEditChange={() => {}}
+              handleEditSubmit={handleEditSubmit}
+              form={editForm}
+              setForm={setEditForm}
+              initialFormState={editForm}
+              categoryOptions={categoryOptions}
+              conditionOptions={conditionOptions}
+              leaseOptions={leaseOptions}
+            />
+          </motion.div>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 };
 
