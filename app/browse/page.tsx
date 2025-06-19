@@ -14,6 +14,7 @@ import {
   emptyStateVariants,
   loadingVariants,
 } from "../props/animations";
+import BrowseLoader from "./components/BrowseLoader";
 
 const Browse = () => {
   const searchParams = useSearchParams();
@@ -114,26 +115,26 @@ const Browse = () => {
 
   return (
     <motion.div 
-      className="bg-gray-50"
+      className="bg-gray-50 min-h-screen"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
       <div className="p-8">
         <motion.div variants={searchBarVariants}>
-          <SearchBar ref={searchBarRef} />
+          <SearchBar ref={searchBarRef} setLoading={setLoading} />
         </motion.div>
         
         {loading ? (
           <motion.div 
-            className="flex flex-col items-center justify-center py-16"
+            className="flex items-center justify-center min-h-[60vh]"
             variants={loadingVariants}
           >
-            <span className="text-gray-500 text-lg mb-4">Loading listings...</span>
+            <BrowseLoader />
           </motion.div>
         ) : filteredListings.length === 0 ? (
           <motion.div 
-            className="flex flex-col items-center justify-center py-16"
+            className="flex flex-col items-center justify-center min-h-[60vh]"
             variants={emptyStateVariants}
           >
             <span className="text-gray-500 text-lg mb-4">No listings match your search or filters.</span>
