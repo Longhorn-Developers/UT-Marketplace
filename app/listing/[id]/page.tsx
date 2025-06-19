@@ -23,6 +23,8 @@ interface Listing {
   user_image?: string;
   is_draft: boolean;
   is_sold: boolean;
+  location_lat?: number;
+  location_lng?: number;
 }
 
 const Listing = () => {
@@ -144,6 +146,8 @@ const Listing = () => {
     id: listing.id,
     is_sold: listing.is_sold,
     is_draft: listing.is_draft,
+    location_lat: (listing as any).location_lat,
+    location_lng: (listing as any).location_lng,
   };
 
   const userProps = {
