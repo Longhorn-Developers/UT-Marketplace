@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { ListingCardProps } from "../../props/listing";
-import UserRatingDisplay from "../../../components/UserRatingDisplay";
+import UserRatingDisplay from "../../../components/user/UserRatingDisplay";
 import Image from 'next/image';
 import { Suspense } from "react";
 

@@ -1,12 +1,12 @@
 "use client"
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import Hero from "../components/Hero";
-import Testomonials from "../components/Testomonials";
-import RecentListings from "../components/Recents";
-import CategorySection from "../components/CategorySection";
+import Hero from "../components/home/Hero";
+import Testomonials from "../components/home/Testomonials";
+import RecentListings from "../components/home/Recents";
+import CategorySection from "../components/home/CategorySection";
 import { ShieldCheck, Zap, MessageCircle, Users, Star, CheckCircle, Flame, TrendingUp, Smile } from 'lucide-react';
-import BetaPopup from './components/BetaPopup';
+import BetaPopup from '../components/home/BetaPopup';
 
 const LiveTicker = () => {
   const [messages] = useState([

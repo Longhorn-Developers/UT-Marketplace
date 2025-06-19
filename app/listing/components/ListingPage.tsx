@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import { ListingPageProps } from '../../props/listing';
 import { useAuth } from '../../context/AuthContext';
-import UserRatingDisplay from "../../../components/UserRatingDisplay";
+import UserRatingDisplay from "../../../components/user/UserRatingDisplay";
 import Image from "next/image";
 
 const ListingPage: React.FC<ListingPageProps> = ({
