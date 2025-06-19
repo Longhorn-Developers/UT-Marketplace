@@ -116,7 +116,7 @@ const SafetyBadge = () => (
 
 const Home = () => {
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-orange-100 via-white overflow-hidden">
+    <div className="relative bg-gradient-to-br from-orange-100 via-white overflow-hidden">
       {/* Background Pattern or Overlay */}
       <div
         className="absolute inset-0 bg-[url('/pattern.jpg')] opacity-30 pointer-events-none"
