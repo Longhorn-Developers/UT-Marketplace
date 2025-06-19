@@ -2,6 +2,7 @@
 import React, { useRef, useState } from "react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { motion } from "framer-motion";
 import {
   Tag,
   DollarSign,
@@ -28,6 +29,42 @@ const Create = () => {
   const [location, setLocation] = useState("");
   const [condition, setCondition] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        duration: 0.6,
+        staggerChildren: 0.2
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.5,
+        ease: "easeOut"
+      }
+    }
+  };
+
+  const headerVariants = {
+    hidden: { opacity: 0, y: -20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.6,
+        ease: "easeOut"
+      }
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -158,24 +195,36 @@ const Create = () => {
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <motion.div 
+      className="bg-gray-50 flex-1"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
       <div className="max-w-4xl mx-auto py-10 px-4">
-        <h1 className="text-3xl font-bold mb-2">Create a New Listing</h1>
-        <p className="text-gray-600 mb-6">
-          Fill out the form below to create your listing on UT Marketplace
-        </p>
+        <motion.div variants={headerVariants}>
+          <h1 className="text-3xl font-bold mb-2">Create a New Listing</h1>
+          <p className="text-gray-600 mb-6">
+            Fill out the form below to create your listing on UT Marketplace
+          </p>
+        </motion.div>
 
-        <ImageUploader
-          images={images}
-          setImages={setImages}
-          fileInputRef={fileInputRef}
-          handleFileChange={handleFileChange}
-          handleAddPhotoClick={handleAddPhotoClick}
-          handleRemoveImage={handleRemoveImage}
-        />
+        <motion.div variants={itemVariants}>
+          <ImageUploader
+            images={images}
+            setImages={setImages}
+            fileInputRef={fileInputRef}
+            handleFileChange={handleFileChange}
+            handleAddPhotoClick={handleAddPhotoClick}
+            handleRemoveImage={handleRemoveImage}
+          />
+        </motion.div>
 
         {/* Listing Details Section */}
-        <div className="border rounded-md p-6 bg-white shadow-sm">
+        <motion.div 
+          className="border rounded-md p-6 bg-white shadow-sm"
+          variants={itemVariants}
+        >
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <FileText className="w-5 h-5 text-[#bf5700]" />
             Listing Details
@@ -325,10 +374,10 @@ const Create = () => {
               {saving ? 'Publishing...' : 'Publish Listing'}
             </button>
           </div>
-        </div>
+        </motion.div>
         <ToastContainer position="top-center" autoClose={3000} />
       </div>
-    </div>
+    </motion.div>
   );
 };
 

@@ -20,10 +20,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <div className="min-h-screen">
+        <div className="flex flex-col min-h-screen">
           <AuthProvider>
             <Navbar />
-            {children}
+            <main className="flex-1">
+              {children}
+            </main>
             <FooterWrapper />
           </AuthProvider>
         </div>

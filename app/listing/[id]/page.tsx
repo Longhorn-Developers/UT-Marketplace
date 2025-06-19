@@ -74,7 +74,7 @@ const Listing = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="bg-gray-50 flex items-center justify-center">
         <div className="flex items-center gap-2">
           <Loader2 className="h-6 w-6 animate-spin text-[#bf5700]" />
           <span className="text-gray-600">Loading listing...</span>
@@ -85,7 +85,7 @@ const Listing = () => {
 
   if (error || !listing) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4">{error || "Listing not found"}</p>
           <button
@@ -105,7 +105,7 @@ const Listing = () => {
   // If the listing is a draft and the current user is not the owner, show 404
   if (isDraft && !isOwner) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">404 - Listing Not Found</h2>
           <p className="text-gray-600 mb-6">This listing either doesn&apos;t exist or is not available for viewing.</p>
@@ -140,7 +140,7 @@ const Listing = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="bg-gray-50 py-8">
       <div className="max-w-6xl mx-auto px-4">
         {isOwner ? (
           <OwnerPage {...commonProps} />

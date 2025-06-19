@@ -280,7 +280,7 @@ const MessagesPage = () => {
 
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Loading...</h2>
           <p className="text-gray-600">Please wait while we check your session.</p>

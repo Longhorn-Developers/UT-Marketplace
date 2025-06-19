@@ -23,7 +23,7 @@ const Footer = () => {
       };
 
   return (
-    <footer className="bg-gray-100 text-black mt-auto">
+    <footer className="bg-gray-100 text-black mt-auto w-full">
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-8 lg:grid lg:grid-cols-4">
           <div className="lg:col-span-2">
@@ -43,7 +43,7 @@ const Footer = () => {
                   <li key={category.name}>
                     <button
                       onClick={() => handleCategoryClick(category.name)}
-                      className="flex items-center gap-2 text-sm hover:text-[#d95e00] transition"
+                      className="flex items-center gap-2 text-sm hover:text-[#d95e00] transition cursor-pointer"
                     >
                       <div className="w-5 h-5 flex items-center justify-center text-[#d95e00]">
                         <category.icon className="h-4 w-4" />
