@@ -23,6 +23,8 @@ interface Listing {
   user_image?: string;
   is_draft: boolean;
   is_sold: boolean;
+  location_lat?: number;
+  location_lng?: number;
 }
 
 const Listing = () => {
@@ -74,10 +76,22 @@ const Listing = () => {
 
   if (isLoading) {
     return (
-      <div className="bg-gray-50 flex items-center justify-center">
-        <div className="flex items-center gap-2">
-          <Loader2 className="h-6 w-6 animate-spin text-[#bf5700]" />
-          <span className="text-gray-600">Loading listing...</span>
+      <div className="flex items-center justify-center min-h-[80vh] bg-gray-50">
+        <div className="bg-white rounded-xl shadow-md p-10 flex flex-col items-center w-full max-w-xl">
+          <div className="mb-6">
+            <Loader2 className="h-12 w-12 animate-spin text-[#bf5700]" />
+          </div>
+          <div className="w-full flex flex-col gap-4">
+            <div className="h-8 bg-gray-200 rounded w-2/3 mx-auto animate-pulse" />
+            <div className="h-6 bg-gray-100 rounded w-1/3 mx-auto animate-pulse" />
+            <div className="h-48 bg-gray-100 rounded-xl w-full animate-pulse" />
+            <div className="h-4 bg-gray-100 rounded w-1/2 mx-auto animate-pulse" />
+            <div className="flex gap-2 mt-4">
+              <div className="h-10 w-24 bg-gray-200 rounded animate-pulse" />
+              <div className="h-10 w-24 bg-gray-200 rounded animate-pulse" />
+            </div>
+          </div>
+          <span className="text-gray-600 mt-8 text-lg font-medium">Loading listing...</span>
         </div>
       </div>
     );
@@ -132,6 +146,8 @@ const Listing = () => {
     id: listing.id,
     is_sold: listing.is_sold,
     is_draft: listing.is_draft,
+    location_lat: (listing as any).location_lat,
+    location_lng: (listing as any).location_lng,
   };
 
   const userProps = {
