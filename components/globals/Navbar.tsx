@@ -2,8 +2,8 @@
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { MessageCircle, Settings, LogOut, Plus, X, User, Menu } from "lucide-react";
-import { useAuth } from "../app/context/AuthContext";
-import Notifications from "../app/components/Notifications";
+import { useAuth } from "../../app/context/AuthContext";
+import Notifications from "./Notifications";
 
 const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);

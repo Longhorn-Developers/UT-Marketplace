@@ -1,12 +1,19 @@
 "use client";
 import React, { useEffect, useState, useRef, Suspense } from "react";
+import { motion } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "../lib/supabaseClient";
 import SearchBar from "./components/SearchBar";
 import ListingCard from "./components/ListingCard";
 import * as timeago from "timeago.js";
-import Link from "next/link";
-import { toast } from "react-hot-toast";
+import { toast } from "react-toastify"; 
+import {
+  containerVariants,
+  searchBarVariants,
+  itemVariants,
+  emptyStateVariants,
+  loadingVariants,
+} from "../props/animations";
 
 const Browse = () => {
   const searchParams = useSearchParams();
@@ -106,15 +113,29 @@ const Browse = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <motion.div 
+      className="bg-gray-50"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
       <div className="p-8">
-        <SearchBar ref={searchBarRef} />
+        <motion.div variants={searchBarVariants}>
+          <SearchBar ref={searchBarRef} />
+        </motion.div>
+        
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-16">
+          <motion.div 
+            className="flex flex-col items-center justify-center py-16"
+            variants={loadingVariants}
+          >
             <span className="text-gray-500 text-lg mb-4">Loading listings...</span>
-          </div>
+          </motion.div>
         ) : filteredListings.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16">
+          <motion.div 
+            className="flex flex-col items-center justify-center py-16"
+            variants={emptyStateVariants}
+          >
             <span className="text-gray-500 text-lg mb-4">No listings match your search or filters.</span>
             <button
               className="px-4 py-2 rounded bg-[#bf5700] text-white hover:bg-[#a54700] flex items-center gap-2"
@@ -123,14 +144,18 @@ const Browse = () => {
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               Clear Filters
             </button>
-          </div>
+          </motion.div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-8">
-            {filteredListings.map((listing) => (
-              <div
+          <motion.div 
+            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-8"
+            variants={containerVariants}
+          >
+            {filteredListings.map((listing, index) => (
+              <motion.div
                 key={listing.id}
                 onClick={() => (window.location.href = `/listing/${listing.id}`)}
                 className="cursor-pointer"
+                variants={itemVariants}
               >
                 <ListingCard
                   key={listing.id}
@@ -144,12 +169,12 @@ const Browse = () => {
                   condition={listing.condition}
                   searchTerm={searchTerm}
                 />
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 };
 

@@ -1,11 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Github, MessageCircle } from 'lucide-react';
 import Link from 'next/link';
 
 export default function BetaPopup() {
   const [isVisible, setIsVisible] = useState(true);
+
+  useEffect(() => {
+    const hasVisited = localStorage.getItem('hasVisited');
+    if (hasVisited) {
+      setIsVisible(false);
+    } else {
+      localStorage.setItem('hasVisited', 'true');
+    }
+  }, []);
 
   if (!isVisible) return null;
 

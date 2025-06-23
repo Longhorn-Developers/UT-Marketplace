@@ -17,6 +17,8 @@ interface ChatWindowProps {
   onSendMessage: (content: string) => Promise<void>;
   onDeleteMessage: (messageId: string) => Promise<void>;
   onDeleteConversation: () => Promise<void>;
+  sidebarCollapsed: boolean;
+  onToggleSidebar: () => void;
 }
 
 export const ChatWindow = ({
@@ -29,6 +31,8 @@ export const ChatWindow = ({
   onSendMessage,
   onDeleteMessage,
   onDeleteConversation,
+  sidebarCollapsed,
+  onToggleSidebar,
 }: ChatWindowProps) => {
   const [newMessage, setNewMessage] = useState("");
   const [showScrollButton, setShowScrollButton] = useState(false);

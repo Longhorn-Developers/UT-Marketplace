@@ -1,12 +1,12 @@
 "use client"
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import Hero from "../components/Hero";
-import Testomonials from "../components/Testomonials";
-import RecentListings from "../components/Recents";
-import CategorySection from "../components/CategorySection";
+import Hero from "../components/home/Hero";
+import Testomonials from "../components/home/Testomonials";
+import RecentListings from "../components/home/Recents";
+import CategorySection from "../components/home/CategorySection";
 import { ShieldCheck, Zap, MessageCircle, Users, Star, CheckCircle, Flame, TrendingUp, Smile } from 'lucide-react';
-import BetaPopup from './components/BetaPopup';
+import BetaPopup from '../components/home/BetaPopup';
 
 const LiveTicker = () => {
   const [messages] = useState([
@@ -116,7 +116,7 @@ const SafetyBadge = () => (
 
 const Home = () => {
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-orange-100 via-white overflow-hidden">
+    <div className="relative bg-gradient-to-br from-orange-100 via-white overflow-hidden">
       {/* Background Pattern or Overlay */}
       <div
         className="absolute inset-0 bg-[url('/pattern.jpg')] opacity-30 pointer-events-none"
