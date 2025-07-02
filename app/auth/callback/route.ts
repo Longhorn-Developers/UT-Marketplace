@@ -1,8 +1,9 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
 
@@ -26,23 +27,9 @@ export async function GET(request: Request) {
       }
     );
 
-    const { data: { user }, error } = await supabase.auth.exchangeCodeForSession(code);
-    
-    if (!error && user) {
-      // Check if this is a new user by looking for existing user_settings
-      const { data: existingSettings } = await supabase
-        .from('user_settings')
-        .select('*')
-        .eq('email', user.email)
-        .single();
-
-      if (!existingSettings) {
-        // This is a new user, redirect to onboarding
-        return NextResponse.redirect(new URL('/profile?onboarding=true', requestUrl.origin));
-      }
-    }
+    await supabase.auth.exchangeCodeForSession(code);
   }
 
-  // Redirect to the home page if not a new user
-  return NextResponse.redirect(new URL('/browse', requestUrl.origin));
+  // URL to redirect to after sign in process completes
+  return NextResponse.redirect(new URL('/settings', request.url));
 } 
