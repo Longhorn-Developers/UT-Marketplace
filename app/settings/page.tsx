@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabaseClient';
 import { Camera, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '../context/AuthContext';
+import BrowseLoader from "../browse/components/BrowseLoader";
 
 interface UserSettings {
   display_name: string;
@@ -202,11 +203,7 @@ export default function SettingsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#bf5700]" />
-      </div>
-    );
+    return <BrowseLoader />;
   }
 
   return (

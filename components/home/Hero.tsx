@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { FaBullhorn, FaPlus, FaSearch, FaStoreAlt, FaShieldAlt, FaUserGraduate, FaMoneyBillWave } from 'react-icons/fa';
+import { FaPlus, FaSearch, FaStoreAlt, FaShieldAlt, FaUserGraduate, FaMoneyBillWave } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
+import Logo from '../../public/icons/utmplogo.png';
+import Image from 'next/image';
 
 const tagData = [
   { icon: <FaUserGraduate />, label: 'Student-Only', color: 'bg-[#fbeee0] text-[#bf5700]' },
@@ -164,7 +166,8 @@ const Hero = () => {
             transition={{ type: 'spring', stiffness: 180, damping: 12 }}
             className="relative"
           >
-            <FaStoreAlt className="text-[180px] md:text-[240px] text-ut-orange drop-shadow-xl animate-pop" />
+            <Image src={Logo} alt="UTM Logo" className="text-[180px] md:text-[240px] text-ut-orange drop-shadow-xl animate-pop" />
+            
             <motion.div
               initial={{ opacity: 0, scale: 0.5 }}
               animate={{ opacity: 1, scale: 1 }}

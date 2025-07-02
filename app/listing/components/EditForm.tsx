@@ -3,6 +3,9 @@ import { Tag, DollarSign, Text, MapPin, FileText, Save, X } from "lucide-react";
 import { toast } from "react-toastify";
 import ImageUpload from "../../create/components/ImageUpload";
 import Image from "next/image";
+import dynamic from "next/dynamic";
+
+const MapPicker = dynamic(() => import("./MapPicker"), { ssr: false });
 
 const EditForm = ({
   setIsEditing,
@@ -18,6 +21,7 @@ const EditForm = ({
   const [localForm, setLocalForm] = useState(form);
   const [images, setImages] = useState<(File | string)[]>(form.images || []);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const hasLatLng = typeof localForm.location_lat === 'number' && typeof localForm.location_lng === 'number';
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -56,17 +60,19 @@ const EditForm = ({
     const dataToSubmit = { 
       ...localForm, 
       is_draft: typeof localForm.is_draft !== 'undefined' ? localForm.is_draft : form.is_draft,
-      images 
+      images,
+      location_lat: localForm.location_lat,
+      location_lng: localForm.location_lng,
     };
     
     handleEditSubmit(dataToSubmit);
   };
 
   return (
-    <div>
-      <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden border border-[#bf5700]/10 mt-8 p-6 relative max-h-screen overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/20 backdrop-blur-sm pt-[80px]">
+      <div className="max-w-2xl w-full bg-white rounded-2xl shadow-2xl border border-[#bf5700]/10 p-0 relative max-h-[90vh] flex flex-col">
         <button
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -78,6 +84,7 @@ const EditForm = ({
         >
           <X size={20} />
         </button>
+        <div className="overflow-y-auto p-6 pt-12 flex-1">
         <h2 className="text-2xl font-bold mb-4 text-[#bf5700] flex items-center gap-2">
           <FileText className="w-6 h-6" /> Edit Listing
         </h2>
@@ -232,8 +239,21 @@ const EditForm = ({
               name="location"
               value={localForm.location ?? ""}
               onChange={(e) => setLocalForm({ ...localForm, location: e.target.value })}
-              className="w-full border rounded-md px-3 py-2 text-sm"
+                className="w-full border rounded-md px-3 py-2 text-sm mb-2"
             />
+              <div className="my-2">
+                <MapPicker
+                  value={hasLatLng ? { lat: localForm.location_lat, lng: localForm.location_lng } : undefined}
+                  onChange={({ lat, lng }) => setLocalForm({ ...localForm, location_lat: lat, location_lng: lng })}
+                  height="200px"
+                />
+                <div className="text-xs text-gray-500 mt-1">
+                  Click on the map to update the location. This helps buyers see where the item is located.
+                  {hasLatLng && (
+                    <span className="ml-2 text-green-600">Location selected!</span>
+                  )}
+                </div>
+              </div>
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
@@ -268,6 +288,7 @@ const EditForm = ({
             </button>
           )}
         </form>
+        </div>
       </div>
     </div>
   );

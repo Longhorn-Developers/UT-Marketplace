@@ -17,6 +17,7 @@ import {
   overlayVariants,
   modalVariants,
 } from "../props/animations";
+import BrowseLoader from "../browse/components/BrowseLoader";
 
 interface Listing {
   id: number;
@@ -180,16 +181,12 @@ const MyListings = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-[calc(100vh-64px)] bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#bf5700]"></div>
-      </div>
-    );
+    return <BrowseLoader />;
   }
 
   return (
     <motion.div 
-      className="bg-gray-50 py-8"
+      className="bg-gray-50 min-h-screen py-8"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
@@ -210,7 +207,7 @@ const MyListings = () => {
 
         {listings.length === 0 ? (
           <motion.div 
-            className="text-center py-12"
+            className="flex flex-col items-center justify-center min-h-[60vh] text-center"
             variants={emptyStateVariants}
           >
             <p className="text-gray-500">You haven&apos;t created any listings yet.</p>

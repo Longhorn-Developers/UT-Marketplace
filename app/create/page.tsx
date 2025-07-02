@@ -16,6 +16,9 @@ import { supabase } from "../lib/supabaseClient";
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'next/navigation';
 import ImageUploader from "./components/ImageUpload";
+import dynamic from "next/dynamic";
+
+const MapPicker = dynamic(() => import("../listing/components/MapPicker"), { ssr: false });
 
 const Create = () => {
   const [images, setImages] = useState<File[]>([]);
@@ -27,6 +30,8 @@ const Create = () => {
   const [price, setPrice] = useState(0);
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
+  const [locationLat, setLocationLat] = useState<number | null>(null);
+  const [locationLng, setLocationLng] = useState<number | null>(null);
   const [condition, setCondition] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -126,6 +131,8 @@ const Create = () => {
         price: price || 0,
         description: description || "",
         location: location || null,
+        location_lat: locationLat,
+        location_lng: locationLng,
         condition: condition || null,
         user_id: user.email,
         user_name: user.email.split('@')[0],
@@ -171,6 +178,8 @@ const Create = () => {
         price,
         description,
         location,
+        location_lat: locationLat,
+        location_lng: locationLng,
         condition,
         user_id: user.email,
         user_name: user.email.split('@')[0],
@@ -323,24 +332,29 @@ const Create = () => {
               <MapPin size={14} />
               Location
             </label>
-            <select
-              className="w-full border rounded-md px-3 py-2 text-sm"
+            <input
+              type="text"
+              className="w-full border rounded-md px-3 py-2 text-sm mb-2"
+              placeholder="Enter a location name (optional, e.g. West Campus)"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-            >
-              <option>Select a location</option>
-              <option>West Campus</option>
-              <option>North Campus</option>
-              <option>Riverside</option>
-              <option>UT Campus</option>
-              <option>Jester Circle</option>
-              <option>PCL</option>
-              <option>Union Starbucks</option>
-              <option>Greg Gym</option>
-              <option>Littlefield Fountain</option>
-              <option>Dobie</option>
-              <option>Other</option>
-            </select>
+            />
+            <div className="my-2">
+              <MapPicker
+                value={locationLat && locationLng ? { lat: locationLat, lng: locationLng } : undefined}
+                onChange={({ lat, lng }) => {
+                  setLocationLat(lat);
+                  setLocationLng(lng);
+                }}
+                height="250px"
+              />
+              <div className="text-xs text-gray-500 mt-1">
+                Click on the map to select a location. This will help buyers see where the item is located.
+                {locationLat && locationLng && (
+                  <span className="ml-2 text-green-600">Location selected!</span>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="mb-6">

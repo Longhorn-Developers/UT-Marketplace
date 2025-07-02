@@ -7,6 +7,9 @@ import { ListingPageProps } from '../../props/listing';
 import { useAuth } from '../../context/AuthContext';
 import UserRatingDisplay from "../../../components/user/UserRatingDisplay";
 import Image from "next/image";
+import dynamic from "next/dynamic";
+
+const MapPicker = dynamic(() => import("./MapPicker"), { ssr: false });
 
 const ListingPage: React.FC<ListingPageProps> = ({
   title,
@@ -21,6 +24,9 @@ const ListingPage: React.FC<ListingPageProps> = ({
   listingUserName,
   listingUserEmail,
   id,
+  location_lat,
+  location_lng,
+  ...rest
 }) => {
   const [selectedImageIdx, setSelectedImageIdx] = useState(0);
   const { user: currentUser } = useAuth();
@@ -225,6 +231,23 @@ const ListingPage: React.FC<ListingPageProps> = ({
         </div>
       </div>
     </div>
+
+    {/* Map Section */}
+    {(location_lat && location_lng) && (
+      <div className="max-w-6xl mx-auto mt-8">
+        <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
+          <MapPin size={18} className="text-[#bf5700]" />
+          Location on Map
+        </h2>
+        <div className="rounded-xl overflow-hidden border">
+          <MapPicker
+            value={{ lat: location_lat, lng: location_lng }}
+            onChange={undefined}
+            height="250px"
+          />
+        </div>
+      </div>
+    )}
     </>
   )
 }

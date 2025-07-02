@@ -33,6 +33,8 @@ export interface ListingPageProps {
   listingCount: number;
   listingUserName: string;
   listingUserEmail: string;
+  location_lat?: number;
+  location_lng?: number;
 }
 
 export interface OwnerPageProps {

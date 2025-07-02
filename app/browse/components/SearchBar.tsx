@@ -8,9 +8,7 @@ import React, {
 import {
   Search,
   Filter,
-  CalendarDays,
-  DollarSign,
-  XCircle,
+
 } from "lucide-react";
 import {
   Sofa,
@@ -40,7 +38,11 @@ const categories = [
   { name: "Other", icon: ShoppingBag },
 ];
 
-const SearchBar = forwardRef((props, ref) => {
+interface SearchBarProps {
+  setLoading?: (loading: boolean) => void;
+}
+
+const SearchBar = forwardRef((props: SearchBarProps, ref) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const query = searchParams.get("category") || "";
@@ -50,6 +52,7 @@ const SearchBar = forwardRef((props, ref) => {
   const maxPrice = searchParams.get("maxPrice") || "";
   const postedAfter = searchParams.get("postedAfter") || "";
   const postedBefore = searchParams.get("postedBefore") || "";
+  const { setLoading } = props;
 
   const [searchValue, setSearchValue] = useState(search);
   const [sortValue, setSortValue] = useState(sort);
@@ -80,6 +83,7 @@ const SearchBar = forwardRef((props, ref) => {
   };
 
   const handleCategoryClick = (name: string) => {
+    if (setLoading) setLoading(true);
     const newQuery = name === "All Categories" ? "" : name;
     const params = buildQueryParams({
       category: newQuery,
@@ -94,6 +98,7 @@ const SearchBar = forwardRef((props, ref) => {
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (setLoading) setLoading(true);
     setSearchValue(e.target.value);
     const params = buildQueryParams({
       category: query,
@@ -108,6 +113,7 @@ const SearchBar = forwardRef((props, ref) => {
   };
 
   const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    if (setLoading) setLoading(true);
     setSortValue(e.target.value);
     const params = buildQueryParams({
       category: query,
@@ -122,6 +128,7 @@ const SearchBar = forwardRef((props, ref) => {
   };
 
   const handleApplyFilters = () => {
+    if (setLoading) setLoading(true);
     const params = buildQueryParams({
       category: query,
       search: searchValue,
