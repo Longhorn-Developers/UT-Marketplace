@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from './AuthContext';
 import { supabase } from '../lib/supabaseClient';
@@ -18,7 +18,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const { user } = useAuth();
   const router = useRouter();
 
-  const checkOnboardingStatus = async () => {
+  const checkOnboardingStatus = useCallback(async () => {
     if (!user?.email) return;
 
     const { data, error } = await supabase
@@ -39,7 +39,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     if (needsOnboarding) {
       router.push('/profile?onboarding=true');
     }
-  };
+  }, [user, router]);
 
   const completeOnboarding = async () => {
     setIsOnboarding(false);
@@ -49,7 +49,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     if (user?.email) {
       checkOnboardingStatus();
     }
-  }, [user]);
+  }, [user, checkOnboardingStatus]);
 
   return (
     <OnboardingContext.Provider value={{ isOnboarding, completeOnboarding, checkOnboardingStatus }}>

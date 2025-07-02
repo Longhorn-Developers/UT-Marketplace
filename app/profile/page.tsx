@@ -1,13 +1,15 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
+import Image from "next/image";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 import { useOnboarding } from "../context/OnboardingContext";
 import { toast } from "react-toastify";
 
-const ProfilePage = () => {
+// Separate the main content into a client component
+function ProfileContent() {
   const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -127,7 +129,7 @@ const ProfilePage = () => {
           </h2>
           {isOnboarding && (
             <p className="mt-2 text-gray-600">
-              Let's set up your profile to help others get to know you better.
+              Let&apos;s set up your profile to help others get to know you better.
             </p>
           )}
         </div>
@@ -137,11 +139,15 @@ const ProfilePage = () => {
             <div className="relative inline-block">
               <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-100 mb-4 mx-auto">
                 {previewUrl ? (
-                  <img
-                    src={previewUrl}
-                    alt="Profile preview"
-                    className="w-full h-full object-cover"
-                  />
+                  <div className="relative w-32 h-32">
+                    <Image
+                      src={previewUrl}
+                      alt="Profile preview"
+                      fill
+                      className="object-cover"
+                      sizes="128px"
+                    />
+                  </div>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-gray-400">
                     <svg
@@ -211,6 +217,17 @@ const ProfilePage = () => {
       </div>
     </motion.div>
   );
-};
+}
 
-export default ProfilePage;
+// Main page component with Suspense boundary
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#bf5700]"></div>
+      </div>
+    }>
+      <ProfileContent />
+    </Suspense>
+  );
+}
