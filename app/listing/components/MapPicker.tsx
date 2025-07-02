@@ -37,7 +37,7 @@ const MapPicker: React.FC<MapPickerProps> = ({ value, onChange, height = "300px"
   const position: LatLngTuple = value ? [value.lat, value.lng] : DEFAULT_POSITION;
   
   return (
-    <div style={{ height, width }}>
+    <div style={{ height, width }} className="relative z-10">
       <MapContainer
         key={`${position[0]}-${position[1]}`}
         style={{ height: "100%", width: "100%", borderRadius: "12px", overflow: "hidden" }}
