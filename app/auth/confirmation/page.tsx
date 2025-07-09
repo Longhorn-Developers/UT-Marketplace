@@ -170,7 +170,7 @@ export default function Confirmation() {
             <div className="mt-6 space-y-3">
               {email && (
                 <div className="text-sm text-gray-600">
-                  <p className="text-gray-600 mb-3">Didn't receive the email? Check your spam folder or</p>
+                  <p className="text-gray-600 mb-3">Didn&apos;t receive the email? Check your spam folder or</p>
                   <button
                     onClick={handleResendConfirmation}
                     disabled={isResending || resendSuccess}
