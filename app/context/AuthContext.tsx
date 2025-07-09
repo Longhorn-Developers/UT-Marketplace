@@ -46,9 +46,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?type=signup&email=${encodeURIComponent(email)}`,
       },
     });
+    
     return { error };
   };
 

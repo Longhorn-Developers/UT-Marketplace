@@ -209,7 +209,7 @@ const OwnerPage: React.FC<OwnerPageProps> = ({
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="bg-white rounded-xl shadow-md overflow-hidden">
+      <div className="bg-white rounded-xl shadow-md overflow-hidden pl-8 pr-8 pb-8">
         <div className="max-w-6xl mx-auto mt-4">
           <a
             href="/browse"
