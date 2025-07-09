@@ -6,17 +6,6 @@ import type { NextRequest } from 'next/server';
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
-  const type = requestUrl.searchParams.get('type');
-  const next = requestUrl.searchParams.get('next') || '/settings';
-
-  // If this is an email confirmation, redirect to the confirmation page
-  if (type === 'signup') {
-    const email = requestUrl.searchParams.get('email') || '';
-    // Redirect to the confirmation page with confirmed status
-    return NextResponse.redirect(
-      `${requestUrl.origin}/auth/confirmation?confirmed=true&email=${encodeURIComponent(email)}`
-    );
-  }
 
   if (code) {
     const cookieStore = await cookies();
@@ -38,23 +27,9 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    const { data: { user }, error } = await supabase.auth.exchangeCodeForSession(code);
-    
-    if (error) {
-      console.error('Error exchanging code for session:', error);
-      return NextResponse.redirect(
-        `${requestUrl.origin}/auth/signin?error=${encodeURIComponent('Could not authenticate user')}`
-      );
-    }
-    
-    // If this is an email confirmation, redirect to the confirmation page
-    if (user?.new_email) {
-      return NextResponse.redirect(
-        `${requestUrl.origin}/auth/confirmation?confirmed=true&email=${encodeURIComponent(user.new_email)}`
-      );
-    }
+    await supabase.auth.exchangeCodeForSession(code);
   }
 
-  // Default redirect after sign in
-  return NextResponse.redirect(requestUrl.origin + next);
-}
+  // URL to redirect to after sign in process completes
+  return NextResponse.redirect(new URL('/settings', request.url));
+} 
