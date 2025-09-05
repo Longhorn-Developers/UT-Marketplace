@@ -18,9 +18,10 @@ import {
   modalVariants,
 } from "../props/animations";
 import BrowseLoader from "../browse/components/BrowseLoader";
+import * as timeago from "timeago.js";
 
 interface Listing {
-  id: number;
+  id: string;
   title: string;
   price: number;
   category: string;
@@ -54,7 +55,7 @@ const MyListings = () => {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<any | null>(null);
-  const [editId, setEditId] = useState<number | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -72,7 +73,7 @@ const MyListings = () => {
       const { data, error } = await supabase
         .from("listings")
         .select("*")
-        .eq("user_id", user?.email)
+        .eq("user_id", user?.id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -85,7 +86,7 @@ const MyListings = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this listing?")) return;
 
     try {
@@ -263,8 +264,7 @@ const MyListings = () => {
                     {listing.category} • ${listing.price}
                   </p>
                   <p className="text-gray-500 text-sm mb-4">
-                    Listed on
-                    {new Date(listing.created_at).toLocaleDateString()}
+                    Listed {timeago.format(listing.created_at)}
                   </p>
                   <div className="flex justify-between items-center">
                     <div className="flex gap-2">

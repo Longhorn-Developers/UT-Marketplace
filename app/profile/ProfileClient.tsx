@@ -54,22 +54,9 @@ export default function ProfileClient() {
         });
         setListings(listingsData || []);
 
-        // Fetch user's stats and ratings separately
-        const userStats = await UserService.getUserStats(user.id);
-        
-        // For now, create a fake ratings array based on user stats
-        // In a real app, you'd want to modify UserService to return actual ratings
-        const fakeRatings = userStats && userStats.totalRatings > 0 
-          ? Array(userStats.totalRatings).fill(0).map((_, i) => ({
-              id: `${i}`,
-              rating: userStats.averageRating,
-              rated_id: user.id,
-              rater_id: `fake-${i}`,
-              comment: '',
-              created_at: new Date().toISOString(),
-            }))
-          : [];
-        setRatings(fakeRatings);
+        // Fetch user's actual ratings from the reviews table
+        const userRatings = await UserService.getUserRatings(user.id);
+        setRatings(userRatings || []);
       } catch (err) {
         console.error("Error fetching profile data:", err);
       } finally {
@@ -86,8 +73,8 @@ export default function ProfileClient() {
   const soldListings = listings.filter((listing) => listing.is_sold);
   const averageRating =
     ratings.length > 0
-      ? ratings.reduce((acc, curr) => acc + curr.rating, 0) / ratings.length
-      : 0;
+      ? (ratings.reduce((acc, curr) => acc + Number(curr.rating), 0) / ratings.length).toFixed(1)
+      : 'N/A';
 
   if (loading) {
     return (
@@ -150,7 +137,7 @@ export default function ProfileClient() {
             </div>
             <div className="mt-4 flex items-center gap-4 justify-center md:justify-start">
               <div className="flex items-center gap-2">
-                <UserRatingDisplay userId={user.id} rating={averageRating} />
+                <UserRatingDisplay userId={user.id} rating={averageRating !== 'N/A' ? parseFloat(averageRating) : null} />
                 <span className="text-sm font-medium text-gray-700">
                   ({ratings.length} ratings)
                 </span>

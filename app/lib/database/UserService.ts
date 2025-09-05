@@ -89,7 +89,7 @@ export class UserService {
       dbLogger.info('Upserting user profile', { userId: id, email });
 
       const { data, error } = await supabase
-        .from('user_settings')
+        .from('users')
         .upsert({
           id,
           email,
@@ -127,7 +127,7 @@ export class UserService {
       dbLogger.info('Fetching user profile', { userId });
 
       const { data, error } = await supabase
-        .from('user_settings')
+        .from('users')
         .select('*')
         .eq('id', userId)
         .single();
@@ -157,7 +157,7 @@ export class UserService {
       dbLogger.info('Fetching user profile by email', { email });
 
       const { data, error } = await supabase
-        .from('user_settings')
+        .from('users')
         .select('*')
         .eq('email', email)
         .single();
@@ -189,7 +189,7 @@ export class UserService {
       dbLogger.info('Updating user profile', { userId: id });
 
       const { data, error } = await supabase
-        .from('user_settings')
+        .from('users')
         .update({
           ...updateData,
           updated_at: new Date().toISOString(),
@@ -259,15 +259,15 @@ export class UserService {
       dbLogger.info('Fetching user ratings', { userId });
 
       const { data, error } = await supabase
-        .from('user_ratings')
+        .from('reviews')
         .select(`
           *,
-          rater:user_settings!rater_id(
+          rater:users!reviewer_id(
             display_name,
             profile_image_url
           )
         `)
-        .eq('rated_id', userId)
+        .eq('reviewed_id', userId)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -334,13 +334,13 @@ export class UserService {
 
       // Get ratings
       const { data: ratings } = await supabase
-        .from('user_ratings')
+        .from('reviews')
         .select('rating')
-        .eq('rated_id', userId);
+        .eq('reviewed_id', userId);
 
       // Get user profile for member since date
       const { data: profile } = await supabase
-        .from('user_settings')
+        .from('users')
         .select('created_at')
         .eq('id', userId)
         .single();
@@ -399,7 +399,7 @@ export class UserService {
 
       // Update user profile with new image URL
       const { error: updateError } = await supabase
-        .from('user_settings')
+        .from('users')
         .update({ 
           profile_image_url: urlData.publicUrl,
           updated_at: new Date().toISOString(),
@@ -427,7 +427,7 @@ export class UserService {
       dbLogger.info('Searching users', { searchTerm });
 
       const { data, error } = await supabase
-        .from('user_settings')
+        .from('users')
         .select('*')
         .or(`display_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
         .order('display_name')
@@ -456,13 +456,13 @@ export class UserService {
       // For now, just check if both users exist
       // In the future, this could check for blocks, restrictions, etc.
       const { data: fromUser } = await supabase
-        .from('user_settings')
+        .from('users')
         .select('id')
         .eq('id', fromUserId)
         .single();
 
       const { data: toUser } = await supabase
-        .from('user_settings')
+        .from('users')
         .select('id')
         .eq('id', toUserId)
         .single();
@@ -494,12 +494,12 @@ export class UserService {
 
       // Get recent ratings received
       const { data: ratings } = await supabase
-        .from('user_ratings')
+        .from('reviews')
         .select(`
           id, rating, comment, created_at,
-          rater:user_settings!rater_id(display_name)
+          rater:users!reviewer_id(display_name)
         `)
-        .eq('rated_id', userId)
+        .eq('reviewed_id', userId)
         .order('created_at', { ascending: false })
         .limit(limit);
 

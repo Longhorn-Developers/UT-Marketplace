@@ -65,7 +65,7 @@ export const buildUserSettingsQuery = (
   userIds: string[]
 ) => {
   return supabase
-    .from('user_settings')
+    .from('users')
     .select('id, email, display_name, profile_image_url')
     .in('id', userIds);
 };

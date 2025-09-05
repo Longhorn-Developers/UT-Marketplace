@@ -1,6 +1,7 @@
 import { supabase } from '../supabaseClient';
 import { Listing, ListingCardProps, ListingPageProps } from '../../props/listing';
 import { dbLogger } from './utils';
+import * as timeago from 'timeago.js';
 
 export interface CreateListingParams {
   title: string;
@@ -287,7 +288,7 @@ export class ListingService {
         price: data.price,
         location: data.location,
         category: data.category,
-        timePosted: data.created_at,
+        timePosted: timeago.format(data.created_at),
         images: data.images || [],
         condition: data.condition,
         description: data.description,
