@@ -1,14 +1,34 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '../../../context/AuthContext';
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // If user is not authenticated, redirect to sign in
+    if (!user) {
+      router.push('/auth/signin');
+      return;
+    }
+    setIsLoading(false);
+  }, [user, router]);
 
   const handleNext = () => {
     router.push('/settings');
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8">

@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { UserService } from '../../lib/database/UserService';
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
@@ -45,6 +46,33 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(
         `${requestUrl.origin}/auth/signin?error=${encodeURIComponent('Could not authenticate user')}`
       );
+    }
+    
+    if (user) {
+      // Check if this is a new user (first time signing in)
+      const existingProfile = await UserService.getUserProfile(user.id);
+      
+      if (!existingProfile) {
+        // This is a new user - create their profile and redirect to onboarding
+        await UserService.upsertUserProfile({
+          id: user.id,
+          email: user.email || '',
+          display_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+          profile_image_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+          bio: null,
+          phone: null,
+          location: null,
+          notification_preferences: {
+            email_notifications: true,
+            browser_notifications: true
+          }
+        });
+        
+        // Redirect to onboarding for new users
+        return NextResponse.redirect(
+          `${requestUrl.origin}/auth/confirmation/onboard`
+        );
+      }
     }
     
     // If this is an email confirmation, redirect to the confirmation page
