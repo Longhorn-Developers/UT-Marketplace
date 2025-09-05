@@ -77,6 +77,7 @@ export interface CreateListingParams {
   isDraft?: boolean;
   locationLat?: number;
   locationLng?: number;
+  status?: 'pending' | 'approved' | 'denied';
 }
 
 export interface UpdateListingParams {
@@ -92,6 +93,7 @@ export interface UpdateListingParams {
   is_draft?: boolean;
   locationLat?: number;
   locationLng?: number;
+  status?: 'pending' | 'approved' | 'denied';
 }
 
 export interface GetListingsParams {
@@ -102,6 +104,9 @@ export interface GetListingsParams {
   userId?: string;
   excludeSold?: boolean;
   excludeDrafts?: boolean;
+  status?: 'pending' | 'approved' | 'denied' | 'all';
+  includeOwnListings?: boolean;
+  currentUserId?: string;
 }
 
 export interface FavoriteListingParams {
@@ -130,7 +135,8 @@ export class ListingService {
       userId,
       isDraft = false,
       locationLat,
-      locationLng
+      locationLng,
+      status = 'pending'
     } = params;
 
     try {
@@ -151,6 +157,7 @@ export class ListingService {
           is_sold: false,
           location_lat: locationLat || null,
           location_lng: locationLng || null,
+          status: status,
         })
         .select()
         .single();
@@ -177,13 +184,23 @@ export class ListingService {
     try {
       dbLogger.info('Updating listing', { listingId: id });
 
+      const updatePayload: any = {
+        ...updateData,
+        location_lat: updateData.locationLat || null,
+        location_lng: updateData.locationLng || null,
+      };
+
+      // Convert category and condition if provided
+      if (updateData.category) {
+        updatePayload.category = convertToDbFormat(updateData.category, 'category');
+      }
+      if (updateData.condition) {
+        updatePayload.condition = convertToDbFormat(updateData.condition, 'condition');
+      }
+
       const { data, error } = await supabase
         .from('listings')
-        .update({
-          ...updateData,
-          location_lat: updateData.locationLat || null,
-          location_lng: updateData.locationLng || null,
-        })
+        .update(updatePayload)
         .eq('id', id)
         .select()
         .single();
@@ -212,7 +229,10 @@ export class ListingService {
       searchTerm,
       userId,
       excludeSold = true,
-      excludeDrafts = true
+      excludeDrafts = true,
+      status = 'approved',
+      includeOwnListings = false,
+      currentUserId
     } = params;
 
     try {
@@ -232,6 +252,16 @@ export class ListingService {
 
       if (excludeDrafts) {
         query = query.eq('is_draft', false);
+      }
+
+      // Filter by status - only show approved listings by default, unless specifically requested
+      if (status !== 'all') {
+        if (includeOwnListings && currentUserId) {
+          // Show all listings by current user regardless of status, but filter others by status
+          query = query.or(`status.eq.${status},user_id.eq.${currentUserId}`);
+        } else {
+          query = query.eq('status', status);
+        }
       }
 
       if (category && category !== 'All') {
@@ -300,7 +330,7 @@ export class ListingService {
   /**
    * Get a single listing by ID with full details
    */
-  static async getListingById(listingId: string): Promise<ListingPageProps | null> {
+  static async getListingById(listingId: string, currentUserId?: string): Promise<ListingPageProps | null> {
     try {
       dbLogger.info('Fetching listing by ID', { listingId });
 
@@ -325,6 +355,14 @@ export class ListingService {
       }
 
       if (!data) return null;
+
+      // Check if user has permission to view this listing
+      // Only show pending/denied listings to the owner or admin
+      if (data.status !== 'approved' && currentUserId !== data.user_id) {
+        // TODO: Add admin check here when admin context is available
+        dbLogger.warn('Unauthorized access to non-approved listing', { listingId, currentUserId, status: data.status });
+        return null;
+      }
 
       // Get user's other listings count
       const { data: userListings } = await supabase
@@ -619,6 +657,7 @@ export class ListingService {
         `)
         .eq('is_sold', false)
         .eq('is_draft', false)
+        .eq('status', 'approved')
         .order('created_at', { ascending: false });
 
       if (searchTerm) {
@@ -663,6 +702,73 @@ export class ListingService {
     } catch (error) {
       dbLogger.error('Error in searchListings', error);
       return [];
+    }
+  }
+
+  /**
+   * Get user's denied listings that need to be edited and resubmitted
+   */
+  static async getDeniedListings(userId: string): Promise<Listing[]> {
+    try {
+      dbLogger.info('Fetching denied listings for user', { userId });
+
+      const { data, error } = await supabase
+        .from('listings')
+        .select(`
+          *,
+          user:users!user_id(
+            id,
+            display_name,
+            profile_image_url
+          )
+        `)
+        .eq('user_id', userId)
+        .eq('status', 'denied')
+        .order('updated_at', { ascending: false });
+
+      if (error) {
+        dbLogger.error('Failed to fetch denied listings', error);
+        return [];
+      }
+
+      const convertedData = data?.map(listing => ({
+        ...listing,
+        category: convertFromDbFormat(listing.category, 'category'),
+        condition: convertFromDbFormat(listing.condition, 'condition'),
+      })) || [];
+
+      dbLogger.success('Denied listings fetched successfully', { count: convertedData.length });
+      return convertedData as Listing[];
+    } catch (error) {
+      dbLogger.error('Error in getDeniedListings', error);
+      return [];
+    }
+  }
+
+  /**
+   * Resubmit a denied listing for approval (sets status back to pending)
+   */
+  static async resubmitListing(listingId: string, userId: string): Promise<boolean> {
+    try {
+      dbLogger.info('Resubmitting listing for approval', { listingId, userId });
+
+      const { error } = await supabase
+        .from('listings')
+        .update({ status: 'pending' })
+        .eq('id', listingId)
+        .eq('user_id', userId) // Ensure user owns the listing
+        .eq('status', 'denied'); // Only allow resubmission of denied listings
+
+      if (error) {
+        dbLogger.error('Failed to resubmit listing', error);
+        return false;
+      }
+
+      dbLogger.success('Listing resubmitted successfully', { listingId });
+      return true;
+    } catch (error) {
+      dbLogger.error('Error in resubmitListing', error);
+      return false;
     }
   }
 }

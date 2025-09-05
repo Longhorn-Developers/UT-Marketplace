@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabaseClient';
-import { MapPin, Calendar, Tag, Heart, Eye, Share2 } from "lucide-react";
+import { MapPin, Calendar, Tag, Heart, Eye, Share2, Flag } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import { ListingPageProps } from '../../props/listing';
 import { useAuth } from '../../context/AuthContext';
 import { ListingService } from '../../lib/database/ListingService';
 import UserRatingDisplay from "../../../components/user/UserRatingDisplay";
+import ReportListingModal from "../../../components/modals/ReportListingModal";
+import ReportUserModal from "../../../components/modals/ReportUserModal";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 
@@ -40,6 +42,8 @@ const ListingPage: React.FC<ListingPageProps> = ({
   const [isWatchlisted, setIsWatchlisted] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
   const [watchlistLoading, setWatchlistLoading] = useState(false);
+  const [showReportListingModal, setShowReportListingModal] = useState(false);
+  const [showReportUserModal, setShowReportUserModal] = useState(false);
 
   useEffect(() => {
     const fetchSellerRating = async () => {
@@ -358,7 +362,30 @@ const ListingPage: React.FC<ListingPageProps> = ({
               Share
             </button>
           </div>
-          <button className="block text-sm text-gray-500 mt-2 hover:underline text-left">Report this listing</button>
+          <div className="flex gap-2 mt-2">
+            <button 
+              onClick={() => setShowReportListingModal(true)}
+              disabled={!currentUser || currentUser.id === listingUserEmail}
+              className={`text-sm hover:underline text-left ${
+                !currentUser || currentUser.id === listingUserEmail
+                  ? 'text-gray-400 cursor-not-allowed'
+                  : 'text-gray-500 hover:text-red-600'
+              }`}
+            >
+              Report this listing
+            </button>
+            {currentUser && currentUser.id !== listingUserEmail && (
+              <>
+                <span className="text-gray-300">•</span>
+                <button 
+                  onClick={() => setShowReportUserModal(true)}
+                  className="text-sm text-gray-500 hover:text-red-600 hover:underline text-left"
+                >
+                  Report seller
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -379,6 +406,23 @@ const ListingPage: React.FC<ListingPageProps> = ({
         </div>
       </div>
     )}
+
+    {/* Report Modals */}
+    <ReportListingModal
+      isOpen={showReportListingModal}
+      onClose={() => setShowReportListingModal(false)}
+      listingId={id}
+      listingTitle={title}
+      userId={currentUser?.id || null}
+    />
+
+    <ReportUserModal
+      isOpen={showReportUserModal}
+      onClose={() => setShowReportUserModal(false)}
+      reportedUserId={listingUserEmail || ''}
+      reportedUserName={sellerDisplayName || listingUserName || 'Unknown User'}
+      reporterId={currentUser?.id || null}
+    />
     </>
   )
 }
