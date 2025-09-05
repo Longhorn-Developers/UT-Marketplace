@@ -41,9 +41,9 @@ const ListingPage: React.FC<ListingPageProps> = ({
       if (!listingUserEmail) return;
       setRatingLoading(true);
       const { data, error } = await supabase
-        .from('ratings')
+        .from('reviews')
         .select('rating')
-        .eq('rated_id', listingUserEmail);
+        .eq('reviewed_id', listingUserEmail);
       if (error) {
         setSellerRating(null);
         setRatingLoading(false);
@@ -63,15 +63,13 @@ const ListingPage: React.FC<ListingPageProps> = ({
   useEffect(() => {
     const fetchSellerDisplayName = async () => {
       if (!listingUserEmail) return;
-      const normalizedEmail = listingUserEmail.trim().toLowerCase();
+      // listingUserEmail is actually the user ID, not email
       const { data, error } = await supabase
-        .from('user_settings')
+        .from('users')
         .select('display_name, profile_image_url')
-        .eq('email', normalizedEmail)
+        .eq('id', listingUserEmail)
         .single();
       
-      console.log(data);
-      console.log(normalizedEmail);
       if (!error && data) {
         setSellerDisplayName(data.display_name || null);
         setSellerProfileImage(data.profile_image_url || null);
@@ -84,10 +82,16 @@ const ListingPage: React.FC<ListingPageProps> = ({
   }, [listingUserEmail]);
 
   const handleMessageSeller = () => {
-    if (!currentUser?.email) {
+    if (!currentUser?.id) {
       router.push('/auth/signin');
       return;
     }
+    
+    // Check if user is trying to message themselves
+    if (currentUser.id === listingUserEmail) {
+      return;
+    }
+    
     // Redirect to messages page with listing id as a query param
     router.push(`/messages?listing=${encodeURIComponent(id)}`);
   };
@@ -176,7 +180,7 @@ const ListingPage: React.FC<ListingPageProps> = ({
 
         {/* Seller Info */}
         <Link
-          href={listingUserEmail ? `/profile/${encodeURIComponent(listingUserEmail)}` : "#"}
+          href={listingUserEmail ? `/profile/${listingUserEmail}` : "#"}
           className="flex items-center gap-4 mb-2 hover:underline"
         >
           <div className="w-10 h-10 rounded-full border bg-gray-200 flex items-center justify-center text-gray-400 text-lg">
@@ -207,18 +211,18 @@ const ListingPage: React.FC<ListingPageProps> = ({
         <div className="mt-auto flex flex-col gap-4">
           <button 
             onClick={handleMessageSeller}
-            disabled={!currentUser || currentUser.email === listingUserEmail}
+            disabled={!currentUser || currentUser.id === listingUserEmail}
             className={`w-full font-semibold py-2 rounded transition ${
               !currentUser 
                 ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                : currentUser.email === listingUserEmail
+                : currentUser.id === listingUserEmail
                 ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
                 : 'bg-[#bf5700] hover:bg-[#a54700] text-white'
             }`}
           >
             {!currentUser 
               ? 'Sign in to Message'
-              : currentUser.email === listingUserEmail
+              : currentUser.id === listingUserEmail
               ? 'This is your listing'
               : 'Message Seller'
             }

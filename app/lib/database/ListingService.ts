@@ -1,0 +1,636 @@
+import { supabase } from '../supabaseClient';
+import { Listing, ListingCardProps, ListingPageProps } from '../../props/listing';
+import { dbLogger } from './utils';
+import * as timeago from 'timeago.js';
+
+// Helper function to convert UI values to database enum values (same as mobile app)
+const convertToDbFormat = (value: string, type: 'category' | 'condition') => {
+  if (type === 'category') {
+    // Convert UI category names to database enum values
+    const categoryMap: Record<string, string> = {
+      'Furniture': 'furniture',
+      'Subleases': 'subleases', 
+      'Tech': 'tech',
+      'Vehicles': 'vehicles',
+      'Textbooks': 'textbooks',
+      'Clothing': 'clothing',
+      'Kitchen': 'kitchen',
+      'Other': 'other',
+    };
+    return categoryMap[value] || value.toLowerCase();
+  }
+  
+  if (type === 'condition') {
+    // Convert UI condition names to database enum values
+    const conditionMap: Record<string, string> = {
+      'New': 'new',
+      'Like New': 'like_new',
+      'Good': 'good',
+      'Fair': 'fair',
+      'Poor': 'poor',
+    };
+    return conditionMap[value] || value.toLowerCase();
+  }
+  
+  return value;
+};
+
+// Helper function to convert database enum values to UI values (same as mobile app)
+const convertFromDbFormat = (value: string, type: 'category' | 'condition') => {
+  if (type === 'category') {
+    const categoryMap: Record<string, string> = {
+      'furniture': 'Furniture',
+      'subleases': 'Subleases', 
+      'tech': 'Tech',
+      'vehicles': 'Vehicles',
+      'textbooks': 'Textbooks',
+      'clothing': 'Clothing',
+      'kitchen': 'Kitchen',
+      'other': 'Other',
+    };
+    return categoryMap[value] || value;
+  }
+  
+  if (type === 'condition') {
+    const conditionMap: Record<string, string> = {
+      'new': 'New',
+      'like_new': 'Like New',
+      'good': 'Good',
+      'fair': 'Fair',
+      'poor': 'Poor',
+    };
+    return conditionMap[value] || value;
+  }
+  
+  return value;
+};
+
+export interface CreateListingParams {
+  title: string;
+  price: number;
+  location: string;
+  category: string;
+  condition: string;
+  description: string;
+  images: string[];
+  userId: string;
+  isDraft?: boolean;
+  locationLat?: number;
+  locationLng?: number;
+}
+
+export interface UpdateListingParams {
+  id: string;
+  title?: string;
+  price?: number;
+  location?: string;
+  category?: string;
+  condition?: string;
+  description?: string;
+  images?: string[];
+  is_sold?: boolean;
+  is_draft?: boolean;
+  locationLat?: number;
+  locationLng?: number;
+}
+
+export interface GetListingsParams {
+  limit?: number;
+  offset?: number;
+  category?: string;
+  searchTerm?: string;
+  userId?: string;
+  excludeSold?: boolean;
+  excludeDrafts?: boolean;
+}
+
+export interface FavoriteListingParams {
+  userId: string;
+  listingId: string;
+}
+
+/**
+ * ListingService class following mobile app service layer pattern
+ * Provides consistent database operations for listing functionality
+ */
+export class ListingService {
+  /**
+   * Create a new listing
+   */
+  static async createListing(params: CreateListingParams): Promise<Listing | null> {
+    const {
+      title,
+      price,
+      location,
+      category,
+      condition,
+      description,
+      images,
+      userId,
+      isDraft = false,
+      locationLat,
+      locationLng
+    } = params;
+
+    try {
+      dbLogger.info('Creating listing', { title, userId });
+
+      const { data, error } = await supabase
+        .from('listings')
+        .insert({
+          title,
+          price,
+          location,
+          category: convertToDbFormat(category, 'category'),
+          condition: convertToDbFormat(condition, 'condition'),
+          description,
+          images,
+          user_id: userId,
+          is_draft: isDraft,
+          is_sold: false,
+          location_lat: locationLat || null,
+          location_lng: locationLng || null,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        dbLogger.error('Failed to create listing', error);
+        return null;
+      }
+
+      dbLogger.success('Listing created successfully', { listingId: data.id });
+      return data as Listing;
+    } catch (error) {
+      dbLogger.error('Error in createListing', error);
+      return null;
+    }
+  }
+
+  /**
+   * Update an existing listing
+   */
+  static async updateListing(params: UpdateListingParams): Promise<Listing | null> {
+    const { id, ...updateData } = params;
+
+    try {
+      dbLogger.info('Updating listing', { listingId: id });
+
+      const { data, error } = await supabase
+        .from('listings')
+        .update({
+          ...updateData,
+          location_lat: updateData.locationLat || null,
+          location_lng: updateData.locationLng || null,
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        dbLogger.error('Failed to update listing', error);
+        return null;
+      }
+
+      dbLogger.success('Listing updated successfully', { listingId: data.id });
+      return data as Listing;
+    } catch (error) {
+      dbLogger.error('Error in updateListing', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get listings with optional filtering
+   */
+  static async getListings(params: GetListingsParams = {}): Promise<Listing[]> {
+    const {
+      limit = 20,
+      offset = 0,
+      category,
+      searchTerm,
+      userId,
+      excludeSold = true,
+      excludeDrafts = true
+    } = params;
+
+    try {
+      dbLogger.info('Fetching listings', params);
+
+      let query = supabase
+        .from('listings')
+        .select(`
+          *
+        `)
+        .range(offset, offset + limit - 1)
+        .order('created_at', { ascending: false });
+
+      if (excludeSold) {
+        query = query.eq('is_sold', false);
+      }
+
+      if (excludeDrafts) {
+        query = query.eq('is_draft', false);
+      }
+
+      if (category && category !== 'All') {
+        query = query.eq('category', convertToDbFormat(category, 'category'));
+      }
+
+      if (searchTerm) {
+        query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+      }
+
+      if (userId) {
+        query = query.eq('user_id', userId);
+      }
+
+      const { data: listingsData, error } = await query;
+
+      if (error) {
+        dbLogger.error('Failed to fetch listings', error);
+        return [];
+      }
+
+      if (!listingsData || listingsData.length === 0) {
+        return [];
+      }
+
+      // Get unique user IDs from listings
+      const userIds = Array.from(new Set(listingsData.map(listing => listing.user_id)));
+      
+      // Fetch user data using the same pattern as mobile app
+      let userSettings: any[] = [];
+      if (userIds.length > 0) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('id, email, display_name, profile_image_url')
+          .in('id', userIds);
+        
+        userSettings = userData || [];
+      }
+
+      // Create user lookup map (same as mobile app)
+      const userMap: any = {};
+      userSettings.forEach(u => {
+        userMap[u.id] = {
+          name: u.display_name || (u.email ? u.email.split('@')[0] : 'User'),
+          image: u.profile_image_url || null,
+        };
+      });
+
+      // Join user data with listings (same as mobile app)
+      const enrichedListings = listingsData.map(listing => ({
+        ...listing,
+        category: convertFromDbFormat(listing.category, 'category'),
+        condition: convertFromDbFormat(listing.condition, 'condition'),
+        user_name: userMap[listing.user_id]?.name || listing.user_id,
+        user_image: userMap[listing.user_id]?.image || null,
+      }));
+
+      dbLogger.success('Listings fetched successfully', { count: enrichedListings.length });
+      return enrichedListings as Listing[];
+    } catch (error) {
+      dbLogger.error('Error in getListings', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get a single listing by ID with full details
+   */
+  static async getListingById(listingId: string): Promise<ListingPageProps | null> {
+    try {
+      dbLogger.info('Fetching listing by ID', { listingId });
+
+      const { data, error } = await supabase
+        .from('listings')
+        .select(`
+          *,
+          user:users!user_id(
+            id,
+            display_name,
+            profile_image_url
+          ),
+          favorites:user_favorites(user_id),
+          favorite_count:user_favorites(count)
+        `)
+        .eq('id', listingId)
+        .single();
+
+      if (error) {
+        dbLogger.error('Failed to fetch listing', error);
+        return null;
+      }
+
+      if (!data) return null;
+
+      // Get user's other listings count
+      const { data: userListings } = await supabase
+        .from('listings')
+        .select('id')
+        .eq('user_id', data.user_id)
+        .eq('is_sold', false)
+        .eq('is_draft', false);
+
+      // Get user's average rating
+      const { data: ratings } = await supabase
+        .from('user_ratings')
+        .select('rating')
+        .eq('rated_id', data.user_id);
+
+      const averageRating = ratings && ratings.length > 0 
+        ? ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length 
+        : 0;
+
+      const listing: ListingPageProps = {
+        id: data.id,
+        title: data.title,
+        price: data.price,
+        location: data.location,
+        category: convertFromDbFormat(data.category, 'category'),
+        timePosted: timeago.format(data.created_at),
+        images: data.images || [],
+        condition: convertFromDbFormat(data.condition, 'condition'),
+        description: data.description,
+        user: {
+          name: data.user?.display_name || 'Unknown User',
+          image: data.user?.profile_image_url,
+          rating: averageRating,
+        },
+        listingCount: userListings?.length || 0,
+        listingUserName: data.user?.display_name || 'Unknown User',
+        listingUserEmail: data.user_id, // This will be the user ID, not email
+        location_lat: data.location_lat,
+        location_lng: data.location_lng,
+      };
+
+      dbLogger.success('Listing fetched successfully', { listingId });
+      return listing;
+    } catch (error) {
+      dbLogger.error('Error in getListingById', error);
+      return null;
+    }
+  }
+
+  /**
+   * Delete a listing
+   */
+  static async deleteListing(listingId: string, userId: string): Promise<boolean> {
+    try {
+      dbLogger.info('Deleting listing', { listingId, userId });
+
+      const { error } = await supabase
+        .from('listings')
+        .delete()
+        .eq('id', listingId)
+        .eq('user_id', userId); // Ensure user owns the listing
+
+      if (error) {
+        dbLogger.error('Failed to delete listing', error);
+        return false;
+      }
+
+      dbLogger.success('Listing deleted successfully', { listingId });
+      return true;
+    } catch (error) {
+      dbLogger.error('Error in deleteListing', error);
+      return false;
+    }
+  }
+
+  /**
+   * Mark listing as sold/unsold
+   */
+  static async markListingAsSold(listingId: string, userId: string, isSold: boolean): Promise<boolean> {
+    try {
+      dbLogger.info('Updating listing sold status', { listingId, userId, isSold });
+
+      const { error } = await supabase
+        .from('listings')
+        .update({ is_sold: isSold })
+        .eq('id', listingId)
+        .eq('user_id', userId);
+
+      if (error) {
+        dbLogger.error('Failed to update listing sold status', error);
+        return false;
+      }
+
+      dbLogger.success('Listing sold status updated successfully', { listingId, isSold });
+      return true;
+    } catch (error) {
+      dbLogger.error('Error in markListingAsSold', error);
+      return false;
+    }
+  }
+
+  /**
+   * Add/remove favorite listing
+   */
+  static async toggleFavorite(params: FavoriteListingParams): Promise<{ success: boolean; isFavorited: boolean }> {
+    const { userId, listingId } = params;
+
+    try {
+      dbLogger.info('Toggling favorite', { userId, listingId });
+
+      // Check if already favorited
+      const { data: existing } = await supabase
+        .from('user_favorites')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('listing_id', listingId)
+        .single();
+
+      if (existing) {
+        // Remove favorite
+        const { error } = await supabase
+          .from('user_favorites')
+          .delete()
+          .eq('user_id', userId)
+          .eq('listing_id', listingId);
+
+        if (error) {
+          dbLogger.error('Failed to remove favorite', error);
+          return { success: false, isFavorited: true };
+        }
+
+        dbLogger.success('Favorite removed successfully');
+        return { success: true, isFavorited: false };
+      } else {
+        // Add favorite
+        const { error } = await supabase
+          .from('user_favorites')
+          .insert({
+            user_id: userId,
+            listing_id: listingId,
+          });
+
+        if (error) {
+          dbLogger.error('Failed to add favorite', error);
+          return { success: false, isFavorited: false };
+        }
+
+        dbLogger.success('Favorite added successfully');
+        return { success: true, isFavorited: true };
+      }
+    } catch (error) {
+      dbLogger.error('Error in toggleFavorite', error);
+      return { success: false, isFavorited: false };
+    }
+  }
+
+  /**
+   * Get user's favorite listings
+   */
+  static async getFavoriteListings(userId: string): Promise<Listing[]> {
+    try {
+      dbLogger.info('Fetching favorite listings', { userId });
+
+      const { data, error } = await supabase
+        .from('user_favorites')
+        .select(`
+          listing:listings(
+            *,
+            user:users!user_id(
+              id,
+              display_name,
+              profile_image_url
+            )
+          )
+        `)
+        .eq('user_id', userId);
+
+      if (error) {
+        dbLogger.error('Failed to fetch favorite listings', error);
+        return [];
+      }
+
+      const listings = (data?.map(fav => {
+        const listing = Array.isArray(fav.listing) ? fav.listing[0] : fav.listing;
+        if (!listing) return null;
+        return {
+          ...listing,
+          category: convertFromDbFormat(listing.category, 'category'),
+          condition: convertFromDbFormat(listing.condition, 'condition'),
+        };
+      }).filter(Boolean) || []) as any[];
+      
+      dbLogger.success('Favorite listings fetched successfully', { count: listings.length });
+      return listings;
+    } catch (error) {
+      dbLogger.error('Error in getFavoriteListings', error);
+      return [];
+    }
+  }
+
+  /**
+   * Upload images to storage
+   */
+  static async uploadImages(images: File[], userId: string): Promise<string[]> {
+    const uploadedUrls: string[] = [];
+
+    try {
+      dbLogger.info('Uploading images', { count: images.length, userId });
+
+      for (const image of images) {
+        const fileExt = image.name.split('.').pop();
+        const fileName = `${userId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+        const filePath = `listings/${fileName}`;
+
+        const { data, error } = await supabase.storage
+          .from('listing-images')
+          .upload(filePath, image);
+
+        if (error) {
+          dbLogger.error('Failed to upload image', error);
+          continue;
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('listing-images')
+          .getPublicUrl(data.path);
+
+        uploadedUrls.push(urlData.publicUrl);
+      }
+
+      dbLogger.success('Images uploaded successfully', { count: uploadedUrls.length });
+      return uploadedUrls;
+    } catch (error) {
+      dbLogger.error('Error in uploadImages', error);
+      return uploadedUrls; // Return what we managed to upload
+    }
+  }
+
+  /**
+   * Search listings with advanced filters
+   */
+  static async searchListings(searchTerm: string, filters: {
+    category?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    condition?: string;
+    location?: string;
+  } = {}): Promise<Listing[]> {
+    try {
+      dbLogger.info('Searching listings', { searchTerm, filters });
+
+      let query = supabase
+        .from('listings')
+        .select(`
+          *,
+          user:users!user_id(
+            id,
+            display_name,
+            profile_image_url
+          )
+        `)
+        .eq('is_sold', false)
+        .eq('is_draft', false)
+        .order('created_at', { ascending: false });
+
+      if (searchTerm) {
+        query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+      }
+
+      if (filters.category && filters.category !== 'All') {
+        query = query.eq('category', convertToDbFormat(filters.category, 'category'));
+      }
+
+      if (filters.minPrice !== undefined) {
+        query = query.gte('price', filters.minPrice);
+      }
+
+      if (filters.maxPrice !== undefined) {
+        query = query.lte('price', filters.maxPrice);
+      }
+
+      if (filters.condition) {
+        query = query.eq('condition', convertToDbFormat(filters.condition, 'condition'));
+      }
+
+      if (filters.location) {
+        query = query.ilike('location', `%${filters.location}%`);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        dbLogger.error('Failed to search listings', error);
+        return [];
+      }
+
+      const convertedData = data?.map(listing => ({
+        ...listing,
+        category: convertFromDbFormat(listing.category, 'category'),
+        condition: convertFromDbFormat(listing.condition, 'condition'),
+      })) || [];
+
+      dbLogger.success('Search completed successfully', { count: convertedData.length });
+      return convertedData as Listing[];
+    } catch (error) {
+      dbLogger.error('Error in searchListings', error);
+      return [];
+    }
+  }
+}

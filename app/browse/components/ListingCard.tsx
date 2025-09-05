@@ -61,7 +61,7 @@ const ListingCard: React.FC<ListingCardProps> = ({
         </p>
         <div className="flex items-center justify-between text-xs text-gray-400 mt-2">
           <div className="flex flex-row items-center gap-2">
-            <Link href={`/profile/${encodeURIComponent(user.user_id)}`}>
+            <Link href={`/profile/${user.user_id}`}>
               {user.image ? (
                 <Image
                   src={user.image}
@@ -76,7 +76,7 @@ const ListingCard: React.FC<ListingCardProps> = ({
                 </div>
               )}
             </Link>
-            <Link href={`/profile/${encodeURIComponent(user.user_id)}`}>
+            <Link href={`/profile/${user.user_id}`}>
               <span className="text-gray-700 font-medium">{user.name}</span>
             </Link>
             <UserRatingDisplay userId={user.user_id} rating={userRating} className="" />
