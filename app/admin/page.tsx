@@ -33,7 +33,7 @@ export default function AdminPage() {
         <div className="text-center">
           <Shield size={64} className="mx-auto text-gray-400 mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-          <p className="text-gray-600 mb-6">You don't have permission to access the admin panel.</p>
+          <p className="text-gray-600 mb-6">You don&apos;t have permission to access the admin panel.</p>
           <button
             onClick={() => router.push('/')}
             className="bg-[#bf5700] text-white px-6 py-2 rounded-lg hover:bg-[#a54700] transition"

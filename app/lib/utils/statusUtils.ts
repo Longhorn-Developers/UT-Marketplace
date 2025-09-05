@@ -17,12 +17,12 @@ export function determineListingStatus(listing: any): ListingWithStatus {
   let status: ListingStatus = 'pending'; // Default to pending
   let denialReason: string | null = null;
   
-  if (listing.status !== undefined && listing.status !== null) {
-    // Status column exists, use actual value
+  if (listing.status !== undefined && listing.status !== null && listing.status !== '') {
+    // Status column exists and has a valid value
     status = listing.status as ListingStatus;
     denialReason = listing.denial_reason || null;
+  } else {
   }
-  // If status column doesn't exist, keep default 'pending'
   
   return { status, denial_reason: denialReason };
 }

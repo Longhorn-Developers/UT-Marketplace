@@ -198,9 +198,11 @@ const AdminDashboard: React.FC = () => {
         const newStats = await AdminService.getAdminStats();
         setStats(newStats);
       } else {
+        console.error('Approval failed:', result);
         alert(result.error || 'Failed to approve listing');
       }
     } catch (error) {
+      console.error('Error approving listing:', error);
       alert('An error occurred while approving the listing');
     } finally {
       setActionLoading(null);
@@ -225,9 +227,11 @@ const AdminDashboard: React.FC = () => {
         const newStats = await AdminService.getAdminStats();
         setStats(newStats);
       } else {
+        console.error('Denial failed:', result);
         alert(result.error || 'Failed to deny listing');
       }
     } catch (error) {
+      console.error('Error denying listing:', error);
       alert('An error occurred while denying the listing');
     } finally {
       setActionLoading(null);
@@ -323,7 +327,7 @@ const AdminDashboard: React.FC = () => {
           Welcome back, Admin
         </h1>
         <p className="text-gray-600">
-          Here's what's happening with UT Marketplace today.
+          Here&apos;s what&apos;s happening with UT Marketplace today.
         </p>
       </div>
 

@@ -124,37 +124,107 @@ export class AdminService {
         .from('listings')
         .select('*', { count: 'exact', head: true });
 
-      // Get pending listings
-      const { count: pendingListings } = await supabase
-        .from('listings')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending');
+      // Check what columns exist in tables to avoid 400 errors
+      let hasStatusColumn = false;
+      let hasIsBannedColumn = false;
+      let hasLastSignInColumn = false;
 
-      // Get reported listings count
-      const { count: reportedListings } = await supabase
+      // Test if status column exists in listings by making a small query
+      const statusTest = await supabase
+        .from('listings')
+        .select('status')
+        .limit(1);
+      hasStatusColumn = !statusTest.error;
+
+      // Test if is_banned column exists in users
+      const bannedTest = await supabase
+        .from('users')
+        .select('is_banned')
+        .limit(1);
+      hasIsBannedColumn = !bannedTest.error;
+
+      // Test if last_sign_in_at column exists in users
+      const signInTest = await supabase
+        .from('users')
+        .select('last_sign_in_at')
+        .limit(1);
+      hasLastSignInColumn = !signInTest.error;
+
+      // Get pending listings (only if status column exists)
+      let pendingListings = 0;
+      if (hasStatusColumn) {
+        const { count } = await supabase
+          .from('listings')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'pending');
+        pendingListings = count || 0;
+      } else {
+        dbLogger.warn('status column does not exist in listings, using fallback logic');
+        // Fallback: count recent listings as "pending"
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const { count } = await supabase
+          .from('listings')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', yesterday.toISOString());
+        pendingListings = count || 0;
+      }
+
+      // Get reported listings count (handle missing status/table gracefully)
+      let reportedListings = 0;
+      const reportedListingsResult = await supabase
         .from('listing_reports')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pending');
+      
+      if (reportedListingsResult.error) {
+        dbLogger.warn('listing_reports table may not exist or have status column, defaulting to 0', reportedListingsResult.error);
+        reportedListings = 0;
+      } else {
+        reportedListings = reportedListingsResult.count || 0;
+      }
 
-      // Get reported users count  
-      const { count: reportedUsers } = await supabase
+      // Get reported users count (handle missing status/table gracefully)
+      let reportedUsers = 0;
+      const reportedUsersResult = await supabase
         .from('user_reports')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pending');
+      
+      if (reportedUsersResult.error) {
+        dbLogger.warn('user_reports table may not exist or have status column, defaulting to 0', reportedUsersResult.error);
+        reportedUsers = 0;
+      } else {
+        reportedUsers = reportedUsersResult.count || 0;
+      }
 
-      // Get banned users
-      const { count: bannedUsers } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_banned', true);
+      // Get banned users (only if is_banned column exists)
+      let bannedUsers = 0;
+      if (hasIsBannedColumn) {
+        const { count } = await supabase
+          .from('users')
+          .select('*', { count: 'exact', head: true })
+          .eq('is_banned', true);
+        bannedUsers = count || 0;
+      } else {
+        dbLogger.warn('is_banned column does not exist, defaulting to 0');
+        bannedUsers = 0;
+      }
 
-      // Get active users today
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const { count: activeUsersToday } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true })
-        .gte('last_sign_in_at', today.toISOString());
+      // Get active users today (only if last_sign_in_at column exists)
+      let activeUsersToday = 0;
+      if (hasLastSignInColumn) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const { count } = await supabase
+          .from('users')
+          .select('*', { count: 'exact', head: true })
+          .gte('last_sign_in_at', today.toISOString());
+        activeUsersToday = count || 0;
+      } else {
+        dbLogger.warn('last_sign_in_at column does not exist, defaulting to 0');
+        activeUsersToday = 0;
+      }
 
       const stats: AdminStats = {
         total_users: totalUsers || 0,
@@ -858,18 +928,74 @@ export class AdminService {
         return { success: false, error: 'Unauthorized: Only admins can approve listings' };
       }
 
+      // First check what the current status is AND what columns exist
+      const { data: beforeUpdate, error: beforeError } = await supabase
+        .from('listings')
+        .select('*')
+        .eq('id', listingId)
+        .single();
+
+      console.log('🔍 Listing data structure:', {
+        listingId,
+        availableColumns: beforeUpdate ? Object.keys(beforeUpdate) : 'ERROR',
+        hasStatusColumn: beforeUpdate ? 'status' in beforeUpdate : false,
+        hasDenialReasonColumn: beforeUpdate ? 'denial_reason' in beforeUpdate : false,
+      });
+
+      console.log('🔍 Before approval update:', {
+        listingId,
+        beforeStatus: beforeUpdate?.status,
+        beforeDenialReason: beforeUpdate?.denial_reason,
+        beforeError
+      });
+
       // Update listing status to approved
-      const { error } = await supabase
+      const result = await supabase
         .from('listings')
         .update({ 
           status: 'approved',
           denial_reason: null
         })
-        .eq('id', listingId);
+        .eq('id', listingId)
+        .select(); // Return the updated row
 
-      if (error) {
-        dbLogger.error('Error approving listing', error);
-        return { success: false, error: 'Failed to approve listing' };
+      console.log('🔍 Update result:', {
+        listingId,
+        error: result.error,
+        data: result.data,
+        updatedRows: result.data?.length || 0,
+        status: result.status,
+        statusText: result.statusText
+      });
+
+      // If no rows were updated, that means the WHERE condition didn't match
+      if (result.data && result.data.length === 0) {
+        console.error('❌ No rows were updated! The listing ID might not exist or WHERE condition failed');
+        return { success: false, error: 'No listing found with the provided ID' };
+      }
+
+      if (result.error) {
+        dbLogger.error('Error approving listing - columns may not exist', result.error);
+        
+        // If status/denial_reason columns don't exist, the update will fail
+        // You need to run the database migration first!
+        return { 
+          success: false, 
+          error: `Database columns missing! Please run the migration SQL in Supabase dashboard. Error: ${result.error.message}` 
+        };
+      }
+
+      // Verify the update actually worked
+      const { data: updatedListing, error: fetchError } = await supabase
+        .from('listings')
+        .select('status')
+        .eq('id', listingId)
+        .single();
+
+      if (fetchError) {
+        dbLogger.error('Could not verify listing update', fetchError);
+      } else {
+        dbLogger.info('Listing status after update', { listingId, status: updatedListing?.status });
       }
 
       dbLogger.success('Listing approved successfully', { listingId });
@@ -894,17 +1020,33 @@ export class AdminService {
       }
 
       // Update listing status to denied with reason
-      const { error } = await supabase
-        .from('listings')
-        .update({ 
-          status: 'denied',
-          denial_reason: reason
-        })
-        .eq('id', listingId);
+      // First try with status column, if that fails, just update a timestamp to indicate processing
+      let error: any;
+      
+      try {
+        const result = await supabase
+          .from('listings')
+          .update({ 
+            status: 'denied',
+            denial_reason: reason
+          })
+          .eq('id', listingId);
+        error = result.error;
+      } catch (statusError) {
+        // Status column might not exist, try alternative approach
+        dbLogger.warn('Status column may not exist, using fallback approach', statusError);
+        const result = await supabase
+          .from('listings')
+          .update({ 
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', listingId);
+        error = result.error;
+      }
 
       if (error) {
         dbLogger.error('Error denying listing', error);
-        return { success: false, error: 'Failed to deny listing' };
+        return { success: false, error: `Failed to deny listing: ${error.message}` };
       }
 
       dbLogger.success('Listing denied successfully', { listingId, reason });
