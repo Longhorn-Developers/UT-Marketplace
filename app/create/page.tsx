@@ -12,11 +12,13 @@ import {
   Save,
   Send,
 } from "lucide-react";
-import { supabase } from "../lib/supabaseClient";
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'next/navigation';
 import ImageUploader from "./components/ImageUpload";
 import dynamic from "next/dynamic";
+import { ListingService } from '../lib/database/ListingService';
+import { UserService } from '../lib/database/UserService';
+import { dbLogger } from '../lib/database/utils';
 
 const MapPicker = dynamic(() => import("../listing/components/MapPicker"), { ssr: false });
 
@@ -86,32 +88,9 @@ const Create = () => {
     setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const uploadImages = async () => {
-    if (!user?.email) return [];
-    
-    const uploadedImageUrls: string[] = [];
-    for (const image of images) {
-      const fileName = `${user.email}-${Date.now()}-${image.name}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("listing-images")
-        .upload(fileName, image);
-
-      if (uploadError) {
-        console.error("Image upload failed:", uploadError?.message || uploadError);
-        throw new Error(`Failed to upload image: ${uploadError?.message || "Unknown error"}`);
-      }
-
-      const { data: publicUrlData } = supabase.storage
-        .from("listing-images")
-        .getPublicUrl(fileName);
-
-      uploadedImageUrls.push(publicUrlData.publicUrl);
-    }
-    return uploadedImageUrls;
-  };
 
   const handleSaveDraft = async () => {
-    if (!user) {
+    if (!user?.id) {
       toast.error("You must be logged in to save a draft.");
       router.push('/auth/signin');
       return;
@@ -119,37 +98,40 @@ const Create = () => {
 
     try {
       setSaving(true);
-      let uploadedImageUrls: string[] = [];
       
+      // Upload images using the service
+      let uploadedImageUrls: string[] = [];
       if (images.length > 0) {
-        uploadedImageUrls = await uploadImages();
+        uploadedImageUrls = await ListingService.uploadImages(images, user.id);
       }
 
-      const payload = {
+      // Get user profile for display name
+      const userProfile = await UserService.getUserProfile(user.id);
+      const userName = userProfile?.display_name || user.email?.split('@')[0] || 'Unknown User';
+
+      const listing = await ListingService.createListing({
         title: title || "Untitled Draft",
-        category: category || null,
         price: price || 0,
+        location: location || "",
+        category: category || "",
+        condition: condition || "",
         description: description || "",
-        location: location || null,
-        location_lat: locationLat,
-        location_lng: locationLng,
-        condition: condition || null,
-        user_id: user.email,
-        user_name: user.email.split('@')[0],
-        created_at: new Date().toISOString(),
         images: uploadedImageUrls,
-        is_sold: false,
-        is_draft: true,
-      };
+        userId: user.id,
+        userName: userName,
+        isDraft: true,
+        locationLat: locationLat || undefined,
+        locationLng: locationLng || undefined,
+      });
 
-      const { error } = await supabase.from("listings").insert([payload]);
-
-      if (error) throw error;
-      
-      toast.success("Draft saved successfully!");
-      router.push('/my-listings');
+      if (listing) {
+        toast.success("Draft saved successfully!");
+        router.push('/my-listings');
+      } else {
+        throw new Error('Failed to create listing');
+      }
     } catch (error) {
-      console.error("Error saving draft:", error);
+      dbLogger.error('Error saving draft', error);
       toast.error("Failed to save draft. Please try again.");
     } finally {
       setSaving(false);
@@ -157,7 +139,7 @@ const Create = () => {
   };
 
   const handleSubmit = async () => {
-    if (!user) {
+    if (!user?.id) {
       toast.error("You must be logged in to create a listing.");
       router.push('/auth/signin');
       return;
@@ -170,33 +152,37 @@ const Create = () => {
 
     try {
       setSaving(true);
-      const uploadedImageUrls = await uploadImages();
-
-      const payload = {
-        title,
-        category,
-        price,
-        description,
-        location,
-        location_lat: locationLat,
-        location_lng: locationLng,
-        condition,
-        user_id: user.email,
-        user_name: user.email.split('@')[0],
-        created_at: new Date().toISOString(),
-        images: uploadedImageUrls,
-        is_sold: false,
-        is_draft: false,
-      };
-
-      const { error } = await supabase.from("listings").insert([payload]);
-
-      if (error) throw error;
       
-      toast.success("🎉 Listing created successfully!");
-      router.push('/my-listings');
+      // Upload images using the service
+      const uploadedImageUrls = await ListingService.uploadImages(images, user.id);
+
+      // Get user profile for display name
+      const userProfile = await UserService.getUserProfile(user.id);
+      const userName = userProfile?.display_name || user.email?.split('@')[0] || 'Unknown User';
+
+      const listing = await ListingService.createListing({
+        title,
+        price,
+        location,
+        category,
+        condition,
+        description,
+        images: uploadedImageUrls,
+        userId: user.id,
+        userName: userName,
+        isDraft: false,
+        locationLat: locationLat || undefined,
+        locationLng: locationLng || undefined,
+      });
+
+      if (listing) {
+        toast.success("🎉 Listing created successfully!");
+        router.push('/my-listings');
+      } else {
+        throw new Error('Failed to create listing');
+      }
     } catch (error) {
-      console.error("Error creating listing:", error);
+      dbLogger.error('Error creating listing', error);
       toast.error("Failed to create listing. Please try again.");
     } finally {
       setSaving(false);

@@ -4,7 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 import ListingCard from "../../browse/components/ListingCard";
 import * as timeago from "timeago.js";
-import { Mail, Star, CheckCircle2 } from "lucide-react";
+import { Mail, Star, CheckCircle2, MessageCircle } from "lucide-react";
 import { useAuth } from '../../context/AuthContext';
 import { Listing } from "../../props/listing";
 import { Rating } from "../../props/rating";
@@ -25,33 +25,43 @@ const PublicProfile = () => {
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [bio, setBio] = useState<string | null>(null);
-  const [raterProfiles, setRaterProfiles] = useState<{ [email: string]: { display_name: string, profile_image_url: string | null } }>({});
 
   useEffect(() => {
+    const userId = Array.isArray(params.userId) ? params.userId[0] : params.userId;
+    
     const fetchUserData = async () => {
       setLoading(true);
-      const rawParam = Array.isArray(params.name) ? params.name[0] : params.name;
-      const emailParam = decodeURIComponent(rawParam);
-      // Fetch display_name and profile_image_url from user_settings
-      const { data: userSettings, error: userSettingsError } = await supabase
-        .from('user_settings')
-        .select('display_name, profile_image_url, bio')
-        .eq('email', emailParam)
-        .single();
-      if (!userSettingsError && userSettings) {
-        setDisplayName(userSettings.display_name || null);
-        setProfileImage(userSettings.profile_image_url || null);
-        setBio(userSettings.bio || null);
-      } else {
-        setDisplayName(null);
-        setProfileImage(null);
-        setBio(null);
+      
+      if (!userId) {
+        setLoading(false);
+        return;
       }
-      // Fetch user's listings by email
+
+      // Fetch user data from users table by id (like mobile app)
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id, email, display_name, profile_image_url, bio')
+        .eq('id', userId)
+        .single();
+        
+      if (userError || !userData) {
+        console.error('User not found:', userError);
+        setLoading(false);
+        return;
+      }
+
+      setDisplayName(userData.display_name || null);
+      setProfileImage(userData.profile_image_url || null);
+      setBio(userData.bio || null);
+      setUserEmail(userData.email);
+      setUserName(userData.display_name || userData.email?.split('@')[0] || 'User');
+
+      // Fetch user's listings by user_id
       const { data: listingsData, error: listingsError } = await supabase
         .from("listings")
         .select("*")
-        .eq("user_id", emailParam)
+        .eq("user_id", userId)
+        .eq("is_draft", false)
         .order("created_at", { ascending: false });
       console.log("listingsData", listingsData);
       console.log("listingsError", listingsError);
@@ -60,33 +70,38 @@ const PublicProfile = () => {
         return;
       }
       setListings(listingsData || []);
-      if (listingsData && listingsData.length > 0) {
-        setUserName(listingsData[0].user_name);
-        setUserEmail(listingsData[0].user_id);
-        // Fetch ratings for this user (by email)
-        const { data: ratingsData } = await supabase
-          .from("ratings")
-          .select("*")
-          .eq("rated_id", listingsData[0].user_id);
-        let uniqueRatings: Rating[] = [];
-        let foundUserRating: Rating | null = null;
-        let raterEmails: string[] = [];
-        if (ratingsData) {
-          const latestByRater = new Map<string, Rating>();
-          ratingsData.forEach((rating: Rating) => {
-            const existing = latestByRater.get(rating.rater_id);
-            if (!existing || new Date(rating.created_at) > new Date(existing.created_at)) {
-              latestByRater.set(rating.rater_id, rating);
-            }
+      
+      // Fetch ratings for this user (same as mobile app)
+      const { data: ratingsData } = await supabase
+        .from("reviews")
+        .select("*")
+        .eq("reviewed_id", userId)
+        .order('created_at', { ascending: false });
+
+      // Get rater names for each rating (same as mobile app)
+      const formattedRatings = [];
+      if (ratingsData) {
+        for (const rating of ratingsData) {
+          const { data: raterData } = await supabase
+            .from('users')
+            .select('display_name, profile_image_url')
+            .eq('id', rating.reviewer_id)
+            .single();
+
+          formattedRatings.push({
+            ...rating,
+            rater_name: raterData?.display_name || 'Anonymous User',
+            rater_id: rating.reviewer_id,
+            rated_id: rating.reviewed_id,
           });
-          uniqueRatings = Array.from(latestByRater.values());
-          raterEmails = uniqueRatings.map(r => r.rater_id);
-          // Check if current user has rated
-          if (user?.email) {
-            foundUserRating = uniqueRatings.find(r => r.rater_id === user.email) || null;
-          }
         }
-        setRatings(uniqueRatings);
+      }
+
+      setRatings(formattedRatings);
+      
+      // Check if current user has rated
+      if (user?.id) {
+        const foundUserRating = formattedRatings.find(r => r.reviewer_id === user.id) || null;
         if (foundUserRating) {
           setUserHasRated(true);
           setUserRating(foundUserRating.rating);
@@ -96,44 +111,30 @@ const PublicProfile = () => {
           setUserRating(0);
           setRatingComment("");
         }
-        // Fetch rater profiles (display_name, profile_image_url)
-        if (raterEmails.length > 0) {
-          const { data: raterProfilesData } = await supabase
-            .from('user_settings')
-            .select('email, display_name, profile_image_url')
-            .in('email', raterEmails);
-          const raterMap: { [email: string]: { display_name: string, profile_image_url: string | null } } = {};
-          (raterProfilesData || []).forEach((r: any) => {
-            raterMap[r.email] = { display_name: r.display_name, profile_image_url: r.profile_image_url };
-          });
-          setRaterProfiles(raterMap);
-        }
-      } else {
-        setUserName(null);
-        setUserEmail(null);
       }
       setLoading(false);
     };
-    if (params.name) {
+    if (userId) {
       fetchUserData();
     }
-  }, [params.name, user]);
+  }, [params.userId, user]);
 
   const handleSubmitRating = async () => {
-    if (!user?.email || !userEmail) return;
+    const userId = Array.isArray(params.userId) ? params.userId[0] : params.userId;
+    if (!user?.id || !userId) return;
     try {
       // Check if a review exists
       const { data: existing, error: fetchError } = await supabase
-        .from("ratings")
+        .from("reviews")
         .select("*")
-        .eq("rater_id", user.email)
-        .eq("rated_id", userEmail)
+        .eq("reviewer_id", user.id)
+        .eq("reviewed_id", userId)
         .single();
 
       if (existing) {
         // Update the existing review
         await supabase
-          .from("ratings")
+          .from("reviews")
           .update({
             rating: userRating,
             comment: ratingComment,
@@ -143,10 +144,10 @@ const PublicProfile = () => {
       } else {
         // Insert a new review
         await supabase
-          .from("ratings")
+          .from("reviews")
           .insert({
-            rater_id: user.email,
-            rated_id: userEmail,
+            reviewer_id: user.id,
+            reviewed_id: userId,
             rating: userRating,
             comment: ratingComment,
             created_at: new Date().toISOString(),
@@ -154,21 +155,29 @@ const PublicProfile = () => {
       }
       // Refresh ratings
       const { data: ratingsData } = await supabase
-        .from("ratings")
+        .from("reviews")
         .select("*")
-        .eq("rated_id", userEmail);
-      let uniqueRatings: Rating[] = [];
+        .eq("reviewed_id", userId)
+        .order('created_at', { ascending: false });
+      // Get rater names for each rating (same as mobile app)
+      const formattedRatings = [];
       if (ratingsData) {
-        const latestByRater = new Map<string, Rating>();
-        ratingsData.forEach((rating: Rating) => {
-          const existing = latestByRater.get(rating.rater_id);
-          if (!existing || new Date(rating.created_at) > new Date(existing.created_at)) {
-            latestByRater.set(rating.rater_id, rating);
-          }
-        });
-        uniqueRatings = Array.from(latestByRater.values());
+        for (const rating of ratingsData) {
+          const { data: raterData } = await supabase
+            .from('users')
+            .select('display_name, profile_image_url')
+            .eq('id', rating.reviewer_id)
+            .single();
+
+          formattedRatings.push({
+            ...rating,
+            rater_name: raterData?.display_name || 'Anonymous User',
+            rater_id: rating.reviewer_id,
+            rated_id: rating.reviewed_id,
+          });
+        }
       }
-      setRatings(uniqueRatings);
+      setRatings(formattedRatings);
       setShowRatingForm(false);
     } catch (err) {
       console.error("Error submitting rating:", err);
@@ -178,8 +187,8 @@ const PublicProfile = () => {
   const activeListings = listings.filter(listing => !listing.is_sold);
   const soldListings = listings.filter(listing => listing.is_sold);
   const averageRating = ratings.length > 0
-    ? ratings.reduce((acc, curr) => acc + curr.rating, 0) / ratings.length
-    : 0;
+    ? (ratings.reduce((acc, curr) => acc + Number(curr.rating), 0) / ratings.length).toFixed(1)
+    : 'N/A';
 
   if (loading) {
     return (
@@ -232,7 +241,7 @@ const PublicProfile = () => {
               <div className="flex items-center gap-2">
                 <Star size={16} className="text-yellow-400 fill-yellow-400" />
                 <span className="text-sm font-medium text-gray-700">
-                  {averageRating.toFixed(1)}/5 ({ratings.length} ratings)
+                  {averageRating}/5 ({ratings.length} ratings)
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -243,9 +252,17 @@ const PublicProfile = () => {
                 <span className="text-sm text-gray-500">{soldListings.length} Sold</span>
               </div>
             </div>
-            {/* Rating Section */}
-            {user?.email && user.email !== userEmail && (
-              <div className="mt-6">
+            {/* Action Buttons */}
+            {user?.id && user.id !== userEmail && (
+              <div className="mt-6 flex gap-3">
+                <button
+                  onClick={() => router.push(`/messages?user=${userEmail}`)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[#bf5700] text-[#bf5700] text-sm hover:bg-[#bf5700] hover:text-white transition"
+                >
+                  <MessageCircle size={16} />
+                  Message
+                </button>
+                <div>
                 {!showRatingForm ? (
                   userHasRated ? (
                     <button
@@ -298,6 +315,7 @@ const PublicProfile = () => {
                     </div>
                   </div>
                 )}
+                </div>
               </div>
             )}
             {/* Recent Ratings */}
@@ -308,13 +326,9 @@ const PublicProfile = () => {
                   {ratings.slice(0, 3).map((rating) => (
                     <div key={rating.id} className="bg-gray-50 rounded-lg p-4">
                       <div className="flex items-center gap-2 mb-2">
-                        {raterProfiles[rating.rater_id]?.profile_image_url ? (
-                          <img src={raterProfiles[rating.rater_id].profile_image_url} alt={raterProfiles[rating.rater_id].display_name || rating.rater_id} className="w-6 h-6 rounded-full object-cover border border-gray-200" />
-                        ) : (
-                          <div className="w-6 h-6 rounded-full border border-gray-200 bg-gray-200 flex items-center justify-center text-gray-400 text-xs">
-                            <span>{(raterProfiles[rating.rater_id]?.display_name || rating.rater_id)?.[0]?.toUpperCase() || '?'}</span>
-                          </div>
-                        )}
+                        <div className="w-6 h-6 rounded-full border border-gray-200 bg-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                          <span>{(rating.rater_name || 'Anonymous')?.[0]?.toUpperCase() || '?'}</span>
+                        </div>
                         <div className="flex">
                           {[1, 2, 3, 4, 5].map((star) => (
                             <span
@@ -328,7 +342,7 @@ const PublicProfile = () => {
                         <span className="text-sm text-gray-500">
                           {timeago.format(rating.created_at)}
                         </span>
-                        <span className="text-xs text-gray-700 ml-2">by {raterProfiles[rating.rater_id]?.display_name || rating.rater_id}</span>
+                        <span className="text-xs text-gray-700 ml-2">by {rating.rater_name || 'Anonymous'}</span>
                       </div>
                       {rating.comment && (
                         <p className="text-sm text-gray-600">{rating.comment}</p>

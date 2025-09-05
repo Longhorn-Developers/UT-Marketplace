@@ -6,7 +6,8 @@ import { supabase } from "../lib/supabaseClient";
 import SearchBar from "./components/SearchBar";
 import ListingCard from "./components/ListingCard";
 import * as timeago from "timeago.js";
-import { toast } from "react-toastify"; 
+import { toast } from "react-toastify";
+import { ListingService } from "../lib/database/ListingService"; 
 import {
   containerVariants,
   searchBarVariants,
@@ -33,43 +34,23 @@ const Browse = () => {
   useEffect(() => {
     const fetchListings = async () => {
       try {
-        let query = supabase
-          .from("listings")
-          .select("*")
-          .eq("is_sold", false)
-          .eq("is_draft", false)
-          .order("created_at", { ascending: sortOrder === "oldest" });
-
-        if (queryCategory) {
-          query = query.eq("category", queryCategory);
-        }
-
-        if (searchTerm) {
-          query = query.ilike("title", `%${searchTerm}%`);
-        }
-
-        const { data, error } = await query;
-        if (error) throw error;
-
-        // Fetch user_settings for all unique user_ids
-        const userIds = [...new Set((data || []).map(l => l.user_id))];
-        const { data: userSettings } = await supabase
-          .from("user_settings")
-          .select("email, display_name, profile_image_url")
-          .in("email", userIds);
-        const userMap = {};
-        (userSettings || []).forEach(u => {
-          userMap[u.email] = {
-            name: u.display_name || u.email,
-            image: u.profile_image_url || null,
-          };
+        const listingsData = await ListingService.getListings({
+          category: queryCategory || undefined,
+          searchTerm: searchTerm || undefined,
+          excludeSold: true,
+          excludeDrafts: true,
+          limit: 100 // Increased limit for browse page
         });
-        const listingsWithUser = (data || []).map(listing => ({
-          ...listing,
-          user_name: userMap[listing.user_id]?.name || listing.user_name,
-          user_image: userMap[listing.user_id]?.image || null,
-        }));
-        setListings(listingsWithUser);
+
+        // Apply client-side sorting since ListingService returns newest first by default
+        const sortedListings = sortOrder === "oldest" 
+          ? [...listingsData].reverse() 
+          : listingsData;
+
+        // Listings already have user_name and user_image from ListingService
+        const formattedListings = sortedListings;
+
+        setListings(formattedListings);
       } catch (error) {
         console.error("Error fetching listings:", error);
         toast.error("Failed to load listings");
@@ -82,17 +63,6 @@ const Browse = () => {
   }, [queryCategory, searchTerm, sortOrder]);
 
   let filteredListings = listings;
-  if (queryCategory && queryCategory !== "All") {
-    filteredListings = filteredListings.filter((listing) => listing.category === queryCategory);
-  }
-  if (searchTerm) {
-    const lower = searchTerm.toLowerCase();
-    filteredListings = filteredListings.filter(
-      (listing) =>
-        (listing.title && listing.title.toLowerCase().includes(lower)) ||
-        (listing.description && listing.description.toLowerCase().includes(lower))
-    );
-  }
   if (minPrice) {
     filteredListings = filteredListings.filter((listing) => Number(listing.price) >= Number(minPrice));
   }

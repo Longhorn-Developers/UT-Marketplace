@@ -3,37 +3,21 @@ import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import ListingPage from "../components/ListingPage";
 import OwnerPage from "../components/OwnerPage";
-import { supabase } from "../../lib/supabaseClient";
 import { useAuth } from '../../context/AuthContext';
 import RelatedListings from "../../browse/components/RelatedListings";
 import { Loader2 } from "lucide-react";
+import { ListingService } from '../../lib/database/ListingService';
+import { UserService } from '../../lib/database/UserService';
+import { dbLogger } from '../../lib/database/utils';
+import { ListingPageProps } from '../../props/listing';
 
-interface Listing {
-  id: string;
-  title: string;
-  price: number;
-  location: string;
-  category: string;
-  created_at: string;
-  images: string[];
-  condition: string;
-  description: string;
-  user_id: string;
-  user_name: string;
-  user_image?: string;
-  is_draft: boolean;
-  is_sold: boolean;
-  location_lat?: number;
-  location_lng?: number;
-}
 
 const Listing = () => {
   const { id } = useParams();
   const router = useRouter();
   const { user } = useAuth();
-  const [listing, setListing] = useState<Listing | null>(null);
+  const [listing, setListing] = useState<ListingPageProps | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [listingCount, setListingCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -42,27 +26,15 @@ const Listing = () => {
         setIsLoading(true);
         setError(null);
 
-        const { data: listingData, error: listingError } = await supabase
-          .from("listings")
-          .select("*")
-          .eq("id", id)
-          .single();
-
-        if (listingError) throw listingError;
-        if (!listingData) throw new Error("Listing not found");
+        const listingData = await ListingService.getListingById(id as string);
+        
+        if (!listingData) {
+          throw new Error("Listing not found");
+        }
 
         setListing(listingData);
-
-        // Get count of other listings by same user
-        const { count, error: countError } = await supabase
-          .from("listings")
-          .select("*", { count: "exact", head: true })
-          .eq("user_id", listingData.user_id);
-
-        if (countError) throw countError;
-        setListingCount(count || 0);
       } catch (err) {
-        console.error("Error fetching listing:", err);
+        dbLogger.error('Error fetching listing', err);
         setError(err instanceof Error ? err.message : "Failed to load listing");
       } finally {
         setIsLoading(false);
@@ -113,8 +85,8 @@ const Listing = () => {
     );
   }
 
-  const isOwner = user?.email === listing.user_id;
-  const isDraft = listing.is_draft;
+  const isOwner = user?.id === listing.listingUserEmail; // listingUserEmail contains user ID
+  const isDraft = false; // Will be handled by the service
 
   // If the listing is a draft and the current user is not the owner, show 404
   if (isDraft && !isOwner) {
@@ -139,20 +111,20 @@ const Listing = () => {
     price: listing.price,
     location: listing.location,
     category: listing.category,
-    timePosted: new Date(listing.created_at).toLocaleString(),
+    timePosted: listing.timePosted,
     images: listing.images,
     condition: listing.condition,
     description: listing.description || '',
     id: listing.id,
-    is_sold: listing.is_sold,
-    is_draft: listing.is_draft,
-    location_lat: (listing as any).location_lat,
-    location_lng: (listing as any).location_lng,
+    is_sold: false, // Will be handled by the service
+    is_draft: false, // Will be handled by the service
+    location_lat: listing.location_lat,
+    location_lng: listing.location_lng,
   };
 
   const userProps = {
-    name: listing.user_name || 'Unknown',
-    image: listing.user_image,
+    name: listing.user.name,
+    image: listing.user.image,
   };
 
   return (
@@ -162,11 +134,7 @@ const Listing = () => {
           <OwnerPage {...commonProps} />
         ) : (
           <ListingPage 
-            {...commonProps}
-            user={userProps} 
-            listingCount={listingCount} 
-            listingUserName={listing.user_name} 
-            listingUserEmail={listing.user_id} 
+            {...listing}
           />
         )}
         

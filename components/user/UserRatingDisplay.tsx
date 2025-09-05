@@ -16,9 +16,9 @@ const UserRatingDisplay: React.FC<UserRatingDisplayProps> = ({ userId, rating, c
     if (!userId) return;
     setLoading(true);
     supabase
-      .from('ratings')
+      .from('reviews')
       .select('rating')
-      .eq('rated_id', userId)
+      .eq('reviewed_id', userId)
       .then(({ data, error }) => {
         if (error || !data) {
           setFetchedRating(null);

@@ -1,12 +1,14 @@
 "use client";
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { motion } from "framer-motion";
-import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ConversationList } from "./components/ConversationList";
 import { ChatWindow } from "./components/ChatWindow";
 import { Message, Conversation } from "../props/listing";
+import { MessageService } from "../lib/database/MessageService";
+import { dbLogger } from "../lib/database/utils";
+import { supabase } from "../lib/supabaseClient";
 import {
   containerVariants,
   headerVariants,
@@ -26,147 +28,80 @@ const MessagesPage = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const updateConversations = useCallback(async () => {
-    if (!user?.email) return;
+    if (!user?.id) return;
     
     try {
       setLoading(true);
-      const { data: messagesData, error: messagesError } = await supabase
-        .from("messages")
-        .select("*")
-        .or(`sender_id.eq.${user.email},receiver_id.eq.${user.email}`)
-        .order("created_at", { ascending: false });
-      if (messagesError) throw messagesError;
-      const userEmail = user.email;
-      const filteredMessages = messagesData?.filter(
-        (msg) => msg.sender_id === userEmail || msg.receiver_id === userEmail
-      ) || [];
-      // Group by user_id and listing_id
-      const conversationMap = new Map<string, Conversation>();
-      for (const message of filteredMessages) {
-        const partnerId = message.sender_id === user.email ? message.receiver_id : message.sender_id;
-        const listingId = message.listing_id || "general";
-        const key = `${partnerId}:${listingId}`;
-        if (!conversationMap.has(key)) {
-          conversationMap.set(key, {
-            user_id: partnerId,
-            user_name: "", // We'll fetch this later
-            user_image: undefined, // We'll fetch this later
-            listing_id: listingId,
-            listing_title: "",
-            last_message: message.content,
-            last_message_time: message.created_at,
-            unread_count: message.receiver_id === user.email && !message.read ? 1 : 0,
-          });
-        } else {
-          const conv = conversationMap.get(key)!;
-          if (message.receiver_id === user.email && !message.read) {
-            conv.unread_count++;
-          }
-        }
-      }
-      // Fetch user_settings for all partnerIds (emails)
-      const partnerIds = Array.from(conversationMap.values()).map((c) => c.user_id);
-      const listingIds = Array.from(conversationMap.values())
-        .map((c) => c.listing_id)
-        .filter((id) => id !== "general");
-      const { data: userSettingsData } = await supabase
-        .from('user_settings')
-        .select('email, display_name, profile_image_url')
-        .in('email', partnerIds);
-      // Fetch listing titles for all listingIds
-      const { data: listingData } = await supabase
-        .from("listings")
-        .select("id, title")
-        .in("id", listingIds.length > 0 ? listingIds : [""]);
-      // Update conversation map with user info and listing titles
-      for (const conv of conversationMap.values()) {
-        const userSettings = userSettingsData?.find((u) => u.email === conv.user_id);
-        if (userSettings) {
-          conv.user_name = userSettings.display_name || conv.user_id;
-          conv.user_image = userSettings.profile_image_url || undefined;
-        }
-        const listing = listingData?.find((l) => l.id === conv.listing_id);
-        if (listing) {
-          conv.listing_title = listing.title;
-        }
-      }
-      setConversations(Array.from(conversationMap.values()));
+      const conversations = await MessageService.getConversations(user.id);
+      setConversations(conversations);
     } catch (error) {
-      console.error("Error fetching conversations:", error);
+      dbLogger.error('Error fetching conversations', error);
     } finally {
       setLoading(false);
     }
   }, [user]);
 
   const fetchMessages = useCallback(async (conversationKey: string) => {
-    if (!user?.email) return;
+    if (!user?.id) return;
     const [partnerId, listingId] = conversationKey.split(":");
+    
     try {
-      const { data, error } = await supabase
-        .from("messages")
-        .select("*")
-        .or(
-          `and(sender_id.eq.${user.email},receiver_id.eq.${partnerId}),and(sender_id.eq.${partnerId},receiver_id.eq.${user.email})`
-        )
-        .eq("listing_id", listingId === "general" ? null : listingId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      const userEmail = user.email;
-      const filteredMessages =
-        data?.filter(
-          (msg) =>
-            (msg.sender_id === userEmail && msg.receiver_id === partnerId) ||
-            (msg.sender_id === partnerId && msg.receiver_id === userEmail)
-        ) || [];
-      setMessages(filteredMessages);
+      const messages = await MessageService.getMessages({
+        userId: user.id,
+        otherUserId: partnerId,
+        listingId: listingId === "general" ? null : listingId
+      });
+      
+      setMessages(messages);
+      
       // Mark messages as read
-      const unreadMessages = filteredMessages.filter(
-        (msg) => msg.receiver_id === userEmail && !msg.read
+      const unreadMessages = messages.filter(
+        (msg) => msg.receiver_id === user.id && !msg.is_read
       );
+      
       if (unreadMessages.length > 0) {
-        await supabase
-          .from("messages")
-          .update({ read: true })
-          .in(
-            "id",
-            unreadMessages.map((msg) => msg.id)
-          );
-        updateConversations();
+        const success = await MessageService.markMessagesAsRead(
+          unreadMessages.map((msg) => msg.id)
+        );
+        if (success) {
+          updateConversations();
+        }
       }
     } catch (error) {
-      console.error("Error fetching messages:", error);
+      dbLogger.error('Error fetching messages', error);
     }
   }, [user, updateConversations]);
 
   const sendMessage = async (content: string) => {
-    if (!selectedConversation || !user?.email) return;
+    if (!selectedConversation || !user?.id) return;
     const [partnerId, listingId] = selectedConversation.split(":");
     const tempId = `temp-${Date.now()}`;
-    const optimisticMessage = {
+    
+    const optimisticMessage: Message = {
       id: tempId,
-      sender_id: user.email,
+      sender_id: user.id,
       receiver_id: partnerId,
       content: content,
-      read: false,
+      is_read: false,
       created_at: new Date().toISOString(),
       listing_id: listingId === "general" ? null : listingId,
     };
+    
     setMessages((prev) => [...prev, optimisticMessage]);
+    
     try {
-      const { data, error } = await supabase
-        .from("messages")
-        .insert({
-          sender_id: user.email,
-          receiver_id: partnerId,
-          content: optimisticMessage.content,
-          read: false,
-          listing_id: optimisticMessage.listing_id,
-        })
-        .select();
-      if (error) throw error;
-      // Replace the temp message with the real one from the server
-      if (data && data.length > 0) {
-        setMessages((prev) => prev.map((msg) => (msg.id === tempId ? data[0] : msg)));
+      const sentMessage = await MessageService.sendMessage({
+        senderId: user.id,
+        receiverId: partnerId,
+        content: content,
+        listingId: listingId === "general" ? null : listingId,
+      });
+      
+      if (sentMessage) {
+        // Replace the temp message with the real one from the server
+        setMessages((prev) => prev.map((msg) => (msg.id === tempId ? sentMessage : msg)));
+      } else {
+        throw new Error('Failed to send message');
       }
     } catch (error) {
       // Remove the optimistic message and show an error
@@ -176,16 +111,16 @@ const MessagesPage = () => {
   };
 
   const handleDeleteMessage = async (messageId: string) => {
-    const { error } = await supabase.from("messages").delete().eq("id", messageId);
-    if (error) {
-      alert("Failed to delete message");
-    } else {
+    const success = await MessageService.deleteMessage(messageId);
+    if (success) {
       setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
+    } else {
+      alert("Failed to delete message");
     }
   };
 
   const handleDeleteConversation = async () => {
-    if (!selectedConversation || !user?.email) return;
+    if (!selectedConversation || !user?.id) return;
     if (
       !window.confirm(
         "Are you sure you want to delete all messages in this conversation? This cannot be undone."
@@ -193,95 +128,112 @@ const MessagesPage = () => {
     ) {
       return;
     }
+    
     const [partnerId, listingId] = selectedConversation.split(":");
-    const { error } = await supabase
-      .from("messages")
-      .delete()
-      .or(
-        `and(sender_id.eq.${user.email},receiver_id.eq.${partnerId}),and(sender_id.eq.${partnerId},receiver_id.eq.${user.email})`
-      )
-      .eq("listing_id", listingId);
-    if (error) {
-      alert("Failed to delete conversation");
-    } else {
+    const success = await MessageService.deleteConversation({
+      userId: user.id,
+      otherUserId: partnerId,
+      listingId: listingId === "general" ? null : listingId
+    });
+    
+    if (success) {
       setMessages([]);
       setSelectedConversation(null);
       updateConversations();
+    } else {
+      alert("Failed to delete conversation");
     }
   };
 
   useEffect(() => {
-    if (!authLoading && !user?.email) {
+    if (!authLoading && !user?.id) {
       router.push("/auth/signin");
       return;
     }
 
-    if (!user?.email) return; // Only subscribe if user is loaded
+    if (!user?.id) return; // Only subscribe if user is loaded
 
-    const messagesSubscription = supabase
-      .channel("messages")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `receiver_id=eq.${user.email}`,
-        },
-        (payload) => {
-          const newMessage = payload.new as Message;
-          if (newMessage.sender_id === user.email || newMessage.receiver_id === user.email) {
-            setMessages((prev) => [...prev, newMessage]);
-            updateConversations();
+    const messagesSubscription = MessageService.subscribeToMessages(
+      user.id,
+      (message: Message) => {
+        // Only update messages if this is the current conversation
+        if (selectedConversation) {
+          const [partnerId, listingId] = selectedConversation.split(":");
+          const messageListingId = message.listing_id || "general";
+          
+          if (
+            (message.sender_id === user.id && message.receiver_id === partnerId) ||
+            (message.sender_id === partnerId && message.receiver_id === user.id)
+          ) {
+            if (
+              (listingId === "general" && messageListingId === "general") ||
+              (listingId !== "general" && messageListingId === listingId)
+            ) {
+              setMessages((prev) => {
+                // Don't add duplicates
+                const exists = prev.find(msg => msg.id === message.id);
+                return exists ? prev : [...prev, message];
+              });
+            }
           }
         }
-      )
-      .subscribe();
+        updateConversations();
+      },
+      (error) => {
+        dbLogger.error('Message subscription error', error);
+      }
+    );
 
     return () => {
       messagesSubscription.unsubscribe();
     };
-  }, [user, router, authLoading, updateConversations]);
+  }, [user, router, authLoading, updateConversations, selectedConversation]);
 
   useEffect(() => {
-    if (!user?.email) return;
+    if (!user?.id) return;
     updateConversations();
   }, [user, authLoading, updateConversations]);
 
   useEffect(() => {
-    if (!selectedConversation || !user?.email) return;
+    if (!selectedConversation || !user?.id) return;
     fetchMessages(selectedConversation);
   }, [selectedConversation, user, authLoading, fetchMessages]);
 
   // Handle ?listing= param for direct listing chat
   useEffect(() => {
-    if (!user?.email) return;
+    if (!user?.id) return;
     const listingId = searchParams.get("listing");
     if (listingId) {
       (async () => {
-        // Fetch the listing to get the seller
-        const { data: listing, error } = await supabase
-          .from("listings")
-          .select("id, user_id, user_name, title")
-          .eq("id", listingId)
-          .single();
-        if (error || !listing) return;
-        if (listing.user_id === user.email) return;
-        // Check if a conversation already exists for this listing
-        const { data: existingMessages, error: msgError } = await supabase
-          .from("messages")
-          .select("id")
-          .eq("listing_id", listingId)
-          .or(
-            `and(sender_id.eq.${user.email},receiver_id.eq.${listing.user_id}),and(sender_id.eq.${listing.user_id},receiver_id.eq.${user.email})`
-          )
-          .limit(1);
-        if (msgError) return;
-        if (existingMessages && existingMessages.length > 0) {
+        try {
+          // We'll need to implement a listing service for this, but for now use basic query
+          const { data: listing, error } = await supabase
+            .from("listings")
+            .select("id, user_id, user_name, title")
+            .eq("id", listingId)
+            .single();
+          
+          if (error || !listing) {
+            dbLogger.error('Failed to fetch listing for chat', error);
+            return;
+          }
+          
+          if (listing.user_id === user.id) {
+            dbLogger.info('User trying to chat with themselves');
+            return;
+          }
+          
+          // Check if a conversation already exists for this listing
+          const existingMessages = await MessageService.getMessages({
+            userId: user.id,
+            otherUserId: listing.user_id,
+            listingId: listingId
+          });
+          
+          // Set up the conversation regardless of whether messages exist
           setSelectedConversation(listing.user_id + ":" + listingId);
-        } else {
-          // No conversation yet, set up the key so the user can send the first message
-          setSelectedConversation(listing.user_id + ":" + listingId);
+        } catch (error) {
+          dbLogger.error('Error setting up listing chat', error);
         }
       })();
     }
@@ -326,7 +278,7 @@ const MessagesPage = () => {
       <ChatWindow
         selectedConversation={selectedConversation}
         messages={messages}
-        currentUserEmail={user?.email || ""}
+        currentUserId={user?.id || ""}
         conversationName={selectedConversationData?.user_name || ""}
         conversationImage={selectedConversationData?.user_image || ""}
         listingTitle={selectedConversationData?.listing_title || ""}
