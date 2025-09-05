@@ -5,6 +5,66 @@ import ListingCard from './ListingCard';
 import * as timeago from 'timeago.js';
 import { Listing } from '../../props/listing';
 
+// Helper function to convert UI values to database enum values (same as mobile app)
+const convertToDbFormat = (value: string, type: 'category' | 'condition') => {
+  if (type === 'category') {
+    const categoryMap: Record<string, string> = {
+      'Furniture': 'furniture',
+      'Subleases': 'subleases', 
+      'Tech': 'tech',
+      'Vehicles': 'vehicles',
+      'Textbooks': 'textbooks',
+      'Clothing': 'clothing',
+      'Kitchen': 'kitchen',
+      'Other': 'other',
+    };
+    return categoryMap[value] || value.toLowerCase();
+  }
+  
+  if (type === 'condition') {
+    const conditionMap: Record<string, string> = {
+      'New': 'new',
+      'Like New': 'like_new',
+      'Good': 'good',
+      'Fair': 'fair',
+      'Poor': 'poor',
+    };
+    return conditionMap[value] || value.toLowerCase();
+  }
+  
+  return value;
+};
+
+// Helper function to convert database enum values to UI values (same as mobile app)
+const convertFromDbFormat = (value: string, type: 'category' | 'condition') => {
+  if (type === 'category') {
+    const categoryMap: Record<string, string> = {
+      'furniture': 'Furniture',
+      'subleases': 'Subleases', 
+      'tech': 'Tech',
+      'vehicles': 'Vehicles',
+      'textbooks': 'Textbooks',
+      'clothing': 'Clothing',
+      'kitchen': 'Kitchen',
+      'other': 'Other',
+    };
+    return categoryMap[value] || value;
+  }
+  
+  if (type === 'condition') {
+    const conditionMap: Record<string, string> = {
+      'new': 'New',
+      'like_new': 'Like New',
+      'good': 'Good',
+      'fair': 'Fair',
+      'poor': 'Poor',
+    };
+    return conditionMap[value] || value;
+  }
+  
+  return value;
+};
+
 interface RelatedListingsProps {
   currentListingId: string;
   category: string;
@@ -31,7 +91,7 @@ const RelatedListings: React.FC<RelatedListingsProps> = ({
         let query = supabase
           .from("listings")
           .select("*")
-          .eq("category", category)
+          .eq("category", convertToDbFormat(category, 'category'))
           .neq("id", currentListingId);
 
         if (excludeSold) {
@@ -51,7 +111,13 @@ const RelatedListings: React.FC<RelatedListingsProps> = ({
         }
 
         if (data) {
-          setRelatedListings(data);
+          // Convert database values to UI format
+          const convertedData = data.map(listing => ({
+            ...listing,
+            category: convertFromDbFormat(listing.category, 'category'),
+            condition: convertFromDbFormat(listing.condition, 'condition'),
+          }));
+          setRelatedListings(convertedData);
         }
       } catch (err) {
         console.error('Error in fetchRelated:', err);

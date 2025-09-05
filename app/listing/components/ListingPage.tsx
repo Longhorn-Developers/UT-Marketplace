@@ -86,6 +86,12 @@ const ListingPage: React.FC<ListingPageProps> = ({
       router.push('/auth/signin');
       return;
     }
+    
+    // Check if user is trying to message themselves
+    if (currentUser.id === listingUserEmail) {
+      return;
+    }
+    
     // Redirect to messages page with listing id as a query param
     router.push(`/messages?listing=${encodeURIComponent(id)}`);
   };

@@ -350,13 +350,6 @@ const OwnerPage: React.FC<OwnerPageProps> = ({
         </div>
       </div>
 
-      <RelatedListings
-        currentListingId={id}
-        category={category}
-        title={title}
-        excludeSold={true}
-      />
-
       {isEditing && (
         <div className="fixed inset-0 z-40 flex justify-center bg-black/20 backdrop-blur-sm overflow-y-auto">
           <EditForm

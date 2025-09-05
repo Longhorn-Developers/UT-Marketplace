@@ -3,6 +3,68 @@ import { Listing, ListingCardProps, ListingPageProps } from '../../props/listing
 import { dbLogger } from './utils';
 import * as timeago from 'timeago.js';
 
+// Helper function to convert UI values to database enum values (same as mobile app)
+const convertToDbFormat = (value: string, type: 'category' | 'condition') => {
+  if (type === 'category') {
+    // Convert UI category names to database enum values
+    const categoryMap: Record<string, string> = {
+      'Furniture': 'furniture',
+      'Subleases': 'subleases', 
+      'Tech': 'tech',
+      'Vehicles': 'vehicles',
+      'Textbooks': 'textbooks',
+      'Clothing': 'clothing',
+      'Kitchen': 'kitchen',
+      'Other': 'other',
+    };
+    return categoryMap[value] || value.toLowerCase();
+  }
+  
+  if (type === 'condition') {
+    // Convert UI condition names to database enum values
+    const conditionMap: Record<string, string> = {
+      'New': 'new',
+      'Like New': 'like_new',
+      'Good': 'good',
+      'Fair': 'fair',
+      'Poor': 'poor',
+    };
+    return conditionMap[value] || value.toLowerCase();
+  }
+  
+  return value;
+};
+
+// Helper function to convert database enum values to UI values (same as mobile app)
+const convertFromDbFormat = (value: string, type: 'category' | 'condition') => {
+  if (type === 'category') {
+    const categoryMap: Record<string, string> = {
+      'furniture': 'Furniture',
+      'subleases': 'Subleases', 
+      'tech': 'Tech',
+      'vehicles': 'Vehicles',
+      'textbooks': 'Textbooks',
+      'clothing': 'Clothing',
+      'kitchen': 'Kitchen',
+      'other': 'Other',
+    };
+    return categoryMap[value] || value;
+  }
+  
+  if (type === 'condition') {
+    const conditionMap: Record<string, string> = {
+      'new': 'New',
+      'like_new': 'Like New',
+      'good': 'Good',
+      'fair': 'Fair',
+      'poor': 'Poor',
+    };
+    return conditionMap[value] || value;
+  }
+  
+  return value;
+};
+
 export interface CreateListingParams {
   title: string;
   price: number;
@@ -12,7 +74,6 @@ export interface CreateListingParams {
   description: string;
   images: string[];
   userId: string;
-  userName: string;
   isDraft?: boolean;
   locationLat?: number;
   locationLng?: number;
@@ -66,7 +127,6 @@ export class ListingService {
       description,
       images,
       userId,
-      userName,
       isDraft = false,
       locationLat,
       locationLng
@@ -81,12 +141,11 @@ export class ListingService {
           title,
           price,
           location,
-          category,
-          condition,
+          category: convertToDbFormat(category, 'category'),
+          condition: convertToDbFormat(condition, 'condition'),
           description,
           images,
           user_id: userId,
-          user_name: userName,
           is_draft: isDraft,
           is_sold: false,
           location_lat: locationLat || null,
@@ -175,7 +234,7 @@ export class ListingService {
       }
 
       if (category && category !== 'All') {
-        query = query.eq('category', category);
+        query = query.eq('category', convertToDbFormat(category, 'category'));
       }
 
       if (searchTerm) {
@@ -223,6 +282,8 @@ export class ListingService {
       // Join user data with listings (same as mobile app)
       const enrichedListings = listingsData.map(listing => ({
         ...listing,
+        category: convertFromDbFormat(listing.category, 'category'),
+        condition: convertFromDbFormat(listing.condition, 'condition'),
         user_name: userMap[listing.user_id]?.name || listing.user_id,
         user_image: userMap[listing.user_id]?.image || null,
       }));
@@ -287,10 +348,10 @@ export class ListingService {
         title: data.title,
         price: data.price,
         location: data.location,
-        category: data.category,
+        category: convertFromDbFormat(data.category, 'category'),
         timePosted: timeago.format(data.created_at),
         images: data.images || [],
-        condition: data.condition,
+        condition: convertFromDbFormat(data.condition, 'condition'),
         description: data.description,
         user: {
           name: data.user?.display_name || 'Unknown User',
@@ -445,7 +506,15 @@ export class ListingService {
         return [];
       }
 
-      const listings = (data?.map(fav => fav.listing).filter(Boolean) || []) as any[];
+      const listings = (data?.map(fav => {
+        const listing = Array.isArray(fav.listing) ? fav.listing[0] : fav.listing;
+        if (!listing) return null;
+        return {
+          ...listing,
+          category: convertFromDbFormat(listing.category, 'category'),
+          condition: convertFromDbFormat(listing.condition, 'condition'),
+        };
+      }).filter(Boolean) || []) as any[];
       
       dbLogger.success('Favorite listings fetched successfully', { count: listings.length });
       return listings;
@@ -525,7 +594,7 @@ export class ListingService {
       }
 
       if (filters.category && filters.category !== 'All') {
-        query = query.eq('category', filters.category);
+        query = query.eq('category', convertToDbFormat(filters.category, 'category'));
       }
 
       if (filters.minPrice !== undefined) {
@@ -537,7 +606,7 @@ export class ListingService {
       }
 
       if (filters.condition) {
-        query = query.eq('condition', filters.condition);
+        query = query.eq('condition', convertToDbFormat(filters.condition, 'condition'));
       }
 
       if (filters.location) {
@@ -551,8 +620,14 @@ export class ListingService {
         return [];
       }
 
-      dbLogger.success('Search completed successfully', { count: data?.length || 0 });
-      return data as Listing[] || [];
+      const convertedData = data?.map(listing => ({
+        ...listing,
+        category: convertFromDbFormat(listing.category, 'category'),
+        condition: convertFromDbFormat(listing.condition, 'condition'),
+      })) || [];
+
+      dbLogger.success('Search completed successfully', { count: convertedData.length });
+      return convertedData as Listing[];
     } catch (error) {
       dbLogger.error('Error in searchListings', error);
       return [];

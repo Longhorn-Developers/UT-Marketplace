@@ -26,6 +26,7 @@ const MessagesPage = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [tempConversation, setTempConversation] = useState<Conversation | null>(null);
 
   const updateConversations = useCallback(async () => {
     if (!user?.id) return;
@@ -34,6 +35,8 @@ const MessagesPage = () => {
       setLoading(true);
       const conversations = await MessageService.getConversations(user.id);
       setConversations(conversations);
+      // Clear temporary conversation when updating conversations
+      setTempConversation(null);
     } catch (error) {
       dbLogger.error('Error fetching conversations', error);
     } finally {
@@ -209,7 +212,15 @@ const MessagesPage = () => {
           // We'll need to implement a listing service for this, but for now use basic query
           const { data: listing, error } = await supabase
             .from("listings")
-            .select("id, user_id, user_name, title")
+            .select(`
+              id, 
+              user_id, 
+              title,
+              user:users!user_id(
+                display_name,
+                profile_image_url
+              )
+            `)
             .eq("id", listingId)
             .single();
           
@@ -230,7 +241,19 @@ const MessagesPage = () => {
             listingId: listingId
           });
           
-          // Set up the conversation regardless of whether messages exist
+          // Create a temporary conversation object with user data for the chat window
+          const tempConv: Conversation = {
+            user_id: listing.user_id,
+            user_name: listing.user?.display_name || 'Unknown User',
+            user_image: listing.user?.profile_image_url || undefined,
+            listing_id: listingId,
+            listing_title: listing.title,
+            last_message: existingMessages.length > 0 ? existingMessages[existingMessages.length - 1].content : '',
+            last_message_time: existingMessages.length > 0 ? existingMessages[existingMessages.length - 1].created_at : new Date().toISOString(),
+            unread_count: 0
+          };
+          
+          setTempConversation(tempConv);
           setSelectedConversation(listing.user_id + ":" + listingId);
         } catch (error) {
           dbLogger.error('Error setting up listing chat', error);
@@ -256,7 +279,7 @@ const MessagesPage = () => {
     );
   }
 
-  const selectedConversationData = conversations.find(
+  const selectedConversationData = tempConversation || conversations.find(
     (c) => c.user_id + ":" + c.listing_id === selectedConversation
   );
 
@@ -270,7 +293,10 @@ const MessagesPage = () => {
       <ConversationList
         conversations={conversations}
         selectedConversation={selectedConversation}
-        onSelectConversation={setSelectedConversation}
+        onSelectConversation={(conversationKey) => {
+          setSelectedConversation(conversationKey);
+          setTempConversation(null); // Clear temp conversation when selecting from list
+        }}
         loading={loading}
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}

@@ -105,10 +105,6 @@ const Create = () => {
         uploadedImageUrls = await ListingService.uploadImages(images, user.id);
       }
 
-      // Get user profile for display name
-      const userProfile = await UserService.getUserProfile(user.id);
-      const userName = userProfile?.display_name || user.email?.split('@')[0] || 'Unknown User';
-
       const listing = await ListingService.createListing({
         title: title || "Untitled Draft",
         price: price || 0,
@@ -118,7 +114,6 @@ const Create = () => {
         description: description || "",
         images: uploadedImageUrls,
         userId: user.id,
-        userName: userName,
         isDraft: true,
         locationLat: locationLat || undefined,
         locationLng: locationLng || undefined,
@@ -156,10 +151,6 @@ const Create = () => {
       // Upload images using the service
       const uploadedImageUrls = await ListingService.uploadImages(images, user.id);
 
-      // Get user profile for display name
-      const userProfile = await UserService.getUserProfile(user.id);
-      const userName = userProfile?.display_name || user.email?.split('@')[0] || 'Unknown User';
-
       const listing = await ListingService.createListing({
         title,
         price,
@@ -169,7 +160,6 @@ const Create = () => {
         description,
         images: uploadedImageUrls,
         userId: user.id,
-        userName: userName,
         isDraft: false,
         locationLat: locationLat || undefined,
         locationLng: locationLng || undefined,
