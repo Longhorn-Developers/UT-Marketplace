@@ -5,6 +5,28 @@
   --color-ut-white: #fbf7f5;
 }
 
+/* Prevent elastic/bounce scrolling on Mac */
+html, body {
+  overscroll-behavior: none;
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Ensure the app takes full viewport height */
+#__next {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Smooth scrolling for the whole app */
+html {
+  scroll-behavior: smooth;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;

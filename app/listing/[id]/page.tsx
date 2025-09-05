@@ -11,7 +11,6 @@ import { UserService } from '../../lib/database/UserService';
 import { dbLogger } from '../../lib/database/utils';
 import { ListingPageProps } from '../../props/listing';
 
-
 const Listing = () => {
   const { id } = useParams();
   const router = useRouter();

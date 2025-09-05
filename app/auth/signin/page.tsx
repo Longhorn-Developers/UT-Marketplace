@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
@@ -16,6 +16,8 @@ export default function SignIn() {
   const { signIn, signUp } = useAuth();
   const router = useRouter();
 
+
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -25,7 +27,10 @@ export default function SignIn() {
       if (isSignUp) {
         const { error } = await signUp(email, password);
         if (error) throw error;
-        alert('Check your email for the confirmation link!');
+        
+        // Redirect to confirmation page with email
+        router.push(`/auth/confirmation?email=${encodeURIComponent(email)}`);
+        return;
       } else {
         const { error } = await signIn(email, password);
         if (error) throw error;

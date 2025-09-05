@@ -20,6 +20,7 @@ import { ListingService } from '../lib/database/ListingService';
 import { UserService } from '../lib/database/UserService';
 import { dbLogger } from '../lib/database/utils';
 
+
 const MapPicker = dynamic(() => import("../listing/components/MapPicker"), { ssr: false });
 
 const Create = () => {
