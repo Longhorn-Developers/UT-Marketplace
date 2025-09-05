@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import ListingCard from './ListingCard';
 import * as timeago from 'timeago.js';
 import { Listing } from '../../props/listing';
+import { processListingsWithStatus } from '../../lib/utils/statusUtils';
 
 // Helper function to convert UI values to database enum values (same as mobile app)
 const convertToDbFormat = (value: string, type: 'category' | 'condition') => {
@@ -117,7 +118,12 @@ const RelatedListings: React.FC<RelatedListingsProps> = ({
             category: convertFromDbFormat(listing.category, 'category'),
             condition: convertFromDbFormat(listing.condition, 'condition'),
           }));
-          setRelatedListings(convertedData);
+          
+          // Add status information and filter out non-approved listings
+          const listingsWithStatus = processListingsWithStatus(convertedData);
+          const approvedListings = listingsWithStatus.filter(listing => listing.status === 'approved');
+          
+          setRelatedListings(approvedListings);
         }
       } catch (err) {
         console.error('Error in fetchRelated:', err);

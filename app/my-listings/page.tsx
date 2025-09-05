@@ -19,6 +19,7 @@ import {
 } from "../props/animations";
 import BrowseLoader from "../browse/components/BrowseLoader";
 import * as timeago from "timeago.js";
+import { processListingsWithStatus } from "../lib/utils/statusUtils";
 
 interface Listing {
   id: string;
@@ -74,12 +75,16 @@ const MyListings = () => {
     try {
       const { data, error } = await supabase
         .from("listings")
-        .select("*, status, denial_reason")
+        .select("*")
         .eq("user_id", user?.id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setListings(data || []);
+      
+      // Process listings to add consistent status information
+      const processedListings = processListingsWithStatus(data || []);
+      
+      setListings(processedListings);
     } catch (error) {
       console.error("Error fetching listings:", error);
       toast.error("Failed to load listings");
@@ -318,14 +323,14 @@ const MyListings = () => {
                     Listed {timeago.format(listing.created_at)}
                   </p>
                   {listing.status === 'denied' && listing.denial_reason && (
-                    <div className="bg-red-50 border border-red-200 rounded-md p-2 mb-4">
-                      <p className="text-red-800 text-sm font-medium">Denial Reason:</p>
-                      <p className="text-red-700 text-sm">{listing.denial_reason}</p>
+                    <div className="bg-red-50 border border-red-200 rounded-md p-2 mb-3">
+                      <p className="text-red-800 text-xs font-medium">Denied:</p>
+                      <p className="text-red-700 text-xs">{listing.denial_reason}</p>
                     </div>
                   )}
                   {listing.status === 'pending' && !listing.is_draft && (
-                    <div className="bg-orange-50 border border-orange-200 rounded-md p-2 mb-4">
-                      <p className="text-orange-800 text-sm">This listing is pending admin approval.</p>
+                    <div className="bg-orange-50 border border-orange-200 rounded-md p-2 mb-3">
+                      <p className="text-orange-800 text-xs">Pending admin approval</p>
                     </div>
                   )}
                   <div className="flex justify-between items-center">
@@ -335,7 +340,12 @@ const MyListings = () => {
                           e.stopPropagation();
                           handleEditClick(listing);
                         }}
-                        className="p-2 text-gray-600 hover:text-[#bf5700] transition cursor-pointer"
+                        disabled={listing.status === 'pending'}
+                        className={`p-2 transition cursor-pointer ${
+                          listing.status === 'pending' 
+                            ? 'text-gray-400 cursor-not-allowed' 
+                            : 'text-gray-600 hover:text-[#bf5700]'
+                        }`}
                       >
                         <Edit size={18} />
                       </button>

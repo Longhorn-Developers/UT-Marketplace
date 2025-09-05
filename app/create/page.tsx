@@ -195,7 +195,7 @@ const Create = () => {
           </p>
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <p className="text-sm text-blue-800">
-              <strong>Note:</strong> All listings require admin approval before becoming visible to other users. You'll be notified once your listing is approved or if any changes are needed.
+              <strong>Note:</strong> All listings require admin approval before becoming visible to other users. You&apos;ll be notified once your listing is approved or if any changes are needed.
             </p>
           </div>
         </motion.div>

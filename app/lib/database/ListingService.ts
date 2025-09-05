@@ -1,6 +1,7 @@
 import { supabase } from '../supabaseClient';
 import { Listing, ListingCardProps, ListingPageProps } from '../../props/listing';
 import { dbLogger } from './utils';
+import { determineListingStatus, processListingsWithStatus } from '../utils/statusUtils';
 import * as timeago from 'timeago.js';
 
 // Helper function to convert UI values to database enum values (same as mobile app)
@@ -254,15 +255,7 @@ export class ListingService {
         query = query.eq('is_draft', false);
       }
 
-      // Filter by status - only show approved listings by default, unless specifically requested
-      if (status !== 'all') {
-        if (includeOwnListings && currentUserId) {
-          // Show all listings by current user regardless of status, but filter others by status
-          query = query.or(`status.eq.${status},user_id.eq.${currentUserId}`);
-        } else {
-          query = query.eq('status', status);
-        }
-      }
+      // Note: Status filtering is now done after data processing to handle missing columns
 
       if (category && category !== 'All') {
         query = query.eq('category', convertToDbFormat(category, 'category'));
@@ -310,7 +303,7 @@ export class ListingService {
         };
       });
 
-      // Join user data with listings (same as mobile app)
+      // Join user data with listings and add status information
       const enrichedListings = listingsData.map(listing => ({
         ...listing,
         category: convertFromDbFormat(listing.category, 'category'),
@@ -319,8 +312,24 @@ export class ListingService {
         user_image: userMap[listing.user_id]?.image || null,
       }));
 
-      dbLogger.success('Listings fetched successfully', { count: enrichedListings.length });
-      return enrichedListings as Listing[];
+      // Add status information to all listings
+      const listingsWithStatus = processListingsWithStatus(enrichedListings);
+
+      // Filter by status - only show approved listings by default, unless specifically requested
+      let filteredListings = listingsWithStatus;
+      if (status !== 'all') {
+        if (includeOwnListings && currentUserId) {
+          // Show all listings by current user regardless of status, but filter others by status
+          filteredListings = listingsWithStatus.filter(listing => 
+            listing.status === status || listing.user_id === currentUserId
+          );
+        } else {
+          filteredListings = listingsWithStatus.filter(listing => listing.status === status);
+        }
+      }
+
+      dbLogger.success('Listings fetched successfully', { count: filteredListings.length });
+      return filteredListings as Listing[];
     } catch (error) {
       dbLogger.error('Error in getListings', error);
       return [];
@@ -356,11 +365,14 @@ export class ListingService {
 
       if (!data) return null;
 
+      // Determine status using centralized utility
+      const { status, denial_reason: denialReason } = determineListingStatus(data);
+
       // Check if user has permission to view this listing
       // Only show pending/denied listings to the owner or admin
-      if (data.status !== 'approved' && currentUserId !== data.user_id) {
+      if (status !== 'approved' && currentUserId !== data.user_id) {
         // TODO: Add admin check here when admin context is available
-        dbLogger.warn('Unauthorized access to non-approved listing', { listingId, currentUserId, status: data.status });
+        dbLogger.warn('Unauthorized access to non-approved listing', { listingId, currentUserId, status });
         return null;
       }
 
@@ -402,6 +414,8 @@ export class ListingService {
         listingUserEmail: data.user_id, // This will be the user ID, not email
         location_lat: data.location_lat,
         location_lng: data.location_lng,
+        status: status,
+        denial_reason: denialReason,
       };
 
       dbLogger.success('Listing fetched successfully', { listingId });
@@ -697,8 +711,12 @@ export class ListingService {
         condition: convertFromDbFormat(listing.condition, 'condition'),
       })) || [];
 
-      dbLogger.success('Search completed successfully', { count: convertedData.length });
-      return convertedData as Listing[];
+      // Add status information and filter to only approved listings
+      const listingsWithStatus = processListingsWithStatus(convertedData);
+      const approvedListings = listingsWithStatus.filter(listing => listing.status === 'approved');
+
+      dbLogger.success('Search completed successfully', { count: approvedListings.length });
+      return approvedListings as Listing[];
     } catch (error) {
       dbLogger.error('Error in searchListings', error);
       return [];
