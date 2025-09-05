@@ -216,7 +216,7 @@ const MessagesPage = () => {
               id, 
               user_id, 
               title,
-              user:users!user_id(
+              user:user_settings!user_id(
                 display_name,
                 profile_image_url
               )
@@ -242,10 +242,11 @@ const MessagesPage = () => {
           });
           
           // Create a temporary conversation object with user data for the chat window
+          const userData = Array.isArray(listing.user) ? listing.user[0] : listing.user;
           const tempConv: Conversation = {
             user_id: listing.user_id,
-            user_name: listing.user?.display_name || 'Unknown User',
-            user_image: listing.user?.profile_image_url || undefined,
+            user_name: userData?.display_name || 'Unknown User',
+            user_image: userData?.profile_image_url || undefined,
             listing_id: listingId,
             listing_title: listing.title,
             last_message: existingMessages.length > 0 ? existingMessages[existingMessages.length - 1].content : '',
