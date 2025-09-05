@@ -107,6 +107,7 @@ export interface GetListingsParams {
 export interface FavoriteListingParams {
   userId: string;
   listingId: string;
+  type?: 'favorite' | 'watchlist';
 }
 
 /**
@@ -426,66 +427,69 @@ export class ListingService {
   }
 
   /**
-   * Add/remove favorite listing
+   * Add/remove favorite/watchlist listing
    */
   static async toggleFavorite(params: FavoriteListingParams): Promise<{ success: boolean; isFavorited: boolean }> {
-    const { userId, listingId } = params;
+    const { userId, listingId, type = 'favorite' } = params;
 
     try {
-      dbLogger.info('Toggling favorite', { userId, listingId });
+      dbLogger.info('Toggling favorite/watchlist', { userId, listingId, type });
 
-      // Check if already favorited
+      // Check if already favorited/watchlisted
       const { data: existing } = await supabase
         .from('user_favorites')
         .select('id')
         .eq('user_id', userId)
         .eq('listing_id', listingId)
+        .eq('type', type)
         .single();
 
       if (existing) {
-        // Remove favorite
+        // Remove favorite/watchlist
         const { error } = await supabase
           .from('user_favorites')
           .delete()
           .eq('user_id', userId)
-          .eq('listing_id', listingId);
+          .eq('listing_id', listingId)
+          .eq('type', type);
 
         if (error) {
-          dbLogger.error('Failed to remove favorite', error);
+          dbLogger.error(`Failed to remove ${type}`, error);
           return { success: false, isFavorited: true };
         }
 
-        dbLogger.success('Favorite removed successfully');
+        dbLogger.success(`${type} removed successfully`);
         return { success: true, isFavorited: false };
       } else {
-        // Add favorite
+        // Add favorite/watchlist
         const { error } = await supabase
           .from('user_favorites')
           .insert({
             user_id: userId,
             listing_id: listingId,
+            type: type,
           });
 
         if (error) {
-          dbLogger.error('Failed to add favorite', error);
+          dbLogger.error(`Failed to add ${type}`, error);
           return { success: false, isFavorited: false };
         }
 
-        dbLogger.success('Favorite added successfully');
+        dbLogger.success(`${type} added successfully`);
         return { success: true, isFavorited: true };
       }
     } catch (error) {
-      dbLogger.error('Error in toggleFavorite', error);
+      dbLogger.error(`Error in toggle${type}`, error);
       return { success: false, isFavorited: false };
     }
   }
 
   /**
-   * Get user's favorite listings
+   * Get user's favorite/watchlist listings
    */
-  static async getFavoriteListings(userId: string): Promise<Listing[]> {
+  static async getFavoriteListings(userId: string, type: 'favorite' | 'watchlist' = 'favorite'): Promise<Listing[]> {
     try {
-      dbLogger.info('Fetching favorite listings', { userId });
+      dbLogger.info('Fetching favorite/watchlist listings', { userId, type });
 
       const { data, error } = await supabase
         .from('user_favorites')
@@ -499,10 +503,11 @@ export class ListingService {
             )
           )
         `)
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .eq('type', type);
 
       if (error) {
-        dbLogger.error('Failed to fetch favorite listings', error);
+        dbLogger.error(`Failed to fetch ${type} listings`, error);
         return [];
       }
 
@@ -516,11 +521,38 @@ export class ListingService {
         };
       }).filter(Boolean) || []) as any[];
       
-      dbLogger.success('Favorite listings fetched successfully', { count: listings.length });
+      dbLogger.success(`${type} listings fetched successfully`, { count: listings.length });
       return listings;
     } catch (error) {
-      dbLogger.error('Error in getFavoriteListings', error);
+      dbLogger.error(`Error in get${type}Listings`, error);
       return [];
+    }
+  }
+
+  /**
+   * Get user's favorite/watchlist status for a specific listing
+   */
+  static async getFavoriteStatus(userId: string, listingId: string): Promise<{ isFavorited: boolean; isWatchlisted: boolean }> {
+    try {
+      const { data, error } = await supabase
+        .from('user_favorites')
+        .select('type')
+        .eq('user_id', userId)
+        .eq('listing_id', listingId);
+
+      if (error) {
+        dbLogger.error('Failed to fetch favorite status', error);
+        return { isFavorited: false, isWatchlisted: false };
+      }
+
+      const types = data?.map(item => item.type) || [];
+      return {
+        isFavorited: types.includes('favorite'),
+        isWatchlisted: types.includes('watchlist')
+      };
+    } catch (error) {
+      dbLogger.error('Error in getFavoriteStatus', error);
+      return { isFavorited: false, isWatchlisted: false };
     }
   }
 

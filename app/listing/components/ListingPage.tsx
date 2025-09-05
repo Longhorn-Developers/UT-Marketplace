@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabaseClient';
-import { MapPin, Calendar, Tag } from "lucide-react";
+import { MapPin, Calendar, Tag, Heart, Eye, Share2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import { ListingPageProps } from '../../props/listing';
 import { useAuth } from '../../context/AuthContext';
+import { ListingService } from '../../lib/database/ListingService';
 import UserRatingDisplay from "../../../components/user/UserRatingDisplay";
 import Image from "next/image";
 import dynamic from "next/dynamic";
@@ -35,6 +36,10 @@ const ListingPage: React.FC<ListingPageProps> = ({
   const [ratingLoading, setRatingLoading] = useState(true);
   const [sellerDisplayName, setSellerDisplayName] = useState<string | null>(null);
   const [sellerProfileImage, setSellerProfileImage] = useState<string | null>(null);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [isWatchlisted, setIsWatchlisted] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [watchlistLoading, setWatchlistLoading] = useState(false);
 
   useEffect(() => {
     const fetchSellerRating = async () => {
@@ -59,6 +64,22 @@ const ListingPage: React.FC<ListingPageProps> = ({
     };
     fetchSellerRating();
   }, [listingUserEmail]);
+
+  useEffect(() => {
+    const fetchFavoriteStatus = async () => {
+      if (!currentUser?.id || !id) return;
+      
+      try {
+        const status = await ListingService.getFavoriteStatus(currentUser.id, id);
+        setIsFavorited(status.isFavorited);
+        setIsWatchlisted(status.isWatchlisted);
+      } catch (error) {
+        console.error('Error fetching favorite status:', error);
+      }
+    };
+    
+    fetchFavoriteStatus();
+  }, [currentUser?.id, id]);
 
   useEffect(() => {
     const fetchSellerDisplayName = async () => {
@@ -94,6 +115,76 @@ const ListingPage: React.FC<ListingPageProps> = ({
     
     // Redirect to messages page with listing id as a query param
     router.push(`/messages?listing=${encodeURIComponent(id)}`);
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!currentUser?.id) {
+      router.push('/auth/signin');
+      return;
+    }
+
+    setFavoriteLoading(true);
+    try {
+      const result = await ListingService.toggleFavorite({
+        userId: currentUser.id,
+        listingId: id,
+        type: 'favorite'
+      });
+      
+      if (result.success) {
+        setIsFavorited(result.isFavorited);
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    } finally {
+      setFavoriteLoading(false);
+    }
+  };
+
+  const handleToggleWatchlist = async () => {
+    if (!currentUser?.id) {
+      router.push('/auth/signin');
+      return;
+    }
+
+    setWatchlistLoading(true);
+    try {
+      const result = await ListingService.toggleFavorite({
+        userId: currentUser.id,
+        listingId: id,
+        type: 'watchlist'
+      });
+      
+      if (result.success) {
+        setIsWatchlisted(result.isFavorited);
+      }
+    } catch (error) {
+      console.error('Error toggling watchlist:', error);
+    } finally {
+      setWatchlistLoading(false);
+    }
+  };
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: title,
+          text: `Check out this listing: ${title} for $${price}`,
+          url: window.location.href,
+        });
+      } catch (error) {
+        console.error('Error sharing:', error);
+      }
+    } else {
+      // Fallback - copy to clipboard
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        alert('Link copied to clipboard!');
+      } catch (error) {
+        console.error('Error copying to clipboard:', error);
+      }
+    }
   };
 
   return (
@@ -228,8 +319,44 @@ const ListingPage: React.FC<ListingPageProps> = ({
             }
           </button>
           <div className="flex gap-2">
-            <button className="flex-1 border border-gray-300 py-2 rounded text-sm hover:bg-gray-50 transition">♡ Save</button>
-            <button className="flex-1 border border-gray-300 py-2 rounded text-sm hover:bg-gray-50 transition">⤴ Share</button>
+            <button 
+              onClick={handleToggleFavorite}
+              disabled={favoriteLoading || currentUser?.id === listingUserEmail}
+              className={`flex-1 border py-2 rounded text-sm transition flex items-center justify-center gap-1 ${
+                isFavorited 
+                  ? 'border-red-500 bg-red-50 text-red-600' 
+                  : 'border-gray-300 hover:bg-gray-50'
+              } ${favoriteLoading || currentUser?.id === listingUserEmail ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <Heart 
+                size={16} 
+                className={isFavorited ? 'text-red-500' : ''} 
+                fill={isFavorited ? 'currentColor' : 'none'}
+              />
+              {favoriteLoading ? 'Saving...' : isFavorited ? 'Saved' : 'Save'}
+            </button>
+            <button 
+              onClick={handleToggleWatchlist}
+              disabled={watchlistLoading || currentUser?.id === listingUserEmail}
+              className={`flex-1 border py-2 rounded text-sm transition flex items-center justify-center gap-1 ${
+                isWatchlisted 
+                  ? 'border-blue-500 bg-blue-50 text-blue-600' 
+                  : 'border-gray-300 hover:bg-gray-50'
+              } ${watchlistLoading || currentUser?.id === listingUserEmail ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <Eye 
+                size={16} 
+                className={isWatchlisted ? 'text-blue-500' : ''}
+              />
+              {watchlistLoading ? 'Adding...' : isWatchlisted ? 'Watching' : 'Watch'}
+            </button>
+            <button 
+              onClick={handleShare}
+              className="flex-1 border border-gray-300 py-2 rounded text-sm hover:bg-gray-50 transition flex items-center justify-center gap-1"
+            >
+              <Share2 size={16} />
+              Share
+            </button>
           </div>
           <button className="block text-sm text-gray-500 mt-2 hover:underline text-left">Report this listing</button>
         </div>
