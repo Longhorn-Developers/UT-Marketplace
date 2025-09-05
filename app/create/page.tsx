@@ -167,7 +167,7 @@ const Create = () => {
       });
 
       if (listing) {
-        toast.success("🎉 Listing created successfully!");
+        toast.success("🎉 Listing created successfully! It's now pending admin approval and will be visible once approved.");
         router.push('/my-listings');
       } else {
         throw new Error('Failed to create listing');
@@ -190,9 +190,14 @@ const Create = () => {
       <div className="max-w-4xl mx-auto py-10 px-4">
         <motion.div variants={headerVariants}>
           <h1 className="text-3xl font-bold mb-2">Create a New Listing</h1>
-          <p className="text-gray-600 mb-6">
+          <p className="text-gray-600 mb-2">
             Fill out the form below to create your listing on UT Marketplace
           </p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-blue-800">
+              <strong>Note:</strong> All listings require admin approval before becoming visible to other users. You&apos;ll be notified once your listing is approved or if any changes are needed.
+            </p>
+          </div>
         </motion.div>
 
         <motion.div variants={itemVariants}>

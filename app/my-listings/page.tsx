@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 import { useRouter } from "next/navigation";
-import { Edit, Trash2, Eye, Send } from "lucide-react";
+import { Edit, Trash2, Eye, Send, Clock, CheckCircle, XCircle, RefreshCw } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import EditForm from "../listing/components/EditForm";
@@ -19,6 +19,7 @@ import {
 } from "../props/animations";
 import BrowseLoader from "../browse/components/BrowseLoader";
 import * as timeago from "timeago.js";
+import { processListingsWithStatus } from "../lib/utils/statusUtils";
 
 interface Listing {
   id: string;
@@ -32,6 +33,8 @@ interface Listing {
   location: string;
   condition: string;
   description: string;
+  status: 'pending' | 'approved' | 'denied';
+  denial_reason?: string;
 }
 
 const categoryOptions = [
@@ -77,7 +80,11 @@ const MyListings = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setListings(data || []);
+      
+      // Process listings to add consistent status information
+      const processedListings = processListingsWithStatus(data || []);
+      
+      setListings(processedListings);
     } catch (error) {
       console.error("Error fetching listings:", error);
       toast.error("Failed to load listings");
@@ -113,6 +120,34 @@ const MyListings = () => {
     return true;
   };
 
+  const handleResubmit = async (listing: Listing) => {
+    if (!validateListing(listing)) {
+      toast.error("Please complete all required fields before resubmitting");
+      handleEditClick(listing);
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("listings")
+        .update({ 
+          status: 'pending',
+          denial_reason: null
+        })
+        .eq("id", listing.id);
+
+      if (error) throw error;
+      
+      setListings(listings.map(l => 
+        l.id === listing.id ? { ...l, status: 'pending', denial_reason: null } : l
+      ));
+      toast.success("Listing resubmitted for approval!");
+    } catch (error) {
+      console.error("Error resubmitting listing:", error);
+      toast.error("Failed to resubmit listing");
+    }
+  };
+
   const handlePublishDraft = async (listing: Listing) => {
     if (!validateListing(listing)) {
       toast.error("Please complete all required fields before publishing");
@@ -123,15 +158,18 @@ const MyListings = () => {
     try {
       const { error } = await supabase
         .from("listings")
-        .update({ is_draft: false })
+        .update({ 
+          is_draft: false,
+          status: 'pending'
+        })
         .eq("id", listing.id);
 
       if (error) throw error;
       
       setListings(listings.map(l => 
-        l.id === listing.id ? { ...l, is_draft: false } : l
+        l.id === listing.id ? { ...l, is_draft: false, status: 'pending' } : l
       ));
-      toast.success("Listing published successfully");
+      toast.success("Listing published and submitted for approval!");
     } catch (error) {
       console.error("Error publishing listing:", error);
       toast.error("Failed to publish listing");
@@ -252,6 +290,24 @@ const MyListings = () => {
                       Sold
                     </div>
                   )}
+                  {!listing.is_draft && !listing.is_sold && listing.status === 'pending' && (
+                    <div className="absolute top-2 left-2 bg-orange-500 text-white px-2 py-1 rounded text-sm flex items-center gap-1">
+                      <Clock size={12} />
+                      Pending Approval
+                    </div>
+                  )}
+                  {!listing.is_draft && !listing.is_sold && listing.status === 'approved' && (
+                    <div className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded text-sm flex items-center gap-1">
+                      <CheckCircle size={12} />
+                      Approved
+                    </div>
+                  )}
+                  {!listing.is_draft && !listing.is_sold && listing.status === 'denied' && (
+                    <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-sm flex items-center gap-1">
+                      <XCircle size={12} />
+                      Denied
+                    </div>
+                  )}
                 </div>
                 <div className="p-4">
                   <h3 
@@ -263,9 +319,20 @@ const MyListings = () => {
                   <p className="text-gray-600 text-sm mb-2">
                     {listing.category} • ${listing.price}
                   </p>
-                  <p className="text-gray-500 text-sm mb-4">
+                  <p className="text-gray-500 text-sm mb-2">
                     Listed {timeago.format(listing.created_at)}
                   </p>
+                  {listing.status === 'denied' && listing.denial_reason && (
+                    <div className="bg-red-50 border border-red-200 rounded-md p-2 mb-3">
+                      <p className="text-red-800 text-xs font-medium">Denied:</p>
+                      <p className="text-red-700 text-xs">{listing.denial_reason}</p>
+                    </div>
+                  )}
+                  {listing.status === 'pending' && !listing.is_draft && (
+                    <div className="bg-orange-50 border border-orange-200 rounded-md p-2 mb-3">
+                      <p className="text-orange-800 text-xs">Pending admin approval</p>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center">
                     <div className="flex gap-2">
                       <button
@@ -273,7 +340,12 @@ const MyListings = () => {
                           e.stopPropagation();
                           handleEditClick(listing);
                         }}
-                        className="p-2 text-gray-600 hover:text-[#bf5700] transition cursor-pointer"
+                        disabled={listing.status === 'pending'}
+                        className={`p-2 transition cursor-pointer ${
+                          listing.status === 'pending' 
+                            ? 'text-gray-400 cursor-not-allowed' 
+                            : 'text-gray-600 hover:text-[#bf5700]'
+                        }`}
                       >
                         <Edit size={18} />
                       </button>
@@ -306,6 +378,18 @@ const MyListings = () => {
                       >
                         <Send size={14} />
                         Publish
+                      </button>
+                    )}
+                    {listing.status === 'denied' && !listing.is_draft && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleResubmit(listing);
+                        }}
+                        className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm"
+                      >
+                        <RefreshCw size={14} />
+                        Resubmit
                       </button>
                     )}
                   </div>

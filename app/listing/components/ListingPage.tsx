@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabaseClient';
-import { MapPin, Calendar, Tag, Heart, Eye, Share2 } from "lucide-react";
+import { MapPin, Calendar, Tag, Heart, Eye, Share2, Clock } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import { ListingPageProps } from '../../props/listing';
 import { useAuth } from '../../context/AuthContext';
 import { ListingService } from '../../lib/database/ListingService';
 import UserRatingDisplay from "../../../components/user/UserRatingDisplay";
+import ReportListingModal from "../../../components/modals/ReportListingModal";
+import ReportUserModal from "../../../components/modals/ReportUserModal";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 
@@ -27,7 +29,7 @@ const ListingPage: React.FC<ListingPageProps> = ({
   id,
   location_lat,
   location_lng,
-  ...rest
+  status,
 }) => {
   const [selectedImageIdx, setSelectedImageIdx] = useState(0);
   const { user: currentUser } = useAuth();
@@ -40,6 +42,8 @@ const ListingPage: React.FC<ListingPageProps> = ({
   const [isWatchlisted, setIsWatchlisted] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
   const [watchlistLoading, setWatchlistLoading] = useState(false);
+  const [showReportListingModal, setShowReportListingModal] = useState(false);
+  const [showReportUserModal, setShowReportUserModal] = useState(false);
 
   useEffect(() => {
     const fetchSellerRating = async () => {
@@ -187,6 +191,8 @@ const ListingPage: React.FC<ListingPageProps> = ({
     }
   };
 
+  const isOwner = currentUser?.id === listingUserEmail;
+
   return (
     <>
     <div className="max-w-6xl mx-auto mt-4">
@@ -194,6 +200,7 @@ const ListingPage: React.FC<ListingPageProps> = ({
         ← Back to Listings
       </a>
     </div>
+
 
     <div className="max-w-6xl mx-auto mt-2">
       <h1 className="text-2xl font-bold text-gray-900">Listing Details</h1>
@@ -300,65 +307,101 @@ const ListingPage: React.FC<ListingPageProps> = ({
         </div>
 
         <div className="mt-auto flex flex-col gap-4">
-          <button 
-            onClick={handleMessageSeller}
-            disabled={!currentUser || currentUser.id === listingUserEmail}
-            className={`w-full font-semibold py-2 rounded transition ${
-              !currentUser 
-                ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                : currentUser.id === listingUserEmail
-                ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                : 'bg-[#bf5700] hover:bg-[#a54700] text-white'
-            }`}
-          >
-            {!currentUser 
-              ? 'Sign in to Message'
-              : currentUser.id === listingUserEmail
-              ? 'This is your listing'
-              : 'Message Seller'
-            }
-          </button>
-          <div className="flex gap-2">
-            <button 
-              onClick={handleToggleFavorite}
-              disabled={favoriteLoading || currentUser?.id === listingUserEmail}
-              className={`flex-1 border py-2 rounded text-sm transition flex items-center justify-center gap-1 ${
-                isFavorited 
-                  ? 'border-red-500 bg-red-50 text-red-600' 
-                  : 'border-gray-300 hover:bg-gray-50'
-              } ${favoriteLoading || currentUser?.id === listingUserEmail ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <Heart 
-                size={16} 
-                className={isFavorited ? 'text-red-500' : ''} 
-                fill={isFavorited ? 'currentColor' : 'none'}
-              />
-              {favoriteLoading ? 'Saving...' : isFavorited ? 'Saved' : 'Save'}
-            </button>
-            <button 
-              onClick={handleToggleWatchlist}
-              disabled={watchlistLoading || currentUser?.id === listingUserEmail}
-              className={`flex-1 border py-2 rounded text-sm transition flex items-center justify-center gap-1 ${
-                isWatchlisted 
-                  ? 'border-blue-500 bg-blue-50 text-blue-600' 
-                  : 'border-gray-300 hover:bg-gray-50'
-              } ${watchlistLoading || currentUser?.id === listingUserEmail ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <Eye 
-                size={16} 
-                className={isWatchlisted ? 'text-blue-500' : ''}
-              />
-              {watchlistLoading ? 'Adding...' : isWatchlisted ? 'Watching' : 'Watch'}
-            </button>
-            <button 
-              onClick={handleShare}
-              className="flex-1 border border-gray-300 py-2 rounded text-sm hover:bg-gray-50 transition flex items-center justify-center gap-1"
-            >
-              <Share2 size={16} />
-              Share
-            </button>
-          </div>
-          <button className="block text-sm text-gray-500 mt-2 hover:underline text-left">Report this listing</button>
+          {/* Show pending message if owner and listing is pending */}
+          {isOwner && status === 'pending' ? (
+            <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4 text-center">
+              <Clock className="h-8 w-8 text-orange-500 mx-auto mb-2" />
+              <h3 className="text-orange-800 font-semibold mb-1">Please Wait for Approval</h3>
+              <p className="text-orange-700 text-sm">
+                Your listing is being reviewed by our admin team. All actions are disabled until approved.
+              </p>
+            </div>
+          ) : (
+            <>
+              <button 
+                onClick={handleMessageSeller}
+                disabled={!currentUser || currentUser.id === listingUserEmail}
+                className={`w-full font-semibold py-2 rounded transition ${
+                  !currentUser 
+                    ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                    : currentUser.id === listingUserEmail
+                    ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                    : 'bg-[#bf5700] hover:bg-[#a54700] text-white'
+                }`}
+              >
+                {!currentUser 
+                  ? 'Sign in to Message'
+                  : currentUser.id === listingUserEmail
+                  ? 'This is your listing'
+                  : 'Message Seller'
+                }
+              </button>
+              <div className="flex gap-2">
+                <button 
+                  onClick={handleToggleFavorite}
+                  disabled={favoriteLoading || currentUser?.id === listingUserEmail}
+                  className={`flex-1 border py-2 rounded text-sm transition flex items-center justify-center gap-1 ${
+                    isFavorited 
+                      ? 'border-red-500 bg-red-50 text-red-600' 
+                      : 'border-gray-300 hover:bg-gray-50'
+                  } ${favoriteLoading || currentUser?.id === listingUserEmail ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <Heart 
+                    size={16} 
+                    className={isFavorited ? 'text-red-500' : ''} 
+                    fill={isFavorited ? 'currentColor' : 'none'}
+                  />
+                  {favoriteLoading ? 'Saving...' : isFavorited ? 'Saved' : 'Save'}
+                </button>
+                <button 
+                  onClick={handleToggleWatchlist}
+                  disabled={watchlistLoading || currentUser?.id === listingUserEmail}
+                  className={`flex-1 border py-2 rounded text-sm transition flex items-center justify-center gap-1 ${
+                    isWatchlisted 
+                      ? 'border-blue-500 bg-blue-50 text-blue-600' 
+                      : 'border-gray-300 hover:bg-gray-50'
+                  } ${watchlistLoading || currentUser?.id === listingUserEmail ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <Eye 
+                    size={16} 
+                    className={isWatchlisted ? 'text-blue-500' : ''}
+                  />
+                  {watchlistLoading ? 'Adding...' : isWatchlisted ? 'Watching' : 'Watch'}
+                </button>
+                <button 
+                  onClick={handleShare}
+                  className="flex-1 border border-gray-300 py-2 rounded text-sm hover:bg-gray-50 transition flex items-center justify-center gap-1"
+                >
+                  <Share2 size={16} />
+                  Share
+                </button>
+              </div>
+              <div className="flex gap-2 mt-2">
+                <button 
+                  onClick={() => setShowReportListingModal(true)}
+                  disabled={!currentUser || currentUser.id === listingUserEmail}
+                  className={`text-sm hover:underline text-left ${
+                    !currentUser || currentUser.id === listingUserEmail
+                      ? 'text-gray-400 cursor-not-allowed'
+                      : 'text-gray-500 hover:text-red-600'
+                  }`}
+                >
+                  Report this listing
+                </button>
+                {currentUser && currentUser.id !== listingUserEmail && (
+                  <>
+                    <span className="text-gray-300">•</span>
+                    <button 
+                      onClick={() => setShowReportUserModal(true)}
+                      className="text-sm text-gray-500 hover:text-red-600 hover:underline text-left"
+                    >
+                      Report seller
+                    </button>
+                  </>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -379,6 +422,23 @@ const ListingPage: React.FC<ListingPageProps> = ({
         </div>
       </div>
     )}
+
+    {/* Report Modals */}
+    <ReportListingModal
+      isOpen={showReportListingModal}
+      onClose={() => setShowReportListingModal(false)}
+      listingId={id}
+      listingTitle={title}
+      userId={currentUser?.id || null}
+    />
+
+    <ReportUserModal
+      isOpen={showReportUserModal}
+      onClose={() => setShowReportUserModal(false)}
+      reportedUserId={listingUserEmail || ''}
+      reportedUserName={sellerDisplayName || listingUserName || 'Unknown User'}
+      reporterId={currentUser?.id || null}
+    />
     </>
   )
 }

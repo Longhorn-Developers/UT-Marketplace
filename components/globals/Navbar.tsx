@@ -1,14 +1,14 @@
 "use client";
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
-import { MessageCircle, Settings, LogOut, Plus, X, User, Menu, Heart } from "lucide-react";
+import { MessageCircle, Settings, LogOut, Plus, X, User, Menu, Heart, Shield } from "lucide-react";
 import { useAuth } from "../../app/context/AuthContext";
 import Notifications from "./Notifications";
 
 const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const { user, signOut } = useAuth();
+  const { user, isAdmin, signOut } = useAuth();
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

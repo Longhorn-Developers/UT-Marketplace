@@ -25,7 +25,7 @@ const Listing = () => {
         setIsLoading(true);
         setError(null);
 
-        const listingData = await ListingService.getListingById(id as string);
+        const listingData = await ListingService.getListingById(id as string, user?.id);
         
         if (!listingData) {
           throw new Error("Listing not found");
@@ -43,7 +43,7 @@ const Listing = () => {
     if (id) {
       fetchData();
     }
-  }, [id]);
+  }, [id, user?.id]);
 
   if (isLoading) {
     return (
@@ -119,6 +119,8 @@ const Listing = () => {
     is_draft: false, // Will be handled by the service
     location_lat: listing.location_lat,
     location_lng: listing.location_lng,
+    status: listing.status,
+    denial_reason: listing.denial_reason,
   };
 
   const userProps = {
