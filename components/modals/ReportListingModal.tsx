@@ -119,7 +119,7 @@ const ReportListingModal: React.FC<ReportListingModalProps> = ({
         <form onSubmit={handleSubmit} className="p-6">
           <div className="mb-4">
             <p className="text-sm text-gray-600 mb-2">
-              You are reporting: <span className="font-medium">"{listingTitle}"</span>
+              You are reporting: <span className="font-medium">&quot;{listingTitle}&quot;</span>
             </p>
           </div>
 
@@ -155,7 +155,7 @@ const ReportListingModal: React.FC<ReportListingModalProps> = ({
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Provide any additional information about why you're reporting this listing..."
+              placeholder="Provide any additional information about why you&apos;re reporting this listing..."
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#bf5700] focus:border-transparent resize-none"
               disabled={isSubmitting}

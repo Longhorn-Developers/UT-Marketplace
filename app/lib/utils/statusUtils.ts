@@ -30,7 +30,7 @@ export function determineListingStatus(listing: any): ListingWithStatus {
 /**
  * Processes an array of listings to add consistent status information
  */
-export function processListingsWithStatus<T extends any>(listings: T[]): (T & ListingWithStatus)[] {
+export function processListingsWithStatus<T extends Record<string, any>>(listings: T[]): (T & ListingWithStatus)[] {
   return listings.map(listing => ({
     ...listing,
     ...determineListingStatus(listing)
