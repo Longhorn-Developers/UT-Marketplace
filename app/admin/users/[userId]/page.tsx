@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { User, Mail, Calendar, Shield, Package, Star, Activity, Clock, AlertTriangle, Ban, CheckCircle, Eye, ArrowLeft } from 'lucide-react';
+import { User, Mail, Calendar, Package, Star, Activity, Clock, AlertTriangle, Ban, CheckCircle, Shield, ArrowLeft } from 'lucide-react';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../context/AuthContext';
 import Image from 'next/image';
@@ -174,33 +174,6 @@ const AdminUserProfilePage = () => {
     }
   };
 
-  const handleToggleAdmin = async () => {
-    if (!currentUser?.id || !profile) return;
-    
-    const action = profile.is_admin ? 'remove admin privileges from' : 'grant admin privileges to';
-    if (!confirm(`Are you sure you want to ${action} this user?`)) {
-      return;
-    }
-
-    setActionLoading(true);
-    try {
-      const { error } = await supabase
-        .from('users')
-        .update({ is_admin: !profile.is_admin })
-        .eq('id', userId as string);
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      setProfile({ ...profile, is_admin: !profile.is_admin });
-    } catch (error) {
-      console.error('Error updating user privileges:', error);
-      alert('Failed to update user privileges');
-    } finally {
-      setActionLoading(false);
-    }
-  };
 
   const getUserStatusBadge = () => {
     if (!profile) return null;
@@ -445,14 +418,6 @@ const AdminUserProfilePage = () => {
                     {actionLoading ? 'Processing...' : (profile.is_banned ? 'Unban User' : 'Ban User')}
                   </button>
                 )}
-                <button
-                  onClick={handleToggleAdmin}
-                  disabled={actionLoading}
-                  className="w-full bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium transition-colors"
-                >
-                  <Shield size={18} />
-                  {actionLoading ? 'Processing...' : (profile.is_admin ? 'Remove Admin' : 'Make Admin')}
-                </button>
               </div>
             </div>
           </div>
