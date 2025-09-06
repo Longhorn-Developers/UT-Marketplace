@@ -2,11 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { AdminService } from '../../lib/database/AdminService';
 import { supabase } from '../../lib/supabaseClient';
-import { User, Mail, Calendar, Shield, Search, Eye, Ban, CheckCircle2, XCircle } from 'lucide-react';
+import { User, Shield, Search, Ban, CheckCircle2, ExternalLink } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Image from 'next/image';
 import AdminLayout from '../../../components/admin/AdminLayout';
+import Link from 'next/link';
 
 interface UserData {
   id: string;
@@ -27,10 +28,6 @@ const AdminUsersPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'banned' | 'admin'>('all');
-  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
-  const [showUserModal, setShowUserModal] = useState(false);
-  const [userListings, setUserListings] = useState<any[]>([]);
-  const [userReports, setUserReports] = useState<any[]>([]);
 
   useEffect(() => {
     fetchUsers();
@@ -126,29 +123,6 @@ const AdminUsersPage = () => {
     }
   };
 
-  const fetchUserDetails = async (userId: string) => {
-    try {
-      // Fetch user's listings
-      const { data: listings } = await supabase
-        .from('listings')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      // Fetch reports about this user
-      const { data: reports } = await supabase
-        .from('reports')
-        .select('*')
-        .eq('reported_user_id', userId)
-        .order('created_at', { ascending: false });
-
-      setUserListings(listings || []);
-      setUserReports(reports || []);
-    } catch (error) {
-      console.error('Error fetching user details:', error);
-    }
-  };
 
   const handleBanUser = async (userId: string, currentBanStatus: boolean) => {
     const action = currentBanStatus ? 'unban' : 'ban';
@@ -384,17 +358,13 @@ const AdminUsersPage = () => {
                   </td>
                   <td className="px-6 py-4 text-sm font-medium">
                     <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => {
-                          setSelectedUser(user);
-                          fetchUserDetails(user.id);
-                          setShowUserModal(true);
-                        }}
+                      <Link
+                        href={`/admin/users/${user.id}`}
                         className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50"
-                        title="View Details"
+                        title="View User Profile"
                       >
-                        <Eye size={16} />
-                      </button>
+                        <ExternalLink size={16} />
+                      </Link>
                       {user.is_admin !== true && (
                         <button
                           onClick={() => handleBanUser(user.id, user.is_banned === true)}
@@ -423,102 +393,6 @@ const AdminUsersPage = () => {
         )}
       </div>
 
-      {/* User Details Modal */}
-      {showUserModal && selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-medium text-gray-900">
-                  User Details: {selectedUser.display_name || selectedUser.email}
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowUserModal(false);
-                    setSelectedUser(null);
-                    setUserListings([]);
-                    setUserReports([]);
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <XCircle size={24} />
-                </button>
-              </div>
-
-              {/* User Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <div className="space-y-4">
-                  <h4 className="font-semibold text-gray-900">User Information</h4>
-                  <div className="space-y-2">
-                    <p><span className="font-medium">Email:</span> {selectedUser.email}</p>
-                    <p><span className="font-medium">Display Name:</span> {selectedUser.display_name || 'Not set'}</p>
-                    <p><span className="font-medium">Status:</span> {getUserStatusBadge(selectedUser)}</p>
-                    <p><span className="font-medium">Joined:</span> {new Date(selectedUser.created_at).toLocaleDateString()}</p>
-                    {selectedUser.last_sign_in_at && (
-                      <p><span className="font-medium">Last Sign In:</span> {new Date(selectedUser.last_sign_in_at).toLocaleDateString()}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h4 className="font-semibold text-gray-900">Statistics</h4>
-                  <div className="space-y-2">
-                    <p><span className="font-medium">Total Listings:</span> {selectedUser.listing_count}</p>
-                    <p><span className="font-medium">Reviews Received:</span> {selectedUser.review_count}</p>
-                    <p><span className="font-medium">Average Rating:</span> {
-                      selectedUser.average_rating && selectedUser.average_rating > 0 
-                        ? `★ ${selectedUser.average_rating.toFixed(1)}`
-                        : 'No ratings'
-                    }</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* User Listings */}
-              <div className="mb-8">
-                <h4 className="font-semibold text-gray-900 mb-4">Recent Listings ({userListings.length})</h4>
-                {userListings.length > 0 ? (
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {userListings.map((listing) => (
-                      <div key={listing.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div>
-                          <p className="font-medium text-sm">{listing.title}</p>
-                          <p className="text-xs text-gray-500">${listing.price} • {listing.category}</p>
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {new Date(listing.created_at).toLocaleDateString()}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-sm">No listings found</p>
-                )}
-              </div>
-
-              {/* User Reports */}
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-4">Reports Against User ({userReports.length})</h4>
-                {userReports.length > 0 ? (
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {userReports.map((report) => (
-                      <div key={report.id} className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                        <p className="font-medium text-sm text-red-800">{report.reason}</p>
-                        <p className="text-xs text-red-600 mt-1">{report.description}</p>
-                        <p className="text-xs text-gray-500 mt-2">
-                          Reported on {new Date(report.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-sm">No reports found</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
         <ToastContainer position="bottom-right" />
       </div>

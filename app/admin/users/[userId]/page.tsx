@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { User, Mail, Calendar, Shield, Package, Star, Activity, Clock, AlertTriangle, Ban, CheckCircle, Eye, ArrowLeft } from 'lucide-react';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../context/AuthContext';
@@ -467,30 +468,36 @@ const AdminUserProfilePage = () => {
               {listings.length > 0 ? (
                 <div className="space-y-3 max-h-96 overflow-y-auto">
                   {listings.slice(0, 20).map((listing) => (
-                    <div key={listing.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                      <div className="flex items-center gap-3">
-                        {listing.images && listing.images.length > 0 && (
-                          <div className="w-12 h-12 relative rounded-lg overflow-hidden">
-                            <Image
-                              src={listing.images[0]}
-                              alt={listing.title}
-                              fill
-                              className="object-cover"
-                            />
+                    <Link
+                      key={listing.id}
+                      href={`/admin/listings/${listing.id}`}
+                      className="block"
+                    >
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          {listing.images && listing.images.length > 0 && (
+                            <div className="w-12 h-12 relative rounded-lg overflow-hidden">
+                              <Image
+                                src={listing.images[0]}
+                                alt={listing.title}
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                          )}
+                          <div>
+                            <p className="font-medium text-sm text-gray-900">{listing.title}</p>
+                            <p className="text-xs text-gray-600">${listing.price} • {listing.category}</p>
                           </div>
-                        )}
-                        <div>
-                          <p className="font-medium text-sm text-gray-900">{listing.title}</p>
-                          <p className="text-xs text-gray-600">${listing.price} • {listing.category}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {getStatusBadge(listing.status)}
+                          <span className="text-xs text-gray-500">
+                            {new Date(listing.created_at).toLocaleDateString()}
+                          </span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {getStatusBadge(listing.status)}
-                        <span className="text-xs text-gray-500">
-                          {new Date(listing.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               ) : (
