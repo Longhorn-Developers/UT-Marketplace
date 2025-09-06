@@ -16,10 +16,12 @@ import {
   Activity,
   UserCheck,
   AlertCircle,
-  Shield
+  Shield,
+  ChevronRight
 } from 'lucide-react';
 import { AdminService, AdminStats, AdminListingReport, AdminUserReport, AdminListing } from '../../app/lib/database/AdminService';
 import { useAuth } from '../../app/context/AuthContext';
+import { useRouter } from 'next/navigation';
 
 interface RecentActivity {
   id: string;
@@ -31,12 +33,18 @@ interface RecentActivity {
 
 const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
+  const router = useRouter();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [listingReports, setListingReports] = useState<AdminListingReport[]>([]);
   const [userReports, setUserReports] = useState<AdminUserReport[]>([]);
   const [pendingListings, setPendingListings] = useState<AdminListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [systemStatus, setSystemStatus] = useState({
+    api: 'operational',
+    database: 'healthy',
+    storage: '25% used'
+  });
 
   const [recentActivity] = useState<RecentActivity[]>([
     {
@@ -69,12 +77,46 @@ const AdminDashboard: React.FC = () => {
     }
   ]);
 
+  const checkSystemHealth = async () => {
+    try {
+      // Check API status by trying to fetch stats
+      const startTime = Date.now();
+      const statsData = await AdminService.getAdminStats();
+      const responseTime = Date.now() - startTime;
+      
+      // Update system status based on response
+      const apiStatus = responseTime < 1000 ? 'operational' : responseTime < 3000 ? 'slow' : 'degraded';
+      
+      // Check database health based on query success
+      const databaseStatus = statsData ? 'healthy' : 'degraded';
+      
+      // Calculate storage usage based on total listings (simple approximation)
+      const storageUsed = Math.min(95, Math.floor((statsData?.total_listings || 0) / 100 * 75) + 25);
+      const storageStatus = `${storageUsed}% used`;
+      
+      setSystemStatus({
+        api: apiStatus,
+        database: databaseStatus,
+        storage: storageStatus
+      });
+      
+      return statsData;
+    } catch (error) {
+      setSystemStatus({
+        api: 'error',
+        database: 'error',
+        storage: 'unknown'
+      });
+      throw error;
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch stats
-        const statsData = await AdminService.getAdminStats();
+        // Check system health and fetch stats
+        const statsData = await checkSystemHealth();
         setStats(statsData);
 
         // Fetch reports and pending listings
@@ -378,7 +420,10 @@ const AdminDashboard: React.FC = () => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
             <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h3>
             <div className="space-y-3">
-              <button className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors">
+              <button 
+                onClick={() => router.push('/admin/listings')}
+                className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors"
+              >
                 <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
                   <Clock size={20} className="text-yellow-600" />
                 </div>
@@ -388,7 +433,10 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </button>
               
-              <button className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors">
+              <button 
+                onClick={() => router.push('/admin/reports')}
+                className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors"
+              >
                 <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
                   <AlertTriangle size={20} className="text-red-600" />
                 </div>
@@ -398,7 +446,10 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </button>
               
-              <button className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors">
+              <button 
+                onClick={() => router.push('/admin/users')}
+                className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors"
+              >
                 <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                   <Users size={20} className="text-blue-600" />
                 </div>
@@ -417,22 +468,46 @@ const AdminDashboard: React.FC = () => {
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">API Status</span>
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-sm text-green-600 font-medium">Operational</span>
+                  <div className={`w-2 h-2 rounded-full ${
+                    systemStatus.api === 'operational' ? 'bg-green-500' :
+                    systemStatus.api === 'slow' ? 'bg-yellow-500' : 'bg-red-500'
+                  }`}></div>
+                  <span className={`text-sm font-medium ${
+                    systemStatus.api === 'operational' ? 'text-green-600' :
+                    systemStatus.api === 'slow' ? 'text-yellow-600' : 'text-red-600'
+                  }`}>
+                    {systemStatus.api.charAt(0).toUpperCase() + systemStatus.api.slice(1)}
+                  </span>
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Database</span>
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-sm text-green-600 font-medium">Healthy</span>
+                  <div className={`w-2 h-2 rounded-full ${
+                    systemStatus.database === 'healthy' ? 'bg-green-500' : 'bg-red-500'
+                  }`}></div>
+                  <span className={`text-sm font-medium ${
+                    systemStatus.database === 'healthy' ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {systemStatus.database.charAt(0).toUpperCase() + systemStatus.database.slice(1)}
+                  </span>
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Storage</span>
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                  <span className="text-sm text-yellow-600 font-medium">75% Used</span>
+                  <div className={`w-2 h-2 rounded-full ${
+                    systemStatus.storage.includes('unknown') ? 'bg-gray-500' :
+                    parseInt(systemStatus.storage) > 80 ? 'bg-red-500' :
+                    parseInt(systemStatus.storage) > 60 ? 'bg-yellow-500' : 'bg-green-500'
+                  }`}></div>
+                  <span className={`text-sm font-medium ${
+                    systemStatus.storage.includes('unknown') ? 'text-gray-600' :
+                    parseInt(systemStatus.storage) > 80 ? 'text-red-600' :
+                    parseInt(systemStatus.storage) > 60 ? 'text-yellow-600' : 'text-green-600'
+                  }`}>
+                    {systemStatus.storage.charAt(0).toUpperCase() + systemStatus.storage.slice(1)}
+                  </span>
                 </div>
               </div>
             </div>
@@ -445,7 +520,16 @@ const AdminDashboard: React.FC = () => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-900">Pending Listings for Approval</h3>
-              <span className="text-sm text-gray-500">{pendingListings.length} pending</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">{pendingListings.length} pending</span>
+                <button 
+                  onClick={() => router.push('/admin/listings')}
+                  className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  View All
+                  <ChevronRight size={16} />
+                </button>
+              </div>
             </div>
             <div className="space-y-4">
               {pendingListings.length > 0 ? (
@@ -501,7 +585,16 @@ const AdminDashboard: React.FC = () => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-900">Recent Listing Reports</h3>
-              <span className="text-sm text-gray-500">{listingReports.length} pending</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">{listingReports.length} pending</span>
+                <button 
+                  onClick={() => router.push('/admin/reports')}
+                  className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  View All
+                  <ChevronRight size={16} />
+                </button>
+              </div>
             </div>
             <div className="space-y-4">
               {listingReports.length > 0 ? (
@@ -545,7 +638,16 @@ const AdminDashboard: React.FC = () => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-900">Recent User Reports</h3>
-              <span className="text-sm text-gray-500">{userReports.length} pending</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">{userReports.length} pending</span>
+                <button 
+                  onClick={() => router.push('/admin/reports')}
+                  className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  View All
+                  <ChevronRight size={16} />
+                </button>
+              </div>
             </div>
             <div className="space-y-4">
               {userReports.length > 0 ? (

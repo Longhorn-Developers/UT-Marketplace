@@ -337,6 +337,46 @@ export class ListingService {
   }
 
   /**
+   * Get all listings for admin purposes (includes all statuses)
+   */
+  static async getAllListings(): Promise<{ success: boolean; listings?: Listing[]; error?: string }> {
+    try {
+      dbLogger.info('Fetching all listings for admin');
+
+      const { data, error } = await supabase
+        .from('listings')
+        .select(`
+          *,
+          user:users!user_id(
+            id,
+            display_name,
+            email,
+            profile_image_url
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        dbLogger.error('Failed to fetch all listings', error);
+        return { success: false, error: error.message };
+      }
+
+      if (!data) {
+        return { success: true, listings: [] };
+      }
+
+      // Process listings with status information
+      const processedListings = processListingsWithStatus(data);
+
+      dbLogger.success('All listings fetched successfully', { count: processedListings.length });
+      return { success: true, listings: processedListings as Listing[] };
+    } catch (error: any) {
+      dbLogger.error('Error in getAllListings', error);
+      return { success: false, error: error.message || 'Unknown error occurred' };
+    }
+  }
+
+  /**
    * Get a single listing by ID with full details
    */
   static async getListingById(listingId: string, currentUserId?: string): Promise<ListingPageProps | null> {
