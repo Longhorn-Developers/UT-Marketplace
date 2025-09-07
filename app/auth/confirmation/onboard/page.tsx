@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../context/AuthContext';
+import { supabase } from '../../../lib/supabaseClient';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -15,11 +16,52 @@ export default function OnboardingPage() {
       router.push('/auth/signin');
       return;
     }
-    setIsLoading(false);
+    
+    // Check if user has already completed onboarding
+    const checkOnboardingStatus = async () => {
+      if (user) {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('onboard_complete')
+          .eq('id', user.id)
+          .single();
+          
+        if (profile?.onboard_complete) {
+          // User has already completed onboarding, redirect to home
+          router.push('/');
+          return;
+        }
+      }
+      setIsLoading(false);
+    };
+    
+    checkOnboardingStatus();
   }, [user, router]);
 
-  const handleNext = () => {
-    router.push('/settings');
+  const handleNext = async () => {
+    if (!user) return;
+    
+    try {
+      // Mark onboarding as complete
+      const { error } = await supabase
+        .from('users')
+        .update({ 
+          onboard_complete: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+        
+      if (error) {
+        console.error('Error updating onboarding status:', error);
+      }
+      
+      // Redirect to home page
+      router.push('/');
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+      // Still redirect even if there's an error
+      router.push('/');
+    }
   };
 
   if (isLoading) {

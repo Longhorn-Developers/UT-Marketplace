@@ -9,6 +9,7 @@ export interface UserProfile {
   bio?: string;
   phone?: string;
   location?: string;
+  onboard_complete?: boolean;
   notification_preferences?: {
     email_notifications: boolean;
     browser_notifications: boolean;
@@ -35,6 +36,7 @@ export interface CreateUserProfileParams {
   bio?: string;
   phone?: string;
   location?: string;
+  onboard_complete?: boolean;
   notification_preferences?: {
     email_notifications: boolean;
     browser_notifications: boolean;
@@ -48,6 +50,7 @@ export interface UpdateUserProfileParams {
   bio?: string;
   phone?: string;
   location?: string;
+  onboard_complete?: boolean;
 }
 
 export interface CreateRatingParams {
@@ -82,6 +85,7 @@ export class UserService {
       bio,
       phone,
       location,
+      onboard_complete,
       notification_preferences
     } = params;
 
@@ -98,6 +102,7 @@ export class UserService {
           bio,
           phone,
           location,
+          onboard_complete,
           notification_preferences,
           updated_at: new Date().toISOString(),
         }, {
