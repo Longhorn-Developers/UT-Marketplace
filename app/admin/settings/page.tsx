@@ -75,7 +75,7 @@ const AdminSettingsPage = () => {
         { count: totalUsers },
         { count: totalListings },
         { count: totalReports },
-        { count: totalFiles }
+        storageResponse
       ] = await Promise.all([
         supabase.from('users').select('*', { count: 'exact', head: true }),
         supabase.from('listings').select('*', { count: 'exact', head: true }),
@@ -83,12 +83,14 @@ const AdminSettingsPage = () => {
         supabase.storage.from('listings').list()
       ]);
 
+      const totalFiles = storageResponse.data ? storageResponse.data.length : 0;
+
       setSystemStats({
         database_size: '~15 MB', // This would be calculated server-side in production
         storage_used: '~125 MB', // This would come from storage metrics
         active_connections: Math.floor(Math.random() * 50) + 10, // Mock data
         last_backup: new Date().toLocaleDateString(),
-        total_files: (totalFiles?.length || 0) + (totalUsers || 0) + (totalListings || 0)
+        total_files: (totalFiles || 0) + (totalUsers || 0) + (totalListings || 0)
       });
     } catch (error) {
       console.error('Error fetching system stats:', error);

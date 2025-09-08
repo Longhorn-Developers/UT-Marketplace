@@ -9,6 +9,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import Image from 'next/image';
 import AdminLayout from '../../../components/admin/AdminLayout';
 import Link from 'next/link';
+import { useAuth } from '../../context/AuthContext';
 
 interface ListingData {
   id: string;
@@ -26,6 +27,7 @@ interface ListingData {
 }
 
 const AdminListingsPage = () => {
+  const { user } = useAuth();
   const [listings, setListings] = useState<ListingData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -64,8 +66,10 @@ const AdminListingsPage = () => {
   };
 
   const handleApprove = async (listingId: string) => {
+    if (!user?.id) return;
+    
     try {
-      const result = await AdminService.approveListing(listingId);
+      const result = await AdminService.approveListing(listingId, user.id);
       if (result.success) {
         toast.success('Listing approved successfully');
         await fetchListings(); // Refresh the list
@@ -79,13 +83,15 @@ const AdminListingsPage = () => {
   };
 
   const handleDeny = async (listingId: string, reason: string) => {
+    if (!user?.id) return;
+    
     if (!reason.trim()) {
       toast.error('Please provide a reason for denial');
       return;
     }
     
     try {
-      const result = await AdminService.denyListing(listingId, reason);
+      const result = await AdminService.denyListing(listingId, user.id, reason.trim());
       if (result.success) {
         toast.success('Listing denied');
         setShowModal(false);
@@ -102,13 +108,15 @@ const AdminListingsPage = () => {
   };
 
   const handleDelete = async (listingId: string) => {
+    if (!user?.id) return;
+    
     if (!confirm('Are you sure you want to delete this listing? This action cannot be undone.')) {
       return;
     }
     
     try {
-      const result = await AdminService.deleteListing(listingId);
-      if (result.success) {
+      const result = await AdminService.deleteListing(listingId, user.id);
+      if (result) {
         toast.success('Listing deleted successfully');
         await fetchListings(); // Refresh the list
       } else {
