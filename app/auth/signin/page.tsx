@@ -34,7 +34,22 @@ export default function SignIn() {
       } else {
         const { error } = await signIn(email, password);
         if (error) throw error;
-        router.push('/settings');
+        
+        // Check if user needs to complete onboarding
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from('users')
+            .select('onboard_complete')
+            .eq('id', user.id)
+            .single();
+            
+          if (!profile?.onboard_complete) {
+            router.push('/auth/confirmation/onboard');
+          } else {
+            router.push('/');
+          }
+        }
       }
     } catch (error) {
       setError(error instanceof Error ? error.message : 'An error occurred');

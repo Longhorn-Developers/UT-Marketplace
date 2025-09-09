@@ -26,8 +26,19 @@ const AdminRedirectWrapper: React.FC<AdminRedirectWrapperProps> = ({ children, n
       return;
     }
 
+    // Debug logging
+    console.log('AdminRedirectWrapper - Auth State:', {
+      mounted,
+      loading,
+      pathname,
+      user: user?.email,
+      isAdmin,
+      userExists: !!user
+    });
+
     // If user is an admin and not on an admin page, redirect to admin dashboard
     if (user && isAdmin) {
+      console.log('Redirecting admin user to /admin');
       router.push('/admin');
     }
   }, [mounted, user, isAdmin, loading, pathname, router]);

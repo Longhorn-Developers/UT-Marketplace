@@ -62,6 +62,7 @@ export async function GET(request: NextRequest) {
           bio: null,
           phone: null,
           location: null,
+          onboard_complete: false,
           notification_preferences: {
             email_notifications: true,
             browser_notifications: true
@@ -69,6 +70,13 @@ export async function GET(request: NextRequest) {
         });
         
         // Redirect to onboarding for new users
+        return NextResponse.redirect(
+          `${requestUrl.origin}/auth/confirmation/onboard`
+        );
+      }
+      
+      // Check if existing user has completed onboarding
+      if (!existingProfile.onboard_complete) {
         return NextResponse.redirect(
           `${requestUrl.origin}/auth/confirmation/onboard`
         );
