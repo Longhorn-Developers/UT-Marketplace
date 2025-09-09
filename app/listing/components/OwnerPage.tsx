@@ -4,11 +4,9 @@ import { supabase } from "../../lib/supabaseClient";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import EditForm from "./EditForm";
-import { MapPin, Calendar, Tag, CheckCircle2, Send } from "lucide-react";
-import ListingCard from '../../browse/components/ListingCard';
-import * as timeago from 'timeago.js';
+import { MapPin, Calendar, Tag, CheckCircle2, Send, Clock, XCircle } from "lucide-react";
 import { OwnerPageProps } from "../../props/listing";
-import RelatedListings from "../../browse/components/RelatedListings";
+import { determineListingStatus } from "../../lib/utils/statusUtils";
 
 const categoryOptions = [
   "Furniture",
@@ -37,11 +35,14 @@ const OwnerPage: React.FC<OwnerPageProps> = ({
   id,
   is_sold = false,
   is_draft = false,
+  status = 'approved',
+  denial_reason,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSold, setIsSold] = useState(is_sold);
   const [isDraft, setIsDraft] = useState(is_draft);
+  const [currentStatus, setCurrentStatus] = useState(status);
   const [form, setForm] = useState({
     title,
     price,
@@ -88,6 +89,11 @@ const OwnerPage: React.FC<OwnerPageProps> = ({
       });
       setIsSold(data.is_sold);
       setIsDraft(data.is_draft);
+      
+      // Determine status using centralized utility
+      const { status: detectedStatus } = determineListingStatus(data);
+      setCurrentStatus(detectedStatus);
+      
       setSelectedImageIdx(0);
     }
   };
@@ -312,50 +318,70 @@ const OwnerPage: React.FC<OwnerPageProps> = ({
               </div>
             </div>
             <div className="mt-auto flex flex-col gap-4">
-              {isDraft && (
-                <button
-                  onClick={handlePublishDraft}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded transition flex items-center justify-center gap-2"
-                >
-                  <Send size={16} /> Publish Listing
-                </button>
+              {/* Show pending message if listing is pending */}
+              {currentStatus === 'pending' ? (
+                <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4 text-center">
+                  <Clock className="h-8 w-8 text-orange-500 mx-auto mb-2" />
+                  <h3 className="text-orange-800 font-semibold mb-1">Please Wait for Approval</h3>
+                  <p className="text-orange-700 text-sm">
+                    Your listing is being reviewed by our admin team. All actions are disabled until approved.
+                  </p>
+                </div>
+              ) : currentStatus === 'denied' ? (
+                <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4 text-center">
+                  <XCircle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+                  <h3 className="text-red-800 font-semibold mb-1">Listing Denied</h3>
+                  <p className="text-red-700 text-sm mb-2">
+                    This listing was not approved. Please edit and resubmit.
+                  </p>
+                  {denial_reason && (
+                    <div className="bg-red-100 rounded p-2 text-left text-sm">
+                      <strong>Reason:</strong> {denial_reason}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {/* Normal action buttons for approved listings */}
+                  {isDraft && (
+                    <button
+                      onClick={handlePublishDraft}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded transition flex items-center justify-center gap-2"
+                    >
+                      <Send size={16} /> Publish Listing
+                    </button>
+                  )}
+                  {!isDraft && (
+                    <button
+                      onClick={handleToggleSold}
+                      className={`w-full font-semibold py-2 rounded transition ${
+                        isSold 
+                          ? 'bg-green-500 hover:bg-green-600 text-white'
+                          : 'bg-[#bf5700] hover:bg-[#a54700] text-white'
+                      }`}
+                    >
+                      {isSold ? 'Mark as Available' : 'Mark as Sold'}
+                    </button>
+                  )}
+                  <button
+                    className="w-full bg-[#bf5700] hover:bg-[#a54700] text-white font-semibold py-2 rounded transition"
+                    onClick={() => setIsEditing(true)}
+                  >
+                    Edit Listing
+                  </button>
+                  <button
+                    className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2 rounded transition"
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? "Deleting..." : "Delete Listing"}
+                  </button>
+                </>
               )}
-              {!isDraft && (
-                <button
-                  onClick={handleToggleSold}
-                  className={`w-full font-semibold py-2 rounded transition ${
-                    isSold 
-                      ? 'bg-green-500 hover:bg-green-600 text-white'
-                      : 'bg-[#bf5700] hover:bg-[#a54700] text-white'
-                  }`}
-                >
-                  {isSold ? 'Mark as Available' : 'Mark as Sold'}
-                </button>
-              )}
-              <button
-                className="w-full bg-[#bf5700] hover:bg-[#a54700] text-white font-semibold py-2 rounded transition"
-                onClick={() => setIsEditing(true)}
-              >
-                Edit Listing
-              </button>
-              <button
-                className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2 rounded transition"
-                onClick={handleDelete}
-                disabled={isDeleting}
-              >
-                {isDeleting ? "Deleting..." : "Delete Listing"}
-              </button>
             </div>
           </div>
         </div>
       </div>
-
-      <RelatedListings
-        currentListingId={id}
-        category={category}
-        title={title}
-        excludeSold={true}
-      />
 
       {isEditing && (
         <div className="fixed inset-0 z-40 flex justify-center bg-black/20 backdrop-blur-sm overflow-y-auto">

@@ -3,6 +3,7 @@ export interface Rating {
   rater_id: string;
   rated_id: string;
   rating: number;
-  comment: string;
+  comment?: string;
   created_at: string;
+  rater_name?: string;
 } 

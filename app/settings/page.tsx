@@ -7,6 +7,7 @@ import { Camera, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '../context/AuthContext';
 import BrowseLoader from "../browse/components/BrowseLoader";
+import { UserService } from '../lib/database/UserService';
 
 interface UserSettings {
   display_name: string;
@@ -35,7 +36,7 @@ export default function SettingsPage() {
   });
 
   useEffect(() => {
-    if (!user?.email) {
+    if (!user?.id) {
       router.push('/auth/signin');
       return;
     }
@@ -43,64 +44,35 @@ export default function SettingsPage() {
   }, [user]);
 
   const fetchUserSettings = async () => {
-    if (!user?.email) return;
+    if (!user?.id) return;
 
     try {
-      const { data, error } = await supabase
-        .from('user_settings')
-        .select('*')
-        .eq('email', user.email)
-        .single();
-
-      if (error) {
-        if (error.code === 'PGRST116') {
-          // If settings don't exist, create them with default values
-          const defaultSettings = {
-            email: user.email,
-            display_name: user.user_metadata?.name || user.email.split('@')[0],
-            bio: '',
-            notification_preferences: {
-              email_notifications: true,
-              browser_notifications: true,
-            },
-            profile_image_url: null,
-          };
-
-          const { error: insertError } = await supabase
-            .from('user_settings')
-            .insert(defaultSettings);
-          
-          if (insertError) {
-            console.error('Error creating initial user settings:', insertError);
-            return;
-          }
-          
-          // Fetch the newly created settings
-          const { data: newData } = await supabase
-            .from('user_settings')
-            .select('*')
-            .eq('email', user.email)
-            .single();
-            
-          if (newData) {
-            setSettings(newData);
-          }
-        } else {
-          console.error('Error fetching user settings:', error);
-        }
-      } else if (data) {
+      const userData = await UserService.getUserProfile(user.id);
+      
+      if (userData) {
         // Ensure all fields have default values if they're null
         const settingsWithDefaults = {
-          ...data,
-          display_name: data.display_name || user.user_metadata?.name || user.email.split('@')[0],
-          bio: data.bio || '',
+          display_name: userData.display_name || user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+          bio: userData.bio || '',
           notification_preferences: {
-            email_notifications: data.notification_preferences?.email_notifications ?? true,
-            browser_notifications: data.notification_preferences?.browser_notifications ?? true,
+            email_notifications: userData.notification_preferences?.email_notifications ?? true,
+            browser_notifications: userData.notification_preferences?.browser_notifications ?? true,
           },
-          profile_image_url: data.profile_image_url || null,
+          profile_image_url: userData.profile_image_url || null,
         };
         setSettings(settingsWithDefaults);
+      } else {
+        // Create default settings if none exist
+        const defaultSettings = {
+          display_name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+          bio: '',
+          notification_preferences: {
+            email_notifications: true,
+            browser_notifications: true,
+          },
+          profile_image_url: null,
+        };
+        setSettings(defaultSettings);
       }
     } catch (error) {
       console.error('Error in fetchUserSettings:', error);
@@ -111,7 +83,7 @@ export default function SettingsPage() {
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user?.email) return;
+    if (!file || !user?.id) return;
 
     try {
       setImageUploading(true);
@@ -129,7 +101,7 @@ export default function SettingsPage() {
         throw new Error('Invalid file type. Please upload a JPG, PNG, or GIF file.');
       }
 
-      const fileName = `${user.email.replace('@', '-at-')}-${Date.now()}.${fileExt}`;
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
       
       // Upload image to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -158,20 +130,21 @@ export default function SettingsPage() {
         }
       }
 
-      // Update user settings with new image URL
-      const { error: updateError } = await supabase
-        .from('user_settings')
-        .upsert({
-          email: user.email,
-          profile_image_url: publicUrl,
-          ...settings,
-        });
+      // Update user settings with new image URL using UserService
+      const updatedProfile = await UserService.upsertUserProfile({
+        id: user.id,
+        email: user.email || '',
+        profile_image_url: publicUrl,
+        display_name: settings.display_name,
+        bio: settings.bio,
+        notification_preferences: settings.notification_preferences,
+      });
 
-      if (updateError) {
-        throw updateError;
+      if (updatedProfile) {
+        setSettings(prev => ({ ...prev, profile_image_url: publicUrl }));
+      } else {
+        throw new Error('Failed to update profile');
       }
-
-      setSettings(prev => ({ ...prev, profile_image_url: publicUrl }));
     } catch (error) {
       console.error('Error uploading image:', error);
       alert(error instanceof Error ? error.message : 'Failed to upload image. Please try again.');
@@ -181,19 +154,24 @@ export default function SettingsPage() {
   };
 
   const saveSettings = async () => {
-    if (!user?.email) return;
+    if (!user?.id) return;
 
     try {
       setSaving(true);
-      const { error } = await supabase
-        .from('user_settings')
-        .upsert({
-          email: user.email,
-          ...settings,
-        });
+      const updatedProfile = await UserService.upsertUserProfile({
+        id: user.id,
+        email: user.email || '',
+        display_name: settings.display_name,
+        bio: settings.bio,
+        profile_image_url: settings.profile_image_url,
+        notification_preferences: settings.notification_preferences,
+      });
 
-      if (error) throw error;
-      alert('Settings saved successfully!');
+      if (updatedProfile) {
+        alert('Settings saved successfully!');
+      } else {
+        throw new Error('Failed to save settings');
+      }
     } catch (error) {
       console.error('Error saving settings:', error);
       alert('Failed to save settings. Please try again.');

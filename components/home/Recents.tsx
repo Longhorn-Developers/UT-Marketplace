@@ -2,107 +2,66 @@
 import Link from "next/link"
 import ListingCard from "../../app/browse/components/ListingCard"
 import { useEffect, useState } from "react"
-import { supabase } from "../../app/lib/supabaseClient"
 import * as timeago from "timeago.js"
+import { ListingService } from "../../app/lib/database/ListingService"
+import { UserService } from "../../app/lib/database/UserService"
+import { Listing } from "../../app/props/listing"
+import { dbLogger } from "../../app/lib/database/utils"
+import { supabase } from "../../app/lib/supabaseClient"
 
 const RecentListings = () => {
-  const [listings, setListings] = useState<any[]>([]);
-  const [ratings, setRatings] = useState<{ [user_id: string]: number }>({});
+  const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
-  const [ratingsLoading, setRatingsLoading] = useState(true);
-  const [displayNames, setDisplayNames] = useState<{ [user_id: string]: string }>({});
-  const [profileImages, setProfileImages] = useState<{ [user_id: string]: string | undefined }>({});
 
   useEffect(() => {
     const fetchRecentListings = async () => {
-      const { data, error } = await supabase
-        .from("listings")
-        .select(`
-          id,
-          title,
-          price,
-          location,
-          category,
-          created_at,
-          user_id,
-          user_name,
-          user_image,
-          images,
-          condition,
-          is_sold
-        `)
-        .order("created_at", { ascending: false })
-        .eq("is_sold", false)
-        .eq("is_draft", false)
-        .limit(6);
+      try {
+        setLoading(true);
+        const data = await ListingService.getListings({
+          limit: 6,
+          excludeSold: true,
+          excludeDrafts: true
+        });
 
-      if (error) {
-        console.error("Error fetching recent listings:", error);
-      } else {
-        setListings(data || []);
+        // Fetch user data for all listings
+        if (data && data.length > 0) {
+          const userIds = [...new Set(data.map(listing => listing.user_id))];
+          const { data: userSettings } = await supabase
+            .from('users')
+            .select('id, email, display_name, profile_image_url')
+            .in('id', userIds);
+
+          const userMap: { [key: string]: { name: string; image: string | null } } = {};
+          (userSettings || []).forEach((u: any) => {
+            userMap[u.id] = {
+              name: u.display_name || (u.email ? u.email.split('@')[0] : 'User'),
+              image: u.profile_image_url || null,
+            };
+          });
+
+          // Add user data to listings
+          const listingsWithUser = data.map(listing => ({
+            ...listing,
+            user_name: userMap[listing.user_id]?.name || listing.user_id,
+            user_image: userMap[listing.user_id]?.image || null,
+          }));
+
+          setListings(listingsWithUser);
+        } else {
+          setListings([]);
+        }
+      } catch (error) {
+        dbLogger.error('Error fetching recent listings', error);
+        setListings([]);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchRecentListings();
   }, []);
 
-  useEffect(() => {
-    const fetchRatings = async () => {
-      if (listings.length === 0) {
-        setRatingsLoading(false);
-        return;
-      }
-      const userIds = Array.from(new Set(listings.map(l => l.user_id)));
-      const { data, error } = await supabase
-        .from("ratings")
-        .select("rated_id, rating");
-      if (error) {
-        console.error("Error fetching ratings:", error);
-        setRatingsLoading(false);
-        return;
-      }
-      // Calculate average rating for each user
-      const ratingMap: { [user_id: string]: number } = {};
-      userIds.forEach(user_id => {
-        const userRatings = (data || []).filter(r => r.rated_id === user_id);
-        if (userRatings.length > 0) {
-          const avg = userRatings.reduce((acc, curr) => acc + curr.rating, 0) / userRatings.length;
-          ratingMap[user_id] = avg;
-        } else {
-          ratingMap[user_id] = 0;
-        }
-      });
-      setRatings(ratingMap);
-      setRatingsLoading(false);
-    };
-    if (!loading) fetchRatings();
-  }, [loading, listings]);
 
-  useEffect(() => {
-    const fetchDisplayNamesAndImages = async () => {
-      if (listings.length === 0) return;
-      const userIds = Array.from(new Set(listings.map(l => l.user_id)));
-      const { data, error } = await supabase
-        .from('user_settings')
-        .select('email, display_name, profile_image_url')
-        .in('email', userIds);
-      if (error) {
-        setDisplayNames({});
-        setProfileImages({});
-        return;
-      }
-      const nameMap: { [user_id: string]: string } = {};
-      const imageMap: { [user_id: string]: string | undefined } = {};
-      (data || []).forEach(u => {
-        nameMap[u.email] = u.display_name;
-        imageMap[u.email] = u.profile_image_url;
-      });
-      setDisplayNames(nameMap);
-      setProfileImages(imageMap);
-    };
-    if (!loading) fetchDisplayNamesAndImages();
-  }, [loading, listings]);
 
   return (
     <section className="py-12 px-4 md:px-6 max-w-7xl mx-auto">
@@ -112,7 +71,7 @@ const RecentListings = () => {
           View All
         </Link>
       </div>
-      {loading || ratingsLoading ? (
+      {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {[...Array(6)].map((_, index) => (
             <div key={index} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm animate-pulse">
@@ -138,9 +97,13 @@ const RecentListings = () => {
                 category={listing.category}
                 timePosted={timeago.format(listing.created_at)}
                 images={listing.images}
-                user={{ name: displayNames[listing.user_id] || listing.user_name, user_id: listing.user_id, image: profileImages[listing.user_id] }}
+                user={{ 
+                  name: listing.user_name, 
+                  user_id: listing.user_id, 
+                  image: listing.user_image 
+                }}
                 condition={listing.condition}
-                userRating={ratings[listing.user_id]}
+                userRating={null} // UserRatingDisplay component will fetch the rating
               />
             </div>
           ))}

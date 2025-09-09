@@ -35,6 +35,8 @@ export interface ListingPageProps {
   listingUserEmail: string;
   location_lat?: number;
   location_lng?: number;
+  status?: 'pending' | 'approved' | 'denied';
+  denial_reason?: string;
 }
 
 export interface OwnerPageProps {
@@ -49,6 +51,8 @@ export interface OwnerPageProps {
   id?: string;
   is_sold?: boolean;
   is_draft?: boolean;
+  status?: 'pending' | 'approved' | 'denied';
+  denial_reason?: string;
 }
 
 export interface Listing {
@@ -73,7 +77,7 @@ export interface Message {
   receiver_id: string;
   content: string;
   created_at: string;
-  read: boolean;
+  is_read: boolean;
   listing_id?: string;
 }
 

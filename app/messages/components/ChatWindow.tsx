@@ -10,7 +10,7 @@ import Image from "next/image";
 interface ChatWindowProps {
   selectedConversation: string | null;
   messages: Message[];
-  currentUserEmail: string;
+  currentUserId: string;
   conversationName: string;
   conversationImage?: string;
   listingTitle: string;
@@ -24,7 +24,7 @@ interface ChatWindowProps {
 export const ChatWindow = ({
   selectedConversation,
   messages,
-  currentUserEmail,
+  currentUserId,
   conversationName,
   conversationImage,
   listingTitle,
@@ -59,10 +59,10 @@ export const ChatWindow = ({
   useEffect(() => {
     if (messages.length === 0) return;
     const lastMessage = messages[messages.length - 1];
-    if (lastMessage.sender_id === currentUserEmail) {
+    if (lastMessage.sender_id === currentUserId) {
       scrollToBottom("smooth");
     }
-  }, [messages, currentUserEmail]);
+  }, [messages, currentUserId]);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
@@ -157,12 +157,12 @@ export const ChatWindow = ({
           <div
             key={message.id}
             className={`flex ${
-              message.sender_id === currentUserEmail ? "justify-end" : "justify-start"
+              message.sender_id === currentUserId ? "justify-end" : "justify-start"
             } px-1 sm:px-0`}
           >
             <div
               className={`px-3 py-2 sm:px-4 sm:py-2 rounded-2xl relative shadow-sm
-                ${message.sender_id === currentUserEmail
+                ${message.sender_id === currentUserId
                   ? "bg-[#bf5700] text-white"
                   : "bg-gray-200 text-gray-900"}
                 max-w-xs sm:max-w-md md:max-w-lg
@@ -172,7 +172,7 @@ export const ChatWindow = ({
               <p className="text-[11px] sm:text-xs mt-1 opacity-60 text-right">
                 {timeago.format(message.created_at)}
               </p>
-              {editMode && message.sender_id === currentUserEmail && (
+              {editMode && message.sender_id === currentUserId && (
                 <button
                   onClick={() => {
                     onDeleteMessage(message.id);

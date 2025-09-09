@@ -5,6 +5,8 @@ import * as timeago from 'timeago.js';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../app/context/AuthContext';
 import { Message, type Notification } from '../../app/props/listing';
+import { MessageService } from '../../app/lib/database/MessageService';
+import { dbLogger } from '../../app/lib/database/utils';
 
 const Notifications = () => {
   const { user } = useAuth();
@@ -15,93 +17,79 @@ const Notifications = () => {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!user?.email) return;
+    if (!user?.id) return;
 
     fetchNotifications();
 
-    // Subscribe to new messages
-    const messageSubscription = supabase
-      .channel('messages')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `receiver_id=eq.${user.email}`,
-        },
-        (payload) => {
-          handleNewMessage(payload.new);
+    // Subscribe to messages using the new service layer
+    const messageSubscription = MessageService.subscribeToMessages(
+      user.id,
+      (message: Message) => {
+        if (message.receiver_id === user.id) {
+          handleNewMessage(message);
+        } else if (message.is_read && message.receiver_id === user.id) {
+          // Remove the notification if message is marked as read
+          setNotifications(prev => 
+            prev.filter(n => n.id !== message.id)
+          );
+          setUnreadCount(prev => Math.max(0, prev - 1));
         }
-      )
-      .subscribe();
-
-    // Subscribe to message updates (for read status)
-    const updateSubscription = supabase
-      .channel('message_updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'messages',
-          filter: `receiver_id=eq.${user.email}`,
-        },
-        (payload) => {
-          const updatedMessage = payload.new as Message;
-          if (updatedMessage.read) {
-            // Remove the notification if message is marked as read
-            setNotifications(prev => 
-              prev.filter(n => n.id !== updatedMessage.id)
-            );
-            setUnreadCount(prev => Math.max(0, prev - 1));
-          }
-        }
-      )
-      .subscribe();
+      },
+      (error) => {
+        dbLogger.error('Notification subscription error', error);
+      }
+    );
 
     return () => {
       messageSubscription.unsubscribe();
-      updateSubscription.unsubscribe();
     };
   }, [user]);
 
   const fetchNotifications = async () => {
-    if (!user?.email) return;
+    if (!user?.id) return;
 
     try {
-      // Fetch messages
+      // Fetch unread messages
       const { data: messages, error } = await supabase
         .from('messages')
-        .select('*')
-        .eq('receiver_id', user.email)
-        .eq('read', false)
+        .select('*, sender:user_settings!sender_id(display_name)')
+        .eq('receiver_id', user.id)
+        .eq('is_read', false)
         .order('created_at', { ascending: false })
         .limit(5);
 
       if (error) throw error;
 
-      // Format notifications using email usernames
+      // Format notifications with proper user names
       const notifications = (messages || []).map(msg => ({
         id: msg.id,
-        sender_name: msg.sender_id.split('@')[0],
+        sender_name: msg.sender?.display_name || 'Unknown User',
         content: msg.content,
         created_at: msg.created_at,
-        read: msg.read,
+        read: msg.is_read,
       }));
 
       setNotifications(notifications);
       setUnreadCount(notifications.length);
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      dbLogger.error('Error fetching notifications', error);
     }
   };
 
-  const handleNewMessage = async (message: any) => {
+  const handleNewMessage = async (message: Message) => {
     try {
+      // Get sender display name from user_settings
+      const { data: senderData } = await supabase
+        .from('user_settings')
+        .select('display_name')
+        .eq('id', message.sender_id)
+        .single();
+
+      const senderName = senderData?.display_name || 'Unknown User';
+      
       const newNotification = {
         id: message.id,
-        sender_name: message.sender_id.split('@')[0],
+        sender_name: senderName,
         content: message.content,
         created_at: message.created_at,
         read: false,
@@ -117,39 +105,49 @@ const Notifications = () => {
         });
       }
     } catch (error) {
-      console.error('Error handling new message:', error);
+      dbLogger.error('Error handling new message', error);
     }
   };
 
   const handleNotificationClick = async (notification: Notification) => {
     try {
+      // Get sender ID by display name (this is a simplified approach - ideally we'd store sender ID)
+      const { data: senderData } = await supabase
+        .from('user_settings')
+        .select('id')
+        .eq('display_name', notification.sender_name)
+        .single();
+
+      if (!senderData || !user?.id) return;
+
       // Get all unread messages from this sender
       const { data: messages } = await supabase
         .from('messages')
         .select('id')
-        .eq('sender_id', notification.sender_name + '@utexas.edu')
-        .eq('receiver_id', user?.email)
-        .eq('read', false);
+        .eq('sender_id', senderData.id)
+        .eq('receiver_id', user.id)
+        .eq('is_read', false);
 
       if (messages && messages.length > 0) {
-        // Mark all messages from this sender as read
-        await supabase
-          .from('messages')
-          .update({ read: true })
-          .in('id', messages.map(msg => msg.id));
-
-        // Update local state - remove all notifications from this sender
-        setNotifications(prev => 
-          prev.filter(n => n.sender_name !== notification.sender_name)
+        // Mark all messages from this sender as read using the service
+        const success = await MessageService.markMessagesAsRead(
+          messages.map(msg => msg.id)
         );
-        setUnreadCount(prev => Math.max(0, prev - messages.length));
+
+        if (success) {
+          // Update local state - remove all notifications from this sender
+          setNotifications(prev => 
+            prev.filter(n => n.sender_name !== notification.sender_name)
+          );
+          setUnreadCount(prev => Math.max(0, prev - messages.length));
+        }
       }
 
       // Navigate to messages
       router.push('/messages');
       setShowDropdown(false);
     } catch (error) {
-      console.error('Error marking notifications as read:', error);
+      dbLogger.error('Error marking notifications as read', error);
     }
   };
 

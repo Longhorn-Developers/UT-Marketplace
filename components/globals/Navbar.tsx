@@ -1,14 +1,14 @@
 "use client";
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
-import { MessageCircle, Settings, LogOut, Plus, X, User, Menu } from "lucide-react";
+import { MessageCircle, Settings, LogOut, Plus, X, User, Menu, Heart, Shield } from "lucide-react";
 import { useAuth } from "../../app/context/AuthContext";
 import Notifications from "./Notifications";
 
 const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const { user, signOut } = useAuth();
+  const { user, isAdmin, signOut } = useAuth();
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -92,6 +92,14 @@ const Navbar = () => {
                   >
                     <User size={16} className="mr-2" />
                     Profile
+                  </Link>
+                  <Link
+                    href="/favorites"
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    onClick={() => setProfileMenuOpen(false)}
+                  >
+                    <Heart size={16} className="mr-2" />
+                    Favorites & Watchlist
                   </Link>
                   <Link
                     href="/settings"
@@ -185,6 +193,13 @@ const Navbar = () => {
                     onClick={() => setMenuOpen(false)}
                   >
                     <User size={16} className="mr-2" /> Profile
+                  </Link>
+                  <Link
+                    href="/favorites"
+                    className="text-white hover:text-white/80 transition font-semibold flex items-center"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <Heart size={16} className="mr-2" /> Favorites & Watchlist
                   </Link>
                   <Link
                     href="/settings"
