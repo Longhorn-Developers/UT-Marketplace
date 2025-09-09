@@ -16,7 +16,7 @@ const TermsPage = () => {
         <div className="space-y-6 text-gray-800 leading-relaxed">
           <section>
             <h2 className="text-xl font-semibold text-gray-700 mb-3">1. Acceptance of Terms</h2>
-            <p>By accessing or using UT Marketplace ("the App"), you agree to be bound by these Terms of Use. If you do not agree, please do not use the App.</p>
+            <p>By accessing or using UT Marketplace (&quot;the App&quot;), you agree to be bound by these Terms of Use. If you do not agree, please do not use the App.</p>
           </section>
 
           <section>
@@ -67,7 +67,7 @@ const TermsPage = () => {
 
           <section>
             <h2 className="text-xl font-semibold text-gray-700 mb-3">7. Content and Intellectual Property</h2>
-            <p>You retain ownership of content you post but grant us a license to display it on the App. You may not post content that infringes others' rights or violates these terms.</p>
+            <p>You retain ownership of content you post but grant us a license to display it on the App. You may not post content that infringes others&apos; rights or violates these terms.</p>
           </section>
 
           <section>
@@ -82,7 +82,7 @@ const TermsPage = () => {
 
           <section>
             <h2 className="text-xl font-semibold text-gray-700 mb-3">10. Disclaimers</h2>
-            <p className="uppercase font-semibold">The App is provided "as is" without warranties. We disclaim all liability for damages arising from use of the App, including but not limited to issues with transactions, safety, or data loss.</p>
+            <p className="uppercase font-semibold">The App is provided &quot;as is&quot; without warranties. We disclaim all liability for damages arising from use of the App, including but not limited to issues with transactions, safety, or data loss.</p>
           </section>
 
           <section>
