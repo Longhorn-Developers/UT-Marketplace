@@ -89,7 +89,6 @@ const Create = () => {
     setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-
   const handleSaveDraft = async () => {
     if (!user?.id) {
       toast.error("You must be logged in to save a draft.");
@@ -232,6 +231,7 @@ const Create = () => {
               className="w-full border rounded-md px-3 py-2 text-sm"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              required
             />
           </div>
 
@@ -245,6 +245,7 @@ const Create = () => {
                 className="w-full border rounded-md px-3 py-2 text-sm"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
+                required
               >
                 <option>Select a category</option>
                 <option>Furniture</option>
@@ -282,6 +283,7 @@ const Create = () => {
                   onBlur={() => {
                     if (price < 0.01) setPrice(0.01);
                   }}
+                  required
                 />
               </div>
               {price < 0.01 && (
@@ -299,6 +301,7 @@ const Create = () => {
               className="w-full border rounded-md px-3 py-2 text-sm"
               value={condition}
               onChange={(e) => setCondition(e.target.value)}
+              required
             >
               <option>Select condition</option>
               <option>New</option>
@@ -317,9 +320,10 @@ const Create = () => {
             <input
               type="text"
               className="w-full border rounded-md px-3 py-2 text-sm mb-2"
-              placeholder="Enter a location name (optional, e.g. West Campus)"
+              placeholder="Enter a location name (e.g. West Campus)"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
+              required
             />
             <div className="my-2">
               <MapPicker
@@ -349,6 +353,7 @@ const Create = () => {
               placeholder="Describe your item..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              required
             />
           </div>
 

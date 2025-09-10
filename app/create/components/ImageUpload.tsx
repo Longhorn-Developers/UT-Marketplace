@@ -59,10 +59,6 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
           onChange={handleFileChange}
         />
       </div>
-      <button className="flex items-center gap-2 px-4 py-2 border rounded-md shadow-sm text-sm bg-white hover:bg-gray-100 transition">
-        <UploadCloud size={16} />
-        Upload Photos
-      </button>
     </div>
   );
 };
