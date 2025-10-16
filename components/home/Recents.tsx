@@ -4,10 +4,10 @@ import ListingCard from "../../app/browse/components/ListingCard"
 import { useEffect, useState } from "react"
 import * as timeago from "timeago.js"
 import { ListingService } from "../../app/lib/database/ListingService"
-import { UserService } from "../../app/lib/database/UserService"
 import { Listing } from "../../app/props/listing"
 import { dbLogger } from "../../app/lib/database/utils"
 import { supabase } from "../../app/lib/supabaseClient"
+import { Clock } from "lucide-react"
 
 const RecentListings = () => {
   const [listings, setListings] = useState<Listing[]>([]);
@@ -18,7 +18,7 @@ const RecentListings = () => {
       try {
         setLoading(true);
         const data = await ListingService.getListings({
-          limit: 6,
+          limit: 8,
           excludeSold: true,
           excludeDrafts: true
         });
@@ -66,14 +66,19 @@ const RecentListings = () => {
   return (
     <section className="py-12 px-4 md:px-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Recent Listings</h2>
-        <Link href="/browse" className="text-orange-600 hover:text-orange-700 font-medium">
-          View All
-        </Link>
+        <div className="flex-1"></div>
+        <h2 className="text-3xl font-bold text-gray-900 flex items-center justify-center gap-2">
+          <Clock className="w-8 h-8 text-ut-orange" />
+          Recent Listings
+        </h2>
+        <div className="flex-1 flex justify-end">
+          <Link href="/browse" className="text-ut-orange hover:text-ut-orange/80 font-medium">View All</Link>
+        </div>
       </div>
+      
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, index) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(8)].map((_, index) => (
             <div key={index} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm animate-pulse">
               <div className="aspect-[4/3] bg-gray-200" />
               <div className="p-4 space-y-3">
@@ -87,7 +92,7 @@ const RecentListings = () => {
       ) : listings.length === 0 ? (
         <div className="text-center text-gray-500 py-8">No recent listings found.</div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {listings.map((listing) => (
             <div key={listing.id} onClick={() => window.location.href = `/listing/${listing.id}`} className="cursor-pointer">
               <ListingCard
@@ -103,12 +108,18 @@ const RecentListings = () => {
                   image: listing.user_image 
                 }}
                 condition={listing.condition}
-                userRating={null} // UserRatingDisplay component will fetch the rating
+                userRating={null}
               />
             </div>
           ))}
         </div>
       )}
+
+      <div className="flex justify-center mt-8">
+        <div className="flex items-center justify-center bg-ut-orange text-white px-6 py-3 rounded-lg font-semibold text-lg transition-all duration-300 hover:scale-105 hover:-translate-y-1">
+          <Link href="/browse" className="text-white">View All</Link>
+        </div>
+      </div>
     </section>
   )
 }

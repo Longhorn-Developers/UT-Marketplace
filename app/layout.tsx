@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
-import { Inter, Roboto } from "next/font/google";
+import { Inter, Roboto_Flex } from "next/font/google";
 import "./globals.css";
 import Navbar from "../components/globals/Navbar";
 import { AuthProvider } from './context/AuthContext';
 import FooterWrapper from "../components/globals/FooterWrapper";
 import AdminRedirectWrapper from "../components/layout/AdminRedirectWrapper";
 
-// Using Roboto as a fallback since it's similar to Benton Sans
-const roboto = Roboto({
+// Using Roboto Flex for better typography flexibility
+const robotoFlex = Roboto_Flex({
   subsets: ["latin"],
-  weight: ["100", "300", "400", "500", "700", "900"],
+  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
   variable: "--font-sans",
 });
 
@@ -24,7 +24,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={roboto.variable}>
+    <html lang="en" className={robotoFlex.variable}>
       <body className="font-sans">
         <div className="flex flex-col min-h-screen">
           <AuthProvider>
