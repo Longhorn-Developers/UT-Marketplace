@@ -43,9 +43,9 @@ const Footer = () => {
                   <li key={category.name}>
                     <button
                       onClick={() => handleCategoryClick(category.name)}
-                      className="flex items-center gap-2 text-sm hover:text-[#d95e00] transition cursor-pointer"
+                      className="flex items-center gap-2 text-sm hover:text-ut-orange transition cursor-pointer"
                     >
-                      <div className="w-5 h-5 flex items-center justify-center text-[#d95e00]">
+                      <div className="w-5 h-5 flex items-center justify-center text-ut-orange">
                         <category.icon className="h-4 w-4" />
                       </div>
                       {category.name}
@@ -60,22 +60,22 @@ const Footer = () => {
               <h3 className="text-sm font-semibold tracking-wider uppercase">Support</h3>
               <ul className="mt-4 space-y-2">
                 <li>
-                  <Link href="/help" className="text-sm hover:text-[#d95e00]">
+                  <Link href="/help" className="text-sm hover:text-ut-orange">
                     Help Center
                   </Link>
                 </li>
                 <li>
-                  <Link href="/safety" className="text-sm hover:text-[#d95e00]">
+                  <Link href="/safety" className="text-sm hover:text-ut-orange">
                     Safety Tips
                   </Link>
                 </li>
                 <li>
-                  <Link href="/terms" className="text-sm hover:text-[#d95e00]">
+                  <Link href="/terms" className="text-sm hover:text-ut-orange">
                     Terms of Service
                   </Link>
                 </li>
                 <li>
-                  <Link href="/privacy" className="text-sm hover:text-[#d95e00]">
+                  <Link href="/privacy" className="text-sm hover:text-ut-orange">
                     Privacy Policy
                   </Link>
                 </li>

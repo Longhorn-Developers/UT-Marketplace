@@ -16,6 +16,9 @@ const robotoFlex = Roboto_Flex({
 export const metadata: Metadata = {
   title: "UT Marketplace",
   description: "Buy and sell items within the UT community",
+  icons: {
+    icon: "/icons/ios-light.png",
+  },
 };
 
 export default function RootLayout({

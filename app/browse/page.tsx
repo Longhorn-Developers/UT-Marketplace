@@ -2,7 +2,6 @@
 import React, { useEffect, useState, useRef, Suspense } from "react";
 import { motion } from "framer-motion";
 import { useSearchParams } from "next/navigation";
-import { supabase } from "../lib/supabaseClient";
 import SearchBar from "./components/SearchBar";
 import ListingCard from "./components/ListingCard";
 import * as timeago from "timeago.js";
