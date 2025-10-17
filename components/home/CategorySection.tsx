@@ -29,9 +29,9 @@ const CategorySection = () => {
           <button
             key={category.name}
             onClick={() => handleCategoryClick(category.name)}
-            className="flex flex-col items-center justify-center p-4 bg-white rounded-xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 ease-in-out border border-gray-100"
+            className="flex flex-col items-center justify-center p-4 bg-white rounded-xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 ease-in-out border border-gray-100 cursor-pointer"
           >
-            <div className="w-12 h-12 flex items-center justify-center bg-orange-100 text-orange-600 rounded-full mb-3">
+            <div className="w-12 h-12 flex items-center justify-center bg-ut-orange text-white rounded-full mb-3">
               <category.icon className="h-6 w-6" />
             </div>
             <span className="text-sm font-medium text-gray-700">{category.name}</span>

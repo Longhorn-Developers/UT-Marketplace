@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
   const type = requestUrl.searchParams.get('type');
-  const next = requestUrl.searchParams.get('next') || '/settings';
+  const next = requestUrl.searchParams.get('next') || '/';
 
   // If this is an email confirmation, redirect to the confirmation page
   if (type === 'signup') {

@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
-import { MessageCircle, Settings, LogOut, Plus, X, User, Menu, Heart, Shield } from "lucide-react";
+import { MessageCircle, Settings, LogOut, Plus, X, User, Menu, Heart } from "lucide-react";
 import { useAuth } from "../../app/context/AuthContext";
 import Notifications from "./Notifications";
 
@@ -123,9 +123,10 @@ const Navbar = () => {
         ) : (
           <Link
             href="/auth/signin"
-            className="text-white hover:text-white/80 transition font-semibold"
+            className="text-white hover:text-white transition duration-100 font-semibold relative group hover:scale-110"
           >
             Sign In
+            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-white group-hover:w-full transition-all duration-300" />
           </Link>
         )}
       </div>

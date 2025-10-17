@@ -136,26 +136,19 @@ const Hero = () => {
           <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto justify-center md:justify-start">
             <Link
               href="/create"
-              className="relative group overflow-hidden px-6 py-3 rounded-lg font-semibold flex items-center justify-center text-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#bf5700] focus:ring-offset-2 bg-gradient-to-r from-[#bf5700] to-[#ff9100] text-white shadow-lg border-none
-                before:absolute before:inset-0 before:bg-white/10 before:opacity-0 before:transition-opacity before:duration-300 group-hover:before:opacity-100
-                hover:scale-105 hover:-translate-y-1 hover:shadow-[0_4px_32px_0_rgba(191,87,0,0.25)]"
+              className="flex items-center justify-center bg-ut-orange text-white px-6 py-3 rounded-lg font-semibold text-lg transition-all duration-300 hover:scale-105 hover:-translate-y-1"
             >
               <FaPlus className="mr-2" />
               Create Listing
-              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2/3 h-1 bg-gradient-to-r from-[#ff9100] to-[#bf5700] rounded-full blur-sm opacity-60 group-hover:opacity-90 transition-all duration-300" />
             </Link>
             <Link
               href="/browse"
-              className="relative group overflow-hidden px-6 py-3 rounded-lg font-semibold flex items-center justify-center text-lg transition-all duration-300 border-2 border-[#bf5700] bg-white text-[#bf5700] shadow-md
-                hover:bg-[#fff3e6] hover:text-[#a94e00] hover:border-[#ff9100] hover:scale-105 hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-[#bf5700] focus:ring-offset-2"
+              className="flex items-center justify-center px-6 py-3 rounded-lg font-semibold text-lg transition-all duration-300 border-2 border-ut-orange bg-white text-ut-orange shadow-md hover:scale-105 hover:-translate-y-1"
             >
-              <FaSearch className="mr-2" />
-              Browse Items
-              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2/3 h-1 bg-gradient-to-r from-[#bf5700] to-[#ff9100] rounded-full blur-sm opacity-0 group-hover:opacity-60 transition-all duration-300" />
+              <FaSearch className="mr-2" /> Browse Items
             </Link>
           </motion.div>
         </div>
-        {/* Right: Animated Icon */}
         <motion.div
           variants={itemVariants}
           className="md:w-1/2 flex justify-center items-center"
