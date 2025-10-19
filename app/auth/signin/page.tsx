@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
+import TermsModal from '../../../components/modals/TermsModal';
 
 export default function SignIn() {
   const [email, setEmail] = useState('');
@@ -18,6 +19,8 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const { signIn, signUp } = useAuth();
   const router = useRouter();
 
@@ -105,6 +108,13 @@ export default function SignIn() {
         // Validate password confirmation
         if (password !== confirmPassword) {
           setPasswordError('Passwords do not match');
+          setLoading(false);
+          return;
+        }
+        
+        // Validate terms acceptance
+        if (!termsAccepted) {
+          setError('Please accept the Terms and Conditions to continue');
           setLoading(false);
           return;
         }
@@ -513,6 +523,51 @@ export default function SignIn() {
             )}
           </AnimatePresence>
           
+          {/* Terms and Conditions Checkbox - Only show for sign-up */}
+          <AnimatePresence>
+            {isSignUp && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+                className="overflow-hidden"
+              >
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.1 }}
+                  className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200"
+                >
+                  <div className="flex items-center h-5">
+                    <input
+                      id="terms-checkbox"
+                      type="checkbox"
+                      checked={termsAccepted}
+                      onChange={(e) => setTermsAccepted(e.target.checked)}
+                      className="w-4 h-4 text-[#bf5700] bg-gray-100 border-gray-300 rounded focus:ring-[#bf5700] focus:ring-2"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label htmlFor="terms-checkbox" className="text-sm text-gray-700 cursor-pointer">
+                      I agree to the{' '}
+                      <button
+                        type="button"
+                        onClick={() => setShowTermsModal(true)}
+                        className="text-[#bf5700] hover:text-[#a54700] underline font-medium transition-colors duration-200"
+                        disabled={loading}
+                      >
+                        Terms and Conditions
+                      </button>
+                      {' '}and understand that I must use my UT Austin email address.
+                    </label>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
           {/* Submit Button Row */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -522,7 +577,7 @@ export default function SignIn() {
           >
             <motion.button
               type="submit"
-              disabled={loading}
+              disabled={loading || (isSignUp && !termsAccepted)}
               whileHover={{ scale: 1.02, y: -1 }}
               whileTap={{ scale: 0.98 }}
               className="w-full lg:col-span-2 flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-lg text-white bg-[#bf5700] hover:bg-[#a54700] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#bf5700] transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
@@ -538,6 +593,12 @@ export default function SignIn() {
           </motion.form>
         </motion.div>
       </motion.div>
+      
+      {/* Terms and Conditions Modal */}
+      <TermsModal 
+        isOpen={showTermsModal} 
+        onClose={() => setShowTermsModal(false)} 
+      />
     </div>
   );
 } 

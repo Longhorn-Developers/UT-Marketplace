@@ -1,127 +1,142 @@
-import React from 'react'
+import React from 'react';
 
 const TermsPage = () => {
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8">
-      <div className="bg-white rounded-lg shadow-lg p-8">
-        <h1 className="text-3xl font-bold text-orange-600 mb-2 border-b-2 border-orange-600 pb-2">
-          UT Marketplace Terms of Use
-        </h1>
-        
-        <div className="text-sm text-gray-600 mb-8 italic">
-          Effective Date: September 9, 2024<br />
-          Last Updated: September 9, 2024
-        </div>
-
-        <div className="space-y-6 text-gray-800 leading-relaxed">
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">1. Acceptance of Terms</h2>
-            <p>By accessing or using UT Marketplace (&quot;the App&quot;), you agree to be bound by these Terms of Use. If you do not agree, please do not use the App.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">2. Description of Service</h2>
-            <p>UT Marketplace is a student-to-student marketplace platform that allows University of Texas students to buy, sell, and trade items within the campus community.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">3. User Eligibility</h2>
-            <p>You must be a current University of Texas student with a valid .utexas.edu email address to use this App. You must be at least 18 years old or have parental consent.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">4. User Responsibilities</h2>
-            <p>You agree to:</p>
-            <ul className="list-disc list-inside ml-4 space-y-1">
-              <li>Provide accurate information about items you list</li>
-              <li>Complete transactions in good faith</li>
-              <li>Meet in safe, public locations for exchanges</li>
-              <li>Not post illegal, harmful, or inappropriate content</li>
-              <li>Not use the App for commercial business purposes</li>
-              <li>Respect other users and follow community guidelines</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">5. Prohibited Items</h2>
-            <p>You may not list or sell:</p>
-            <ul className="list-disc list-inside ml-4 space-y-1">
-              <li>Illegal items or substances</li>
-              <li>Weapons or dangerous items</li>
-              <li>Stolen goods</li>
-              <li>Academic materials that violate academic integrity policies</li>
-              <li>Items that infringe intellectual property rights</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">6. Transactions and Disputes</h2>
-            <p>UT Marketplace facilitates connections between users but is not a party to any transactions. We are not responsible for:</p>
-            <ul className="list-disc list-inside ml-4 space-y-1">
-              <li>Quality, safety, or legality of items</li>
-              <li>Payment processing or disputes</li>
-              <li>Meeting arrangements or safety</li>
-              <li>Resolution of disagreements between users</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">7. Content and Intellectual Property</h2>
-            <p>You retain ownership of content you post but grant us a license to display it on the App. You may not post content that infringes others&apos; rights or violates these terms.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">8. Privacy</h2>
-            <p>Your privacy is important to us. Please review our <a href="/privacy" className="text-orange-600 hover:text-orange-800 underline">Privacy Policy</a> to understand how we collect and use your information.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">9. Account Termination</h2>
-            <p>We may suspend or terminate accounts that violate these terms. You may delete your account at any time through the App settings.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">10. Disclaimers</h2>
-            <p className="uppercase font-semibold">The App is provided &quot;as is&quot; without warranties. We disclaim all liability for damages arising from use of the App, including but not limited to issues with transactions, safety, or data loss.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">11. Limitation of Liability</h2>
-            <p className="uppercase font-semibold">To the maximum extent permitted by law, our liability is limited to $100 or the amount you paid to use the App, whichever is less.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">12. Indemnification</h2>
-            <p>You agree to indemnify and hold us harmless from claims arising from your use of the App or violation of these terms.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">13. Governing Law</h2>
-            <p>These terms are governed by Texas law. Any disputes will be resolved in Travis County, Texas courts.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">14. Changes to Terms</h2>
-            <p>We may update these terms at any time. Continued use of the App after changes constitutes acceptance of the new terms.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">15. Severability</h2>
-            <p>If any provision of these terms is found invalid, the remaining provisions will continue in effect.</p>
-          </section>
-
-          <section className="bg-gray-50 p-6 rounded-lg">
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">Contact Information</h2>
-            <p>For questions about these terms, contact us at:</p>
-            <p className="mt-2">
-              Email: support@utmarketplace.com<br />
-              Website: https://utmarketplace.com
+    <div className="min-h-screen bg-gray-50 py-12">
+      <div className="max-w-4xl mx-auto px-4">
+        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-[#bf5700] to-[#a54700] text-white p-8">
+            <h1 className="text-4xl font-bold mb-2">Terms and Conditions</h1>
+            <p className="text-xl text-white/90">
+              UT Marketplace - The official marketplace for UT Austin community
             </p>
-          </section>
+            <p className="text-sm text-white/80 mt-2">
+              Last updated: {new Date().toLocaleDateString()}
+            </p>
+          </div>
+
+          {/* Content */}
+          <div className="p-8 prose prose-lg max-w-none">
+            <section className="mb-8">
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">1. Acceptance of Terms</h2>
+              <p className="text-gray-700 leading-relaxed">
+                By accessing and using UT Marketplace (&quot;the Service&quot;), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
+              </p>
+            </section>
+
+            <section className="mb-8">
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">2. Eligibility</h2>
+              <p className="text-gray-700 leading-relaxed mb-4">
+                This service is exclusively available to:
+              </p>
+              <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4">
+                <li>Current students of The University of Texas at Austin</li>
+                <li>Faculty and staff members of The University of Texas at Austin</li>
+                <li>Recent graduates (within 2 years) of The University of Texas at Austin</li>
+              </ul>
+              <p className="text-gray-700 leading-relaxed mt-4">
+                You must provide a valid @utexas.edu email address to register and use this service.
+              </p>
+            </section>
+
+            <section className="mb-8">
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">3. User Responsibilities</h2>
+              <p className="text-gray-700 leading-relaxed mb-4">
+                As a user of UT Marketplace, you agree to:
+              </p>
+              <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4">
+                <li>Provide accurate and truthful information in all listings and communications</li>
+                <li>Respect other users and maintain a professional, courteous demeanor</li>
+                <li>Not engage in fraudulent, deceptive, or illegal activities</li>
+                <li>Comply with all applicable laws and university policies</li>
+                <li>Report suspicious or inappropriate behavior to administrators</li>
+              </ul>
+            </section>
+
+            <section className="mb-8">
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">4. Prohibited Items and Activities</h2>
+              <p className="text-gray-700 leading-relaxed mb-4">
+                The following items and activities are strictly prohibited:
+              </p>
+              <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4">
+                <li>Illegal substances, weapons, or dangerous items</li>
+                <li>Alcohol, tobacco, or age-restricted products</li>
+                <li>Academic materials (tests, assignments, papers) for sale</li>
+                <li>Personal information or data of other users</li>
+                <li>Spam, harassment, or abusive content</li>
+                <li>Items that violate university policies or local laws</li>
+              </ul>
+            </section>
+
+            <section className="mb-8">
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">5. Transactions and Payments</h2>
+              <p className="text-gray-700 leading-relaxed mb-4">
+                UT Marketplace facilitates connections between buyers and sellers but does not:
+              </p>
+              <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4">
+                <li>Process payments or handle financial transactions</li>
+                <li>Guarantee the quality, condition, or authenticity of items</li>
+                <li>Provide insurance or protection for transactions</li>
+                <li>Mediate disputes between users</li>
+              </ul>
+              <p className="text-gray-700 leading-relaxed mt-4">
+                All transactions are conducted directly between users. We recommend meeting in safe, public locations and using secure payment methods.
+              </p>
+            </section>
+
+            <section className="mb-8">
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">6. Privacy and Data Protection</h2>
+              <p className="text-gray-700 leading-relaxed">
+                We are committed to protecting your privacy. Your personal information will only be used to provide and improve our services. We will not sell, trade, or share your personal information with third parties without your consent, except as required by law or university policy.
+              </p>
+            </section>
+
+            <section className="mb-8">
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">7. Account Termination</h2>
+              <p className="text-gray-700 leading-relaxed">
+                We reserve the right to suspend or terminate accounts that violate these terms, engage in fraudulent activity, or otherwise misuse the service. Users may also terminate their accounts at any time by contacting our support team.
+              </p>
+            </section>
+
+            <section className="mb-8">
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">8. Limitation of Liability</h2>
+              <p className="text-gray-700 leading-relaxed">
+                UT Marketplace is provided &quot;as is&quot; without warranties of any kind. We are not liable for any damages arising from your use of the service, including but not limited to direct, indirect, incidental, or consequential damages.
+              </p>
+            </section>
+
+            <section className="mb-8">
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">9. Changes to Terms</h2>
+              <p className="text-gray-700 leading-relaxed">
+                We reserve the right to modify these terms at any time. Users will be notified of significant changes via email or through the service. Continued use of the service after changes constitutes acceptance of the new terms.
+              </p>
+            </section>
+
+            <section className="mb-8">
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">10. Contact Information</h2>
+              <p className="text-gray-700 leading-relaxed">
+                If you have any questions about these Terms and Conditions, please contact us at:
+              </p>
+              <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                <p className="text-gray-700">
+                  <strong>Email:</strong> support@utmarketplace.com<br />
+                  <strong>Address:</strong> The University of Texas at Austin<br />
+                  <strong>Office Hours:</strong> Monday - Friday, 9:00 AM - 5:00 PM CST
+                </p>
+              </div>
+            </section>
+
+            <div className="mt-8 p-6 bg-[#bf5700] bg-opacity-10 rounded-lg border-l-4 border-[#bf5700]">
+              <p className="text-gray-800 font-medium text-lg">
+                By using UT Marketplace, you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default TermsPage
+export default TermsPage;
