@@ -173,7 +173,7 @@ export default function SignIn() {
           initial={{ opacity: 0, x: -30 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="flex-1 bg-gradient-to-br from-[#bf5700] to-[#a54700] p-12 flex flex-col items-center lg:items-start justify-center text-center lg:text-left text-white"
+          className="flex-1 bg-ut-orange p-12 flex flex-col items-center lg:items-start justify-center text-center lg:text-left text-white"
         >
           <motion.div
             initial={{ scale: 0.8 }}
@@ -363,8 +363,8 @@ export default function SignIn() {
                 type="email"
                 autoComplete="email"
                 required
-                className={`block w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#bf5700] focus:border-transparent text-sm transition-all duration-200 ${
-                  emailError ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400 focus:border-[#bf5700]'
+                className={`block w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-ut-orange focus:border-transparent text-sm transition-all duration-200 ${
+                  emailError ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400 focus:border-ut-orange'
                 }`}
                 placeholder="Enter your UT Austin email"
                 value={email}
@@ -402,8 +402,8 @@ export default function SignIn() {
                 type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   required
-                className={`block w-full px-4 py-3 pr-12 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#bf5700] focus:border-transparent text-sm transition-all duration-200 ${
-                  passwordError ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400 focus:border-[#bf5700]'
+                className={`block w-full px-4 py-3 pr-12 border rounded-lg focus:outline-none focus:ring-2 focus:ring-ut-orange focus:border-transparent text-sm transition-all duration-200 ${
+                  passwordError ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400 focus:border-ut-orange'
                 }`}
                   placeholder="Enter your password"
                   value={password}
@@ -415,7 +415,7 @@ export default function SignIn() {
               <motion.button
                 type="button"
                 tabIndex={-1}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#bf5700] text-sm transition-colors duration-200"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-ut-orange text-sm transition-colors duration-200"
                 onClick={() => setShowPassword((v) => !v)}
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 whileHover={{ scale: 1.1, cursor: 'pointer' }}
@@ -449,8 +449,8 @@ export default function SignIn() {
                     type={showConfirmPassword ? "text" : "password"}
                     autoComplete="new-password"
                     required={isSignUp}
-                    className={`block w-full px-4 py-3 pr-12 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#bf5700] focus:border-transparent text-sm transition-all duration-200 ${
-                      passwordError ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400 focus:border-[#bf5700]'
+                    className={`block w-full px-4 py-3 pr-12 border rounded-lg focus:outline-none focus:ring-2 focus:ring-ut-orange focus:border-transparent text-sm transition-all duration-200 ${
+                      passwordError ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400 focus:border-ut-orange'
                     }`}
                     placeholder="Confirm your password"
                     value={confirmPassword}
@@ -462,7 +462,7 @@ export default function SignIn() {
                   <motion.button
                     type="button"
                     tabIndex={-1}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#bf5700] text-sm transition-colors duration-200"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-ut-orange text-sm transition-colors duration-200"
                     onClick={() => setShowConfirmPassword((v) => !v)}
                     aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
                     whileHover={{ scale: 1.1, cursor: 'pointer' }}
