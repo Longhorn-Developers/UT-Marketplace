@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { FaPlus, FaSearch, FaStoreAlt, FaShieldAlt, FaUserGraduate, FaMoneyBillWave } from 'react-icons/fa';
-import { motion } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
 import Logo from '../../public/icons/utmplogo.png';
 import Image from 'next/image';
@@ -19,7 +19,7 @@ const taglines = [
   "The smart way to shop on campus 🚀"
 ];
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0, y: 40 },
   visible: {
     opacity: 1,
@@ -31,12 +31,12 @@ const containerVariants = {
   },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 30 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: 'easeOut' } },
 };
 
-const tagVariants = {
+const tagVariants: Variants = {
   hidden: { opacity: 0, scale: 0.7, y: 10 },
   visible: (i: number) => ({
     opacity: 1,
