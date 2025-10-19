@@ -71,6 +71,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signUp = async (email: string, password: string) => {
+    // Validate email domain for UT Austin
+    if (!email.toLowerCase().endsWith('@utexas.edu')) {
+      return { 
+        error: { 
+          message: 'Please use your UT Austin email address',
+          name: 'AuthError',
+          status: 400
+        } as AuthError 
+      };
+    }
+    
     const { error } = await supabase.auth.signUp({
       email,
       password,

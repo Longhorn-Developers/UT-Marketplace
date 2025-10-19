@@ -4,6 +4,11 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { UserService } from '../../lib/database/UserService';
 
+// Validate email domain for UT Austin
+const validateEmailDomain = (email: string): boolean => {
+  return email.toLowerCase().endsWith('@utexas.edu');
+};
+
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
@@ -49,6 +54,14 @@ export async function GET(request: NextRequest) {
     }
     
     if (user) {
+      // Validate email domain for new users
+      if (user.email && !validateEmailDomain(user.email)) {
+        console.error('Invalid email domain for user:', user.email);
+        return NextResponse.redirect(
+          `${requestUrl.origin}/auth/signin?error=${encodeURIComponent('Please use your UT Austin email address')}`
+        );
+      }
+      
       // Check if this is a new user (first time signing in)
       const existingProfile = await UserService.getUserProfile(user.id);
       
