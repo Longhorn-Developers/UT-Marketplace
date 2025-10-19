@@ -7,10 +7,10 @@ import CategorySection from "../components/home/CategorySection";
 import { ShieldCheck, Zap, MessageCircle, Users, Star, CheckCircle } from 'lucide-react';
 import BetaPopup from '../components/home/BetaPopup';
 import { FaPlus, FaSearch } from "react-icons/fa";
-import { motion, AnimatePresence, Variants } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
-const itemVariants: Variants = {
+const itemVariants = {
   hidden: { opacity: 0, y: 30 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: 'easeOut' } },
 };
