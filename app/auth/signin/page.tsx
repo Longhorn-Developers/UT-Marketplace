@@ -532,6 +532,7 @@ export default function SignIn() {
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.3, ease: "easeInOut" }}
                 className="overflow-hidden mt-4"
+
               >
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }}
@@ -599,6 +600,7 @@ export default function SignIn() {
         isOpen={showTermsModal} 
         onClose={() => setShowTermsModal(false)}
         onAccept={() => setTermsAccepted(true)}
+
       />
     </div>
   );
