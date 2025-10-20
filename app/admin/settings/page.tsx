@@ -133,10 +133,19 @@ const AdminSettingsPage = () => {
     
     try {
       setTermsSaving(true);
+      
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('You must be logged in to save terms');
+        return;
+      }
+
       const response = await fetch('/api/terms', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           title: terms.title,
@@ -145,7 +154,8 @@ const AdminSettingsPage = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save terms');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save terms');
       }
 
       const updatedTerms = await response.json();
@@ -153,7 +163,7 @@ const AdminSettingsPage = () => {
       toast.success('Terms and conditions updated successfully');
     } catch (error) {
       console.error('Error saving terms:', error);
-      toast.error('Failed to save terms and conditions');
+      toast.error(error instanceof Error ? error.message : 'Failed to save terms and conditions');
     } finally {
       setTermsSaving(false);
     }

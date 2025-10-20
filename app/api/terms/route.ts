@@ -48,11 +48,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
+      );
+    }
+
+    // Extract the token from the header
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Verify the user is authenticated and is an admin
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Invalid authentication' },
+        { status: 401 }
+      );
+    }
+
+    // Check if user is admin
+    const { data: userProfile, error: profileError } = await supabase
+      .from('users')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !userProfile?.is_admin) {
+      return NextResponse.json(
+        { error: 'Admin privileges required' },
+        { status: 403 }
       );
     }
 
@@ -63,7 +91,8 @@ export async function POST(request: NextRequest) {
         title,
         content,
         version: await getNextVersion(),
-        last_updated: new Date().toISOString()
+        last_updated: new Date().toISOString(),
+        created_by: user.id
       })
       .select()
       .single();
