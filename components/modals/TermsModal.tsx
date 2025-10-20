@@ -1,33 +1,70 @@
 "use client";
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, 
   FileText, 
   Clock, 
   CheckCircle, 
-  Shield, 
   AlertTriangle, 
-  Users, 
-  Mail, 
-  MapPin, 
-  UserCheck, 
-  Ban, 
-  CreditCard, 
-  Eye, 
-  Trash2, 
-  AlertCircle,
-  Phone,
-  Calendar,
-  ExternalLink
+  Loader2
 } from 'lucide-react';
 
 interface TermsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onAccept?: () => void;
 }
 
-const TermsModal: React.FC<TermsModalProps> = ({ isOpen, onClose }) => {
+interface TermsData {
+  id: string | null;
+  title: string;
+  content: string;
+  version: number;
+  last_updated: string;
+}
+
+const TermsModal: React.FC<TermsModalProps> = ({ isOpen, onClose, onAccept }) => {
+  const [terms, setTerms] = useState<TermsData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchTerms();
+    }
+  }, [isOpen]);
+
+  const fetchTerms = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch('/api/terms');
+      if (!response.ok) {
+        throw new Error('Failed to fetch terms');
+      }
+      const data = await response.json();
+      setTerms(data);
+    } catch (error) {
+      console.error('Error fetching terms:', error);
+      setError('Failed to load terms and conditions');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderMarkdownContent = (content: string) => {
+    // Simple markdown to HTML conversion for basic formatting
+    return content
+      .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold text-gray-900 mb-4">$1</h1>')
+      .replace(/^## (.*$)/gim, '<h2 class="text-xl font-semibold text-gray-900 mb-3 mt-6">$1</h2>')
+      .replace(/^### (.*$)/gim, '<h3 class="text-lg font-medium text-gray-900 mb-2 mt-4">$1</h3>')
+      .replace(/\*\*(.*?)\*\*/gim, '<strong class="font-semibold">$1</strong>')
+      .replace(/\*(.*?)\*/gim, '<em class="italic">$1</em>')
+      .replace(/^- (.*$)/gim, '<li class="flex items-start gap-2 mb-2"><span class="w-2 h-2 bg-ut-orange rounded-full mt-2 flex-shrink-0"></span><span>$1</span></li>')
+      .replace(/\n\n/gim, '</p><p class="text-gray-700 leading-relaxed mb-4">')
+      .replace(/\n/gim, '<br>');
+  };
   return (
     <AnimatePresence>
       {isOpen && (
@@ -54,7 +91,7 @@ const TermsModal: React.FC<TermsModalProps> = ({ isOpen, onClose }) => {
                     <FileText className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold">Terms and Conditions</h2>
+                    <h2 className="text-2xl font-bold">{terms?.title || 'Terms and Conditions'}</h2>
                     <p className="text-ut-orange text-sm">UT Marketplace Legal Agreement</p>
                   </div>
                 </div>
@@ -69,6 +106,24 @@ const TermsModal: React.FC<TermsModalProps> = ({ isOpen, onClose }) => {
 
             {/* Content */}
             <div className="p-8 overflow-y-auto max-h-[calc(90vh-200px)] scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-[#bf5700] mr-3" />
+                  <span className="text-gray-600">Loading terms and conditions...</span>
+                </div>
+              ) : error ? (
+                <div className="text-center py-12">
+                  <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Terms</h3>
+                  <p className="text-gray-600 mb-4">{error}</p>
+                  <button
+                    onClick={fetchTerms}
+                    className="px-4 py-2 bg-[#bf5700] text-white rounded-lg hover:bg-[#a54700] transition-colors"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              ) : terms ? (
               <div className="max-w-none">
                 {/* Header Info */}
                 <div className="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200">
@@ -76,283 +131,28 @@ const TermsModal: React.FC<TermsModalProps> = ({ isOpen, onClose }) => {
                     <Clock className="w-5 h-5 text-[#bf5700]" />
                     <div>
                       <p className="text-gray-600 text-sm">
-                        <strong>Last updated:</strong> {new Date().toLocaleDateString()}
-                      </p>
-                      <p className="text-gray-500 text-xs">Please read these terms carefully before using our service</p>
+                          <strong>Last updated:</strong> {new Date(terms.last_updated).toLocaleDateString()}
+                        </p>
+                        <p className="text-gray-500 text-xs">Version {terms.version}</p>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Dynamic Content */}
+                  <div 
+                    className="prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ 
+                      __html: `<p class="text-gray-700 leading-relaxed mb-4">${renderMarkdownContent(terms.content)}</p>` 
+                    }}
+                  />
+                    </div>
+              ) : (
+                <div className="text-center py-12">
+                  <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Terms Available</h3>
+                  <p className="text-gray-600">Terms and conditions are not currently available.</p>
                 </div>
-
-                <section className="mb-6 p-4 bg-white rounded-lg border border-gray-200">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-8 h-8 bg-ut-orange bg-opacity-10 rounded-lg flex items-center justify-center">
-                      <CheckCircle className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">1. Acceptance of Terms</h3>
-                      <p className="text-gray-700 leading-relaxed text-sm">
-                        By accessing and using UT Marketplace (&quot;the Service&quot;), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
-                      </p>
-                    </div>
-                  </div>
-                </section>
-
-                <section className="mb-6 p-4 bg-white rounded-lg border border-gray-200">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-8 h-8 bg-ut-orange bg-opacity-10 rounded-lg flex items-center justify-center">
-                      <Users className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">2. Eligibility</h3>
-                      <p className="text-gray-700 leading-relaxed mb-3 text-sm">
-                        This service is exclusively available to:
-                      </p>
-                      <ul className="list-none text-gray-700 space-y-2 ml-0 text-sm">
-                        <li className="flex items-start gap-2">
-                          <UserCheck className="w-3 h-3 text-ut-orange mt-1.5 flex-shrink-0" />
-                          <span>Current students of The University of Texas at Austin</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <UserCheck className="w-3 h-3 text-ut-orange mt-1.5 flex-shrink-0" />
-                          <span>Faculty and staff members of The University of Texas at Austin</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <UserCheck className="w-3 h-3 text-ut-orange mt-1.5 flex-shrink-0" />
-                          <span>Recent graduates (within 2 years) of The University of Texas at Austin</span>
-                        </li>
-                      </ul>
-                      <div className="mt-3 p-3 bg-orange-50 rounded border-l-2 border-ut-orange">
-                        <div className="flex items-start gap-2">
-                          <AlertTriangle className="w-4 h-4 text-white mt-0.5 flex-shrink-0" />
-                          <p className="text-gray-700 text-xs">
-                            <strong>Important:</strong> You must provide a valid @utexas.edu email address to register and use this service.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-
-                <section className="mb-6 p-4 bg-white rounded-lg border border-gray-200">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-8 h-8 bg-[#bf5700] bg-opacity-10 rounded-lg flex items-center justify-center">
-                      <Shield className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">3. User Responsibilities</h3>
-                      <p className="text-gray-700 leading-relaxed mb-3 text-sm">
-                        As a user of UT Marketplace, you agree to:
-                      </p>
-                      <ul className="list-none text-gray-700 space-y-2 ml-0 text-sm">
-                        <li className="flex items-start gap-2">
-                          <CheckCircle className="w-3 h-3 text-ut-orange mt-1.5 flex-shrink-0" />
-                          <span>Provide accurate and truthful information in all listings and communications</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <CheckCircle className="w-3 h-3 text-ut-orange mt-1.5 flex-shrink-0" />
-                          <span>Respect other users and maintain a professional, courteous demeanor</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <CheckCircle className="w-3 h-3 text-ut-orange mt-1.5 flex-shrink-0" />
-                          <span>Not engage in fraudulent, deceptive, or illegal activities</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <CheckCircle className="w-3 h-3 text-ut-orange mt-1.5 flex-shrink-0" />
-                          <span>Comply with all applicable laws and university policies</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <CheckCircle className="w-3 h-3 text-ut-orange mt-1.5 flex-shrink-0" />
-                          <span>Report suspicious or inappropriate behavior to administrators</span>
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-                </section>
-
-                <section className="mb-6 p-4 bg-white rounded-lg border border-gray-200">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-8 h-8 bg-ut-orange bg-opacity-10 rounded-lg flex items-center justify-center">
-                      <Ban className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">4. Prohibited Items and Activities</h3>
-                      <p className="text-gray-700 leading-relaxed mb-3 text-sm">
-                        The following items and activities are strictly prohibited:
-                      </p>
-                      <ul className="list-none text-gray-700 space-y-2 ml-0 text-sm">
-                        <li className="flex items-start gap-2">
-                          <AlertTriangle className="w-3 h-3 text-ut-orange mt-1.5 flex-shrink-0" />
-                          <span>Illegal substances, weapons, or dangerous items</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <AlertTriangle className="w-3 h-3 text-ut-orange mt-1.5 flex-shrink-0" />
-                          <span>Alcohol, tobacco, or age-restricted products</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <AlertTriangle className="w-3 h-3 text-ut-orange mt-1.5 flex-shrink-0" />
-                          <span>Academic materials (tests, assignments, papers) for sale</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <AlertTriangle className="w-3 h-3 text-ut-orange mt-1.5 flex-shrink-0" />
-                          <span>Personal information or data of other users</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                                        <AlertTriangle className="w-3 h-3 text-ut-orange mt-1.5 flex-shrink-0" />
-                          <span>Spam, harassment, or abusive content</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <AlertTriangle className="w-3 h-3 text-ut-orange mt-1.5 flex-shrink-0" />
-                          <span>Items that violate university policies or local laws</span>
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-                </section>
-
-                <section className="mb-6 p-4 bg-white rounded-lg border border-gray-200">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-8 h-8 bg-ut-orange bg-opacity-10 rounded-lg flex items-center justify-center">
-                      <CreditCard className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">5. Transactions and Payments</h3>
-                      <p className="text-gray-700 leading-relaxed mb-3 text-sm">
-                        UT Marketplace facilitates connections between buyers and sellers but does not:
-                      </p>
-                      <ul className="list-none text-gray-700 space-y-2 ml-0 text-sm">
-                        <li className="flex items-start gap-2">
-                          <AlertCircle className="w-3 h-3 text-ut-orange mt-1.5 flex-shrink-0" />
-                          <span>Process payments or handle financial transactions</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <AlertCircle className="w-3 h-3 text-ut-orange mt-1.5 flex-shrink-0" />
-                          <span>Guarantee the quality, condition, or authenticity of items</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <AlertCircle className="w-3 h-3 text-ut-orange mt-1.5 flex-shrink-0" />
-                          <span>Provide insurance or protection for transactions</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <AlertCircle className="w-3 h-3 text-ut-orange mt-1.5 flex-shrink-0" />
-                          <span>Mediate disputes between users</span>
-                        </li>
-                      </ul>
-                      <div className="mt-3 p-3 bg-orange-50 rounded border-l-2 border-ut-orange">
-                        <div className="flex items-start gap-2">
-                          <CheckCircle className="w-4 h-4 text-ut-orange mt-0.5 flex-shrink-0" />
-                          <p className="text-gray-700 text-xs">
-                            <strong>Recommendation:</strong> All transactions are conducted directly between users. We recommend meeting in safe, public locations and using secure payment methods.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-
-                <section className="mb-6 p-4 bg-white rounded-lg border border-gray-200">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-8 h-8 bg-ut-orange bg-opacity-10 rounded-lg flex items-center justify-center">
-                      <Eye className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">6. Privacy and Data Protection</h3>
-                      <p className="text-gray-700 leading-relaxed text-sm">
-                        We are committed to protecting your privacy. Your personal information will only be used to provide and improve our services. We will not sell, trade, or share your personal information with third parties without your consent, except as required by law or university policy.
-                      </p>
-                    </div>
-                  </div>
-                </section>
-
-                <section className="mb-6 p-4 bg-white rounded-lg border border-gray-200">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-8 h-8 bg-ut-orange bg-opacity-10 rounded-lg flex items-center justify-center">
-                      <Trash2 className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">7. Account Termination</h3>
-                      <p className="text-gray-700 leading-relaxed text-sm">
-                        We reserve the right to suspend or terminate accounts that violate these terms, engage in fraudulent activity, or otherwise misuse the service. Users may also terminate their accounts at any time by contacting our support team.
-                      </p>
-                    </div>
-                  </div>
-                </section>
-
-                <section className="mb-6 p-4 bg-white rounded-lg border border-gray-200">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-8 h-8 bg-ut-orange bg-opacity-10 rounded-lg flex items-center justify-center">
-                      <AlertTriangle className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">8. Limitation of Liability</h3>
-                      <p className="text-gray-700 leading-relaxed text-sm">
-                        UT Marketplace is provided &quot;as is&quot; without warranties of any kind. We are not liable for any damages arising from your use of the service, including but not limited to direct, indirect, incidental, or consequential damages.
-                      </p>
-                    </div>
-                  </div>
-                </section>
-
-                <section className="mb-6 p-4 bg-white rounded-lg border border-gray-200">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-8 h-8 bg-ut-orange bg-opacity-10 rounded-lg flex items-center justify-center">
-                      <Clock className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">9. Changes to Terms</h3>
-                      <p className="text-gray-700 leading-relaxed text-sm">
-                        We reserve the right to modify these terms at any time. Users will be notified of significant changes via email or through the service. Continued use of the service after changes constitutes acceptance of the new terms.
-                      </p>
-                    </div>
-                  </div>
-                </section>
-
-                <section className="mb-6 p-4 bg-white rounded-lg border border-gray-200">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-8 h-8 bg-[#bf5700] bg-opacity-10 rounded-lg flex items-center justify-center">
-                      <Phone className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">10. Contact Information</h3>
-                      <p className="text-gray-700 leading-relaxed mb-3 text-sm">
-                        If you have any questions about these Terms and Conditions, please contact us at:
-                      </p>
-                      <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-3">
-                            <Mail className="w-4 h-4 text-ut-orange" />
-                            <div>
-                              <span className="text-gray-700 font-medium text-sm">Email</span>
-                              <p className="text-gray-600 text-xs">support@utmarketplace.com</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <MapPin className="w-4 h-4 text-ut-orange" />
-                            <div>
-                              <span className="text-gray-700 font-medium text-sm">Address</span>
-                              <p className="text-gray-600 text-xs">The University of Texas at Austin</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <Clock className="w-4 h-4 text-ut-orange" />
-                            <div>
-                              <span className="text-gray-700 font-medium text-sm">Office Hours</span>
-                              <p className="text-gray-600 text-xs">Monday - Friday, 9:00 AM - 5:00 PM CST</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-
-                <div className="mt-6 p-4 bg-orange-50 rounded-lg border-l-2 border-ut-orange">
-                  <div className="flex items-start gap-3">
-                    <Shield className="w-4 h-4 text-ut-orange mt-0.5 flex-shrink-0" />
-                    <p className="text-gray-800 font-medium text-sm">
-                      By using UT Marketplace, you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions.
-                    </p>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Footer */}
@@ -365,7 +165,12 @@ const TermsModal: React.FC<TermsModalProps> = ({ isOpen, onClose }) => {
                 </div>
               </div>
               <button
-                onClick={onClose}
+                onClick={() => {
+                  if (onAccept) {
+                    onAccept();
+                  }
+                  onClose();
+                }}
                 className="px-6 py-2 bg-ut-orange text-white rounded-lg font-semibold hover:bg-ut-orange transition-colors duration-200 flex items-center gap-2"
               >
                 <CheckCircle className="w-4 h-4" />
