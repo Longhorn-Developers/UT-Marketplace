@@ -20,6 +20,7 @@ import {
 import BrowseLoader from "../browse/components/BrowseLoader";
 import * as timeago from "timeago.js";
 import { processListingsWithStatus } from "../lib/utils/statusUtils";
+import NotLoggedIn from "../../components/globals/NotLoggedIn";
 
 interface Listing {
   id: string;
@@ -61,10 +62,6 @@ const MyListings = () => {
   const [editId, setEditId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/auth/signin");
-      return;
-    }
     if (!authLoading && user) {
       fetchListings();
     }
@@ -218,6 +215,28 @@ const MyListings = () => {
       fetchListings();
     }
   };
+
+  // Show loading while auth is being checked
+  if (authLoading) {
+    return <BrowseLoader />;
+  }
+
+  // Show not logged in component if user is not authenticated
+  if (!user) {
+    return (
+      <motion.div 
+        className="bg-gray-50 min-h-screen"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <NotLoggedIn 
+          message="Please log in to view your listings"
+          className="py-8"
+        />
+      </motion.div>
+    );
+  }
 
   if (loading) {
     return <BrowseLoader />;

@@ -19,6 +19,7 @@ import dynamic from "next/dynamic";
 import { ListingService } from '../lib/database/ListingService';
 import { UserService } from '../lib/database/UserService';
 import { dbLogger } from '../lib/database/utils';
+import NotLoggedIn from '../../components/globals/NotLoggedIn';
 
 
 const MapPicker = dynamic(() => import("../listing/components/MapPicker"), { ssr: false });
@@ -26,7 +27,7 @@ const MapPicker = dynamic(() => import("../listing/components/MapPicker"), { ssr
 const Create = () => {
   const [images, setImages] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
@@ -92,7 +93,6 @@ const Create = () => {
   const handleSaveDraft = async () => {
     if (!user?.id) {
       toast.error("You must be logged in to save a draft.");
-      router.push('/auth/signin');
       return;
     }
 
@@ -136,7 +136,6 @@ const Create = () => {
   const handleSubmit = async () => {
     if (!user?.id) {
       toast.error("You must be logged in to create a listing.");
-      router.push('/auth/signin');
       return;
     }
 
@@ -178,6 +177,40 @@ const Create = () => {
       setSaving(false);
     }
   };
+
+  // Show loading while auth is being checked
+  if (authLoading) {
+    return (
+      <motion.div 
+        className="flex items-center justify-center min-h-[60vh]"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#bf5700] mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading...</p>
+        </div>
+      </motion.div>
+    );
+  }
+
+  // Show not logged in component if user is not authenticated
+  if (!user) {
+    return (
+      <motion.div 
+        className="bg-gray-50 min-h-screen"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <NotLoggedIn 
+          message="Please log in to create a listing"
+          className="py-10"
+        />
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div 
