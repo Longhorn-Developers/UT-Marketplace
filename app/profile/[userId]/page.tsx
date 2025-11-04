@@ -21,6 +21,7 @@ const PublicProfile = () => {
   const [showRatingForm, setShowRatingForm] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [profileUserId, setProfileUserId] = useState<string | null>(null);
   const [userHasRated, setUserHasRated] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -54,6 +55,7 @@ const PublicProfile = () => {
       setProfileImage(userData.profile_image_url || null);
       setBio(userData.bio || null);
       setUserEmail(userData.email);
+      setProfileUserId(userData.id);
       setUserName(userData.display_name || userData.email?.split('@')[0] || 'User');
 
       // Fetch user's listings by user_id
@@ -253,10 +255,10 @@ const PublicProfile = () => {
               </div>
             </div>
             {/* Action Buttons */}
-            {user?.id && user.id !== userEmail && (
+            {user?.id && user.id !== profileUserId && (
               <div className="mt-6 flex gap-3">
                 <button
-                  onClick={() => router.push(`/messages?user=${userEmail}`)}
+                  onClick={() => router.push(`/messages?user=${profileUserId}`)}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[#bf5700] text-[#bf5700] text-sm hover:bg-[#bf5700] hover:text-white transition"
                 >
                   <MessageCircle size={16} />
