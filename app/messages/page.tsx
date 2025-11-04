@@ -35,14 +35,22 @@ const MessagesPage = () => {
       setLoading(true);
       const conversations = await MessageService.getConversations(user.id);
       setConversations(conversations);
-      // Clear temporary conversation when updating conversations
-      setTempConversation(null);
+      // Only clear temporary conversation if the selected conversation is now in the list
+      if (selectedConversation) {
+        const conversationKey = selectedConversation;
+        const exists = conversations.some(
+          (c) => c.user_id + ":" + c.listing_id === conversationKey
+        );
+        if (exists) {
+          setTempConversation(null);
+        }
+      }
     } catch (error) {
       dbLogger.error('Error fetching conversations', error);
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, selectedConversation]);
 
   const fetchMessages = useCallback(async (conversationKey: string) => {
     if (!user?.id) return;
@@ -202,6 +210,59 @@ const MessagesPage = () => {
     fetchMessages(selectedConversation);
   }, [selectedConversation, user, authLoading, fetchMessages]);
 
+  // Handle ?user= param for direct general chat
+  useEffect(() => {
+    if (!user?.id) return;
+    const targetUserId = searchParams.get("user");
+    if (targetUserId) {
+      (async () => {
+        try {
+          // Check if user is trying to chat with themselves
+          if (targetUserId === user.id) {
+            dbLogger.info('User trying to chat with themselves');
+            return;
+          }
+          
+          // Fetch user data
+          const { data: userData, error: userError } = await supabase
+            .from("users")
+            .select("id, display_name, profile_image_url")
+            .eq("id", targetUserId)
+            .single();
+          
+          if (userError || !userData) {
+            dbLogger.error('Failed to fetch user for chat', userError);
+            return;
+          }
+          
+          // Check if a conversation already exists (general chat)
+          const existingMessages = await MessageService.getMessages({
+            userId: user.id,
+            otherUserId: targetUserId,
+            listingId: null
+          });
+          
+          // Create a temporary conversation object for the chat window
+          const tempConv: Conversation = {
+            user_id: targetUserId,
+            user_name: userData.display_name || 'Unknown User',
+            user_image: userData.profile_image_url || undefined,
+            listing_id: "general",
+            listing_title: "",
+            last_message: existingMessages.length > 0 ? existingMessages[existingMessages.length - 1].content : '',
+            last_message_time: existingMessages.length > 0 ? existingMessages[existingMessages.length - 1].created_at : new Date().toISOString(),
+            unread_count: 0
+          };
+          
+          setTempConversation(tempConv);
+          setSelectedConversation(targetUserId + ":general");
+        } catch (error) {
+          dbLogger.error('Error setting up user chat', error);
+        }
+      })();
+    }
+  }, [user, searchParams]);
+
   // Handle ?listing= param for direct listing chat
   useEffect(() => {
     if (!user?.id) return;
@@ -209,28 +270,32 @@ const MessagesPage = () => {
     if (listingId) {
       (async () => {
         try {
-          // We'll need to implement a listing service for this, but for now use basic query
-          const { data: listing, error } = await supabase
+          // Fetch listing data
+          const { data: listing, error: listingError } = await supabase
             .from("listings")
-            .select(`
-              id, 
-              user_id, 
-              title,
-              user:user_settings!user_id(
-                display_name,
-                profile_image_url
-              )
-            `)
+            .select("id, user_id, title")
             .eq("id", listingId)
             .single();
           
-          if (error || !listing) {
-            dbLogger.error('Failed to fetch listing for chat', error);
+          if (listingError || !listing) {
+            dbLogger.error('Failed to fetch listing for chat', listingError);
             return;
           }
           
           if (listing.user_id === user.id) {
             dbLogger.info('User trying to chat with themselves');
+            return;
+          }
+          
+          // Fetch user data separately
+          const { data: userData, error: userError } = await supabase
+            .from("users")
+            .select("id, display_name, profile_image_url")
+            .eq("id", listing.user_id)
+            .single();
+          
+          if (userError || !userData) {
+            dbLogger.error('Failed to fetch user for chat', userError);
             return;
           }
           
@@ -242,11 +307,10 @@ const MessagesPage = () => {
           });
           
           // Create a temporary conversation object with user data for the chat window
-          const userData = Array.isArray(listing.user) ? listing.user[0] : listing.user;
           const tempConv: Conversation = {
             user_id: listing.user_id,
-            user_name: userData?.display_name || 'Unknown User',
-            user_image: userData?.profile_image_url || undefined,
+            user_name: userData.display_name || 'Unknown User',
+            user_image: userData.profile_image_url || undefined,
             listing_id: listingId,
             listing_title: listing.title,
             last_message: existingMessages.length > 0 ? existingMessages[existingMessages.length - 1].content : '',
