@@ -140,22 +140,35 @@ const AdminDashboard: React.FC = () => {
   }, []);
 
   const handleApproveListingReport = async (reportId: string) => {
-    if (!user?.id) return;
-    
+    if (!user?.id) {
+      console.error('No user ID found!');
+      alert('You must be logged in to perform this action');
+      return;
+    }
+
+    console.log(' Starting to approve listing report:', reportId);
+    console.log(' Admin user ID:', user.id);
+
     setActionLoading(reportId);
     try {
       const result = await AdminService.approveListingReport(reportId, user.id);
+      console.log(' Approve listing report result:', result);
+
       if (result.success) {
+        console.log(' Successfully removed listing!');
         // Remove the report from the list
         setListingReports(prev => prev.filter(report => report.id !== reportId));
         // Update stats
         const newStats = await AdminService.getAdminStats();
         setStats(newStats);
+        alert('Listing removed successfully!');
       } else {
+        console.error(' Failed to approve report:', result.error);
         alert(result.error || 'Failed to approve report');
       }
     } catch (error) {
-      alert('An error occurred while processing the report');
+      console.error('Exception while processing report:', error);
+      alert('An error occurred while processing the report: ' + error);
     } finally {
       setActionLoading(null);
     }

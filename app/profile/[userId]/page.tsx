@@ -4,15 +4,17 @@ import { useParams, useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 import ListingCard from "../../browse/components/ListingCard";
 import * as timeago from "timeago.js";
-import { Mail, Star, CheckCircle2, MessageCircle } from "lucide-react";
+import { Star, CheckCircle2, MessageCircle, Flag } from "lucide-react";
 import { useAuth } from '../../context/AuthContext';
 import { Listing } from "../../props/listing";
 import { Rating } from "../../props/rating";
+import ReportUserModal from "../../../components/modals/ReportUserModal";
 
 const PublicProfile = () => {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
+  // Report User feature enabled
   const [listings, setListings] = useState<Listing[]>([]);
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,6 +27,7 @@ const PublicProfile = () => {
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [bio, setBio] = useState<string | null>(null);
+  const [showReportUserModal, setShowReportUserModal] = useState(false);
 
   useEffect(() => {
     const userId = Array.isArray(params.userId) ? params.userId[0] : params.userId;
@@ -254,13 +257,20 @@ const PublicProfile = () => {
             </div>
             {/* Action Buttons */}
             {user?.id && user.id !== userEmail && (
-              <div className="mt-6 flex gap-3">
+              <div className="mt-6 flex flex-wrap gap-3">
                 <button
                   onClick={() => router.push(`/messages?user=${userEmail}`)}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[#bf5700] text-[#bf5700] text-sm hover:bg-[#bf5700] hover:text-white transition"
                 >
                   <MessageCircle size={16} />
                   Message
+                </button>
+                <button
+                  onClick={() => setShowReportUserModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg border border-red-600 bg-red-50 text-red-600 text-sm font-bold hover:border-red-700 hover:bg-red-100 transition"
+                >
+                  <Flag size={16} />
+                  Report User
                 </button>
                 <div>
                 {!showRatingForm ? (
@@ -413,6 +423,15 @@ const PublicProfile = () => {
           </div>
         </div>
       )}
+
+      {/* Report User Modal */}
+      <ReportUserModal
+        isOpen={showReportUserModal}
+        onClose={() => setShowReportUserModal(false)}
+        reportedUserId={params.userId as string}
+        reportedUserName={displayName || userName || 'User'}
+        reporterId={user?.id || null}
+      />
     </div>
   );
 };

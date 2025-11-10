@@ -83,6 +83,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signOut = async () => {
+    setIsAdmin(false); // Clear admin state immediately
+    setUser(null);     // Clear user state immediately
     await supabase.auth.signOut();
     router.push('/');
   };

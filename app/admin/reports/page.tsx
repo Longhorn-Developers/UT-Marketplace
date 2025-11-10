@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { AdminService } from '../../lib/database/AdminService';
-import { supabase } from '../../lib/supabaseClient';
+import { useAuth } from '../../context/AuthContext';
 import { AlertTriangle, Clock, CheckCircle2, XCircle, Eye, Search, Filter, User, FileText, Calendar } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -24,6 +24,7 @@ interface ReportData {
 }
 
 const AdminReportsPage = () => {
+  const { user } = useAuth();
   const [reports, setReports] = useState<ReportData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -40,144 +41,66 @@ const AdminReportsPage = () => {
   const fetchReports = async () => {
     try {
       setLoading(true);
-      
-      // Try different possible report table structures
-      let allReports: any[] = [];
-      
-      // First, try the unified 'reports' table
-      try {
-        const { data: reportsData, error: reportsError } = await supabase
-          .from('reports')
-          .select('*')
-          .order('created_at', { ascending: false });
 
-        if (!reportsError && reportsData) {
-          console.log('Found reports table with columns:', Object.keys(reportsData[0] || {}));
-          
-          // Process each report to get additional details
-          for (const report of reportsData) {
-            try {
-              // Try to get listing details if this is a listing report
-              if (report.reported_listing_id || report.listing_id) {
-                const listingId = report.reported_listing_id || report.listing_id;
-                const { data: listing } = await supabase
-                  .from('listings')
-                  .select('title, user_id')
-                  .eq('id', listingId)
-                  .single();
+      // Use AdminService methods to fetch reports (same as dashboard)
+      const [listingReportsData, userReportsData] = await Promise.all([
+        AdminService.getListingReports(100, 0), // Fetch more reports
+        AdminService.getUserReports(100, 0)
+      ]);
 
-                if (listing) {
-                  report.listing_title = listing.title;
-                }
-              }
-
-              // Try to get reporter details
-              if (report.reporter_id) {
-                const { data: reporter } = await supabase
-                  .from('users')
-                  .select('display_name, email')
-                  .eq('id', report.reporter_id)
-                  .single();
-
-                if (reporter) {
-                  report.reporter_name = reporter.display_name || reporter.email?.split('@')[0] || 'Unknown';
-                }
-              }
-
-              // Try to get reported user details
-              if (report.reported_user_id) {
-                const { data: reportedUser } = await supabase
-                  .from('users')
-                  .select('display_name, email')
-                  .eq('id', report.reported_user_id)
-                  .single();
-
-                if (reportedUser) {
-                  report.reported_user_name = reportedUser.display_name || reportedUser.email?.split('@')[0] || 'Unknown';
-                }
-              }
-
-              allReports.push(report);
-            } catch (processError) {
-              console.warn('Error processing report:', report.id, processError);
-              // Still add the report even if we can't get all details
-              allReports.push(report);
-            }
-          }
-        } else {
-          console.log('Reports table not accessible or empty:', reportsError);
-        }
-      } catch (unifiedReportsError) {
-        console.log('Unified reports table not available:', unifiedReportsError);
-        
-        // Try separate tables as fallback
-        try {
-          // Try listing_reports table
-          const { data: listingReports } = await supabase
-            .from('listing_reports')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-          if (listingReports) {
-            allReports.push(...listingReports.map(report => ({ ...report, type: 'listing' })));
-          }
-        } catch (listingReportsError) {
-          console.log('listing_reports table not available:', listingReportsError);
-        }
-
-        try {
-          // Try user_reports table  
-          const { data: userReports } = await supabase
-            .from('user_reports')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-          if (userReports) {
-            allReports.push(...userReports.map(report => ({ ...report, type: 'user' })));
-          }
-        } catch (userReportsError) {
-          console.log('user_reports table not available:', userReportsError);
-        }
-      }
-
-      // Format all reports with consistent structure
-      const formattedReports = allReports.map(report => {
-        // Determine report type
-        let reportType: 'listing' | 'user' = 'user';
-        if (report.reported_listing_id || report.listing_id || report.type === 'listing') {
-          reportType = 'listing';
-        }
+      // Format listing reports
+      const formattedListingReports: ReportData[] = listingReportsData.map(report => {
+        const listing = report.listing as any;
+        const reporter = report.reporter as any;
 
         return {
           id: report.id,
-          type: reportType,
+          type: 'listing' as const,
           reason: report.reason || 'No reason provided',
           description: report.description || '',
-          status: report.status || 'pending',
+          status: (report.status as 'pending' | 'resolved' | 'dismissed') || 'pending',
           created_at: report.created_at,
           reporter_id: report.reporter_id,
-          reported_listing_id: report.reported_listing_id || report.listing_id,
-          reported_user_id: report.reported_user_id,
-          listing_title: report.listing_title || 'Unknown Listing',
-          reported_user_name: report.reported_user_name || 'Unknown User',
-          reporter_name: report.reporter_name || 'Unknown Reporter'
+          reported_listing_id: report.listing_id,
+          reported_user_id: undefined,
+          listing_title: listing?.title || 'Unknown Listing',
+          reported_user_name: undefined,
+          reporter_name: reporter?.display_name || reporter?.email?.split('@')[0] || 'Unknown Reporter'
         };
-      }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      });
 
-      setReports(formattedReports);
+      // Format user reports
+      const formattedUserReports: ReportData[] = userReportsData.map(report => {
+        const reportedUser = report.reported_user as any;
+        const reporter = report.reporter as any;
 
-      // If no reports found, show a message in console for debugging
-      if (formattedReports.length === 0) {
-        console.log('No reports found. This could mean:');
-        console.log('1. No reports table exists in database');
-        console.log('2. Reports table is empty'); 
-        console.log('3. Database permissions issue');
-        console.log('4. Different table structure than expected');
-      }
+        return {
+          id: report.id,
+          type: 'user' as const,
+          reason: report.reason || 'No reason provided',
+          description: report.description || '',
+          status: (report.status as 'pending' | 'resolved' | 'dismissed') || 'pending',
+          created_at: report.created_at,
+          reporter_id: report.reporter_id,
+          reported_listing_id: undefined,
+          reported_user_id: report.reported_user_id,
+          listing_title: undefined,
+          reported_user_name: reportedUser?.display_name || reportedUser?.email?.split('@')[0] || 'Unknown User',
+          reporter_name: reporter?.display_name || reporter?.email?.split('@')[0] || 'Unknown Reporter'
+        };
+      });
+
+      // Combine and sort by date
+      const allReports = [...formattedListingReports, ...formattedUserReports]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      setReports(allReports);
+
+      console.log(`Fetched ${formattedListingReports.length} listing reports and ${formattedUserReports.length} user reports`);
+
     } catch (error) {
       console.error('Error fetching reports:', error);
-      toast.error('Failed to fetch reports');
-      // Set empty array so the UI still renders
+      toast.error('Failed to fetch reports. Make sure the report tables are set up in the database.');
       setReports([]);
     } finally {
       setLoading(false);
@@ -185,23 +108,31 @@ const AdminReportsPage = () => {
   };
 
   const handleResolveReport = async (reportId: string, type: 'listing' | 'user') => {
+    if (!user?.id) {
+      toast.error('You must be logged in to perform this action');
+      return;
+    }
+
     try {
       setActionLoading(true);
-      
-      const { error } = await supabase
-        .from('reports')
-        .update({ status: 'resolved' })
-        .eq('id', reportId);
 
-      if (error) {
-        toast.error('Failed to resolve report');
-        return;
+      let result;
+      if (type === 'listing') {
+        // Approve the listing report (removes listing and deletes report)
+        result = await AdminService.approveListingReport(reportId, user.id);
+      } else {
+        // Approve the user report (bans user and deletes report)
+        result = await AdminService.approveUserReport(reportId, user.id);
       }
 
-      toast.success('Report resolved successfully');
-      await fetchReports();
-      setShowModal(false);
-      setSelectedReport(null);
+      if (result.success) {
+        toast.success(`${type === 'listing' ? 'Listing removed' : 'User banned'} and report resolved successfully`);
+        await fetchReports();
+        setShowModal(false);
+        setSelectedReport(null);
+      } else {
+        toast.error(result.error || 'Failed to resolve report');
+      }
     } catch (error) {
       console.error('Error resolving report:', error);
       toast.error('Error resolving report');
@@ -211,23 +142,31 @@ const AdminReportsPage = () => {
   };
 
   const handleDismissReport = async (reportId: string, type: 'listing' | 'user') => {
+    if (!user?.id) {
+      toast.error('You must be logged in to perform this action');
+      return;
+    }
+
     try {
       setActionLoading(true);
-      
-      const { error } = await supabase
-        .from('reports')
-        .update({ status: 'dismissed' })
-        .eq('id', reportId);
 
-      if (error) {
-        toast.error('Failed to dismiss report');
-        return;
+      let result;
+      if (type === 'listing') {
+        // Reject the listing report (just deletes the report)
+        result = await AdminService.rejectListingReport(reportId, user.id);
+      } else {
+        // Reject the user report (just deletes the report)
+        result = await AdminService.rejectUserReport(reportId, user.id);
       }
 
-      toast.success('Report dismissed successfully');
-      await fetchReports();
-      setShowModal(false);
-      setSelectedReport(null);
+      if (result.success) {
+        toast.success('Report dismissed successfully');
+        await fetchReports();
+        setShowModal(false);
+        setSelectedReport(null);
+      } else {
+        toast.error(result.error || 'Failed to dismiss report');
+      }
     } catch (error) {
       console.error('Error dismissing report:', error);
       toast.error('Error dismissing report');

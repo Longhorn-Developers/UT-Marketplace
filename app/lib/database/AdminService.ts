@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient';
+import { supabaseAdmin } from '../supabaseAdmin';
 import { Listing } from '../../props/listing';
 import { dbLogger } from './utils';
 
@@ -709,53 +710,35 @@ export class AdminService {
    */
   static async approveListingReport(reportId: string, adminId: string): Promise<{ success: boolean; error?: string }> {
     try {
+      console.log('Step 1: Starting approveListingReport (using API route)', { reportId, adminId });
       dbLogger.info('Approving listing report', { reportId, adminId });
 
-      // First check if admin
-      const isAdmin = await this.isUserAdmin(adminId);
-      if (!isAdmin) {
-        return { success: false, error: 'Unauthorized: Only admins can approve reports' };
+      // Call server-side API route to delete the listing
+      const response = await fetch('/api/admin/delete-listing', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reportId,
+          adminId,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        console.error('API Error:', result.error);
+        return { success: false, error: result.error || 'Failed to delete listing' };
       }
 
-      // Get the report details
-      const { data: report, error: reportError } = await supabase
-        .from('listing_reports')
-        .select('listing_id')
-        .eq('id', reportId)
-        .single();
-
-      if (reportError || !report) {
-        return { success: false, error: 'Report not found' };
-      }
-
-      // Delete the listing first (this will also delete related favorites, etc. due to CASCADE)
-      const { error: deleteListingError } = await supabase
-        .from('listings')
-        .delete()
-        .eq('id', report.listing_id);
-
-      if (deleteListingError) {
-        dbLogger.error('Error deleting listing', deleteListingError);
-        return { success: false, error: 'Failed to remove listing' };
-      }
-
-      // Delete the report
-      const { error: deleteReportError } = await supabase
-        .from('listing_reports')
-        .delete()
-        .eq('id', reportId);
-
-      if (deleteReportError) {
-        dbLogger.error('Error deleting report', deleteReportError);
-        // Listing is already deleted, but report deletion failed
-        return { success: false, error: 'Listing removed but failed to delete report' };
-      }
-
+      console.log('✅ Listing deleted successfully via API');
       dbLogger.success('Listing report approved and processed', { reportId });
       return { success: true };
     } catch (error) {
+      console.error('Exception in approveListingReport:', error);
       dbLogger.error('Error approving listing report', error);
-      return { success: false, error: 'An error occurred while processing the report' };
+      return { success: false, error: `An error occurred while processing the report: ${error}` };
     }
   }
 
@@ -773,7 +756,7 @@ export class AdminService {
       }
 
       // Delete the report only
-      const { error: deleteError } = await supabase
+      const { error: deleteError } = await supabaseAdmin
         .from('listing_reports')
         .delete()
         .eq('id', reportId);
@@ -816,7 +799,7 @@ export class AdminService {
       }
 
       // Ban the user
-      const { error: banError } = await supabase
+      const { error: banError } = await supabaseAdmin
         .from('users')
         .update({ is_banned: true })
         .eq('id', report.reported_user_id);
@@ -827,7 +810,7 @@ export class AdminService {
       }
 
       // Delete the report
-      const { error: deleteError } = await supabase
+      const { error: deleteError } = await supabaseAdmin
         .from('user_reports')
         .delete()
         .eq('id', reportId);
@@ -860,7 +843,7 @@ export class AdminService {
       }
 
       // Delete the report only
-      const { error: deleteError } = await supabase
+      const { error: deleteError } = await supabaseAdmin
         .from('user_reports')
         .delete()
         .eq('id', reportId);
@@ -920,87 +903,33 @@ export class AdminService {
    */
   static async approveListing(listingId: string, adminId: string): Promise<{ success: boolean; error?: string }> {
     try {
+      console.log('Starting approveListing (using API route)', { listingId, adminId });
       dbLogger.info('Approving listing', { listingId, adminId });
 
-      // First check if admin
-      const isAdmin = await this.isUserAdmin(adminId);
-      if (!isAdmin) {
-        return { success: false, error: 'Unauthorized: Only admins can approve listings' };
-      }
-
-      // First check what the current status is AND what columns exist
-      const { data: beforeUpdate, error: beforeError } = await supabase
-        .from('listings')
-        .select('*')
-        .eq('id', listingId)
-        .single();
-
-      console.log('🔍 Listing data structure:', {
-        listingId,
-        availableColumns: beforeUpdate ? Object.keys(beforeUpdate) : 'ERROR',
-        hasStatusColumn: beforeUpdate ? 'status' in beforeUpdate : false,
-        hasDenialReasonColumn: beforeUpdate ? 'denial_reason' in beforeUpdate : false,
+      // Call server-side API route to approve the listing
+      const response = await fetch('/api/admin/approve-listing', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          listingId,
+          adminId,
+        }),
       });
 
-      console.log('🔍 Before approval update:', {
-        listingId,
-        beforeStatus: beforeUpdate?.status,
-        beforeDenialReason: beforeUpdate?.denial_reason,
-        beforeError
-      });
+      const result = await response.json();
 
-      // Update listing status to approved
-      const result = await supabase
-        .from('listings')
-        .update({ 
-          status: 'approved',
-          denial_reason: null
-        })
-        .eq('id', listingId)
-        .select(); // Return the updated row
-
-      console.log('🔍 Update result:', {
-        listingId,
-        error: result.error,
-        data: result.data,
-        updatedRows: result.data?.length || 0,
-        status: result.status,
-        statusText: result.statusText
-      });
-
-      // If no rows were updated, that means the WHERE condition didn't match
-      if (result.data && result.data.length === 0) {
-        console.error('❌ No rows were updated! The listing ID might not exist or WHERE condition failed');
-        return { success: false, error: 'No listing found with the provided ID' };
+      if (!result.success) {
+        console.error('API Error:', result.error);
+        return { success: false, error: result.error || 'Failed to approve listing' };
       }
 
-      if (result.error) {
-        dbLogger.error('Error approving listing - columns may not exist', result.error);
-        
-        // If status/denial_reason columns don't exist, the update will fail
-        // You need to run the database migration first!
-        return { 
-          success: false, 
-          error: `Database columns missing! Please run the migration SQL in Supabase dashboard. Error: ${result.error.message}` 
-        };
-      }
-
-      // Verify the update actually worked
-      const { data: updatedListing, error: fetchError } = await supabase
-        .from('listings')
-        .select('status')
-        .eq('id', listingId)
-        .single();
-
-      if (fetchError) {
-        dbLogger.error('Could not verify listing update', fetchError);
-      } else {
-        dbLogger.info('Listing status after update', { listingId, status: updatedListing?.status });
-      }
-
+      console.log('✅ Listing approved successfully via API');
       dbLogger.success('Listing approved successfully', { listingId });
       return { success: true };
     } catch (error) {
+      console.error('Exception in approveListing:', error);
       dbLogger.error('Error in approveListing', error);
       return { success: false, error: 'An error occurred while approving the listing' };
     }
@@ -1011,47 +940,34 @@ export class AdminService {
    */
   static async denyListing(listingId: string, adminId: string, reason: string): Promise<{ success: boolean; error?: string }> {
     try {
+      console.log('Starting denyListing (using API route)', { listingId, adminId, reason });
       dbLogger.info('Denying listing', { listingId, adminId, reason });
 
-      // First check if admin
-      const isAdmin = await this.isUserAdmin(adminId);
-      if (!isAdmin) {
-        return { success: false, error: 'Unauthorized: Only admins can deny listings' };
+      // Call server-side API route to deny the listing
+      const response = await fetch('/api/admin/deny-listing', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          listingId,
+          adminId,
+          reason,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        console.error('API Error:', result.error);
+        return { success: false, error: result.error || 'Failed to deny listing' };
       }
 
-      // Update listing status to denied with reason
-      // First try with status column, if that fails, just update a timestamp to indicate processing
-      let error: any;
-      
-      try {
-        const result = await supabase
-          .from('listings')
-          .update({ 
-            status: 'denied',
-            denial_reason: reason
-          })
-          .eq('id', listingId);
-        error = result.error;
-      } catch (statusError) {
-        // Status column might not exist, try alternative approach
-        dbLogger.warn('Status column may not exist, using fallback approach', statusError);
-        const result = await supabase
-          .from('listings')
-          .update({ 
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', listingId);
-        error = result.error;
-      }
-
-      if (error) {
-        dbLogger.error('Error denying listing', error);
-        return { success: false, error: `Failed to deny listing: ${error.message}` };
-      }
-
+      console.log('✅ Listing denied successfully via API');
       dbLogger.success('Listing denied successfully', { listingId, reason });
       return { success: true };
     } catch (error) {
+      console.error('Exception in denyListing:', error);
       dbLogger.error('Error in denyListing', error);
       return { success: false, error: 'An error occurred while denying the listing' };
     }
