@@ -732,7 +732,7 @@ export class AdminService {
         return { success: false, error: result.error || 'Failed to delete listing' };
       }
 
-      console.log('✅ Listing deleted successfully via API');
+      console.log(' Listing deleted successfully via API');
       dbLogger.success('Listing report approved and processed', { reportId });
       return { success: true };
     } catch (error) {
@@ -925,7 +925,7 @@ export class AdminService {
         return { success: false, error: result.error || 'Failed to approve listing' };
       }
 
-      console.log('✅ Listing approved successfully via API');
+      console.log(' Listing approved successfully via API');
       dbLogger.success('Listing approved successfully', { listingId });
       return { success: true };
     } catch (error) {
@@ -963,7 +963,7 @@ export class AdminService {
         return { success: false, error: result.error || 'Failed to deny listing' };
       }
 
-      console.log('✅ Listing denied successfully via API');
+      console.log(' Listing denied successfully via API');
       dbLogger.success('Listing denied successfully', { listingId, reason });
       return { success: true };
     } catch (error) {
