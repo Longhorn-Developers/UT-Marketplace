@@ -22,6 +22,23 @@ const EditForm = ({
   const [images, setImages] = useState<(File | string)[]>(form.images || []);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const hasLatLng = typeof localForm.location_lat === 'number' && typeof localForm.location_lng === 'number';
+  
+  // Location state management
+  const [customLocation, setCustomLocation] = useState("");
+  const [showCustomLocationInput, setShowCustomLocationInput] = useState(false);
+  
+  // Initialize location state based on existing location
+  React.useEffect(() => {
+    const predefinedLocations = [
+      "On Campus", "West Campus", "North Campus", "East Riverside", 
+      "Downtown", "Hyde Park", "Mueller"
+    ];
+    
+    if (localForm.location && !predefinedLocations.includes(localForm.location)) {
+      setShowCustomLocationInput(true);
+      setCustomLocation(localForm.location);
+    }
+  }, [localForm.location]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -36,6 +53,19 @@ const EditForm = ({
 
   const handleRemoveImage = (index: number) => {
     setImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleLocationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedValue = e.target.value;
+    
+    if (selectedValue === "Add custom location") {
+      setShowCustomLocationInput(true);
+      setLocalForm({ ...localForm, location: "" }); // Reset location since we'll use custom location
+    } else {
+      setShowCustomLocationInput(false);
+      setCustomLocation(""); // Clear custom location when predefined is selected
+      setLocalForm({ ...localForm, location: selectedValue });
+    }
   };
 
   const validateFields = () => {
@@ -53,12 +83,20 @@ const EditForm = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setForm(localForm);
-    // If new images are uploaded, add them to the form (you may want to handle upload to storage in parent)
+    
+    const finalLocation = showCustomLocationInput ? customLocation : localForm.location;
+    
+    if (showCustomLocationInput && customLocation.trim().length === 0) {
+      toast.error("Please enter a custom location.");
+      return;
+    }
+    
+    const updatedForm = { ...localForm, location: finalLocation };
+    setForm(updatedForm);
     
     // Preserve the draft status in the submission
     const dataToSubmit = { 
-      ...localForm, 
+      ...updatedForm, 
       is_draft: typeof localForm.is_draft !== 'undefined' ? localForm.is_draft : form.is_draft,
       images,
       location_lat: localForm.location_lat,
@@ -234,26 +272,54 @@ const EditForm = ({
             <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
               <MapPin size={14} /> Location
             </label>
-            <input
-              type="text"
-              name="location"
-              value={localForm.location ?? ""}
-              onChange={(e) => setLocalForm({ ...localForm, location: e.target.value })}
-                className="w-full border rounded-md px-3 py-2 text-sm mb-2"
-            />
-              <div className="my-2">
-                <MapPicker
-                  value={hasLatLng ? { lat: localForm.location_lat, lng: localForm.location_lng } : undefined}
-                  onChange={({ lat, lng }) => setLocalForm({ ...localForm, location_lat: lat, location_lng: lng })}
-                  height="200px"
+            <select
+              className="w-full border rounded-md px-3 py-2 text-sm"
+              value={showCustomLocationInput ? "Add custom location" : (localForm.location || "")}
+              onChange={handleLocationChange}
+              required
+            >
+              <option value="">Select a location</option>
+              <option value="On Campus">On Campus</option>
+              <option value="West Campus">West Campus</option>
+              <option value="North Campus">North Campus</option>
+              <option value="East Riverside">East Riverside</option>
+              <option value="Downtown">Downtown</option>
+              <option value="Hyde Park">Hyde Park</option>
+              <option value="Mueller">Mueller</option>
+              <option value="Add custom location">Add custom location</option>
+            </select>
+            {showCustomLocationInput && (
+              <div className="mt-3">
+                <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  Enter custom location
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., South Austin, Specific building name..."
+                  className="w-full border rounded-md px-3 py-2 text-sm"
+                  value={customLocation}
+                  onChange={(e) => setCustomLocation(e.target.value.slice(0, 100))}
+                  maxLength={100}
+                  required
                 />
                 <div className="text-xs text-gray-500 mt-1">
-                  Click on the map to update the location. This helps buyers see where the item is located.
-                  {hasLatLng && (
-                    <span className="ml-2 text-green-600">Location selected!</span>
-                  )}
+                  {customLocation.length}/100 characters
                 </div>
               </div>
+            )}
+            <div className="my-2">
+              <MapPicker
+                value={hasLatLng ? { lat: localForm.location_lat, lng: localForm.location_lng } : undefined}
+                onChange={({ lat, lng }) => setLocalForm({ ...localForm, location_lat: lat, location_lng: lng })}
+                height="200px"
+              />
+              <div className="text-xs text-gray-500 mt-1">
+                Click on the map to update the location. This helps buyers see where the item is located.
+                {hasLatLng && (
+                  <span className="ml-2 text-green-600">Location selected!</span>
+                )}
+              </div>
+            </div>
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
@@ -277,11 +343,21 @@ const EditForm = ({
               type="button"
               className="w-full mt-2 px-6 py-2 rounded-lg bg-green-600 text-white font-semibold shadow hover:bg-green-700 transition flex items-center justify-center gap-2"
               onClick={() => {
-                if (!validateFields()) {
+                const finalLocation = showCustomLocationInput ? customLocation : localForm.location;
+                
+                if (showCustomLocationInput && customLocation.trim().length === 0) {
+                  toast.error("Please enter a custom location.");
+                  return;
+                }
+                
+                const updatedFormForPublish = { ...localForm, location: finalLocation };
+                
+                if (!validateFields() || !finalLocation) {
                   toast.error('Please fill in all required fields before publishing.');
                   return;
                 }
-                handleEditSubmit({ ...localForm, is_draft: false, images });
+                
+                handleEditSubmit({ ...updatedFormForPublish, is_draft: false, images });
               }}
             >
               <Save size={16} /> Publish Listing
