@@ -34,6 +34,8 @@ const Create = () => {
   const [price, setPrice] = useState(0);
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
+  const [customLocation, setCustomLocation] = useState("");
+  const [showCustomLocationInput, setShowCustomLocationInput] = useState(false);
   const [locationLat, setLocationLat] = useState<number | null>(null);
   const [locationLng, setLocationLng] = useState<number | null>(null);
   const [condition, setCondition] = useState("");
@@ -90,6 +92,19 @@ const Create = () => {
     setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleLocationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedValue = e.target.value;
+    setLocation(selectedValue);
+    
+    if (selectedValue === "Add custom location") {
+      setShowCustomLocationInput(true);
+      setLocation(""); // Reset location since we'll use custom location
+    } else {
+      setShowCustomLocationInput(false);
+      setCustomLocation(""); // Clear custom location when predefined is selected
+    }
+  };
+
   const handleSaveDraft = async () => {
     if (!user?.id) {
       toast.error("You must be logged in to save a draft.");
@@ -105,10 +120,12 @@ const Create = () => {
         uploadedImageUrls = await ListingService.uploadImages(images, user.id);
       }
 
+      const draftLocation = showCustomLocationInput ? customLocation : location;
+      
       const listing = await ListingService.createListing({
         title: title || "Untitled Draft",
         price: price || 0,
-        location: location || "",
+        location: draftLocation || "",
         category: category || "",
         condition: condition || "",
         description: description || "",
@@ -139,8 +156,15 @@ const Create = () => {
       return;
     }
 
-    if (!title || !category || !description || !location || price <= 0 || !condition) {
+    const finalLocation = showCustomLocationInput ? customLocation : location;
+    
+    if (!title || !category || !description || !finalLocation || price <= 0 || !condition) {
       toast.error("Please fill in all fields before publishing.");
+      return;
+    }
+
+    if (showCustomLocationInput && customLocation.trim().length === 0) {
+      toast.error("Please enter a custom location.");
       return;
     }
 
@@ -153,7 +177,7 @@ const Create = () => {
       const listing = await ListingService.createListing({
         title,
         price,
-        location,
+        location: finalLocation,
         category,
         condition,
         description,
@@ -352,8 +376,8 @@ const Create = () => {
             </label>
             <select
               className="w-full border rounded-md px-3 py-2 text-sm"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
+              value={showCustomLocationInput ? "Add custom location" : location}
+              onChange={handleLocationChange}
               required
             >
               <option value="">Select a location</option>
@@ -364,8 +388,27 @@ const Create = () => {
               <option value="Downtown">Downtown</option>
               <option value="Hyde Park">Hyde Park</option>
               <option value="Mueller">Mueller</option>
-              <option value="Other">Other</option>
+              <option value="Add custom location">Add custom location</option>
             </select>
+            {showCustomLocationInput && (
+              <div className="mt-3">
+                <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  Enter custom location
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., South Austin, Specific building name..."
+                  className="w-full border rounded-md px-3 py-2 text-sm"
+                  value={customLocation}
+                  onChange={(e) => setCustomLocation(e.target.value.slice(0, 100))}
+                  maxLength={100}
+                  required
+                />
+                <div className="text-xs text-gray-500 mt-1">
+                  {customLocation.length}/100 characters
+                </div>
+              </div>
+            )}
             {/* <div className="my-2">
               <MapPicker
                 value={locationLat && locationLng ? { lat: locationLat, lng: locationLng } : undefined}
