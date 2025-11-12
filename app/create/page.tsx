@@ -350,15 +350,23 @@ const Create = () => {
               <MapPin size={14} />
               Location
             </label>
-            <input
-              type="text"
-              className="w-full border rounded-md px-3 py-2 text-sm mb-2"
-              placeholder="Enter a location name (e.g. West Campus)"
+            <select
+              className="w-full border rounded-md px-3 py-2 text-sm"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               required
-            />
-            <div className="my-2">
+            >
+              <option value="">Select a location</option>
+              <option value="On Campus">On Campus</option>
+              <option value="West Campus">West Campus</option>
+              <option value="North Campus">North Campus</option>
+              <option value="East Riverside">East Riverside</option>
+              <option value="Downtown">Downtown</option>
+              <option value="Hyde Park">Hyde Park</option>
+              <option value="Mueller">Mueller</option>
+              <option value="Other">Other</option>
+            </select>
+            {/* <div className="my-2">
               <MapPicker
                 value={locationLat && locationLng ? { lat: locationLat, lng: locationLng } : undefined}
                 onChange={({ lat, lng }) => {
@@ -373,7 +381,7 @@ const Create = () => {
                   <span className="ml-2 text-green-600">Location selected!</span>
                 )}
               </div>
-            </div>
+            </div> */}
           </div>
 
           <div className="mb-6">
