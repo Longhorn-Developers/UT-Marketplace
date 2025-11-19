@@ -1,4 +1,4 @@
-import { Star, User, MessageCircle } from "lucide-react"
+import { Star, User } from "lucide-react"
 
 const testimonials = [
   {
@@ -21,8 +21,7 @@ const testimonials = [
 const Testomonials = () => {
   return (
     <section className="py-12 px-4 md:px-6 max-w-6xl mx-auto">
-      <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center flex items-center justify-center gap-2">
-        <MessageCircle className="text-ut-orange" />
+      <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">
         What Students Are Saying
       </h2>
       <div className="grid gap-8 md:grid-cols-3">
