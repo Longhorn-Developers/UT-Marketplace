@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useCrypto } from '../../context/CryptoContext';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import TermsModal from '../../../components/modals/TermsModal';
+import { ensureUserHasKeys } from '../../lib/database/KeyService';
 
 export default function SignIn() {
   const [email, setEmail] = useState('');
@@ -22,6 +24,7 @@ export default function SignIn() {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const { signIn, signUp } = useAuth();
+  const { setKeys, setUserId } = useCrypto();
   const router = useRouter();
 
   // Check for error parameter in URL
@@ -128,16 +131,37 @@ export default function SignIn() {
       } else {
         const { error } = await signIn(email, password);
         if (error) throw error;
-        
-        // Check if user needs to complete onboarding
+
+        // Get user info
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
+          // Load encryption keys
+          try {
+            console.log('Loading encryption keys...');
+            const keys = await ensureUserHasKeys(user.id, password);
+
+            if (keys) {
+              // Decrypt the private key
+              const { decryptPrivateKey } = await import('../../lib/encryption');
+              const privateKey = await decryptPrivateKey(keys.encryptedPrivateKey, password);
+
+              // Load keys into CryptoContext
+              setKeys(privateKey, keys.publicKey);
+              setUserId(user.id);
+              console.log('✅ Encryption keys loaded successfully');
+            }
+          } catch (keyError) {
+            console.error('⚠️ Failed to load encryption keys:', keyError);
+            // Don't block login if key loading fails
+          }
+
+          // Check if user needs to complete onboarding
           const { data: profile } = await supabase
             .from('users')
             .select('onboard_complete')
             .eq('id', user.id)
             .single();
-            
+
           if (!profile?.onboard_complete) {
             router.push('/auth/confirmation/onboard');
           } else {
