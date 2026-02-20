@@ -10,6 +10,8 @@ export interface UserProfile {
   phone?: string;
   location?: string;
   onboard_complete?: boolean;
+  status?: 'pending' | 'active';
+  email_verified_at?: string | null;
   notification_preferences?: {
     email_notifications: boolean;
     browser_notifications: boolean;
@@ -37,6 +39,8 @@ export interface CreateUserProfileParams {
   phone?: string;
   location?: string;
   onboard_complete?: boolean;
+  status?: 'pending' | 'active';
+  email_verified_at?: string | null;
   notification_preferences?: {
     email_notifications: boolean;
     browser_notifications: boolean;
@@ -51,6 +55,8 @@ export interface UpdateUserProfileParams {
   phone?: string;
   location?: string;
   onboard_complete?: boolean;
+  status?: 'pending' | 'active';
+  email_verified_at?: string | null;
 }
 
 export interface CreateRatingParams {
@@ -86,26 +92,38 @@ export class UserService {
       phone,
       location,
       onboard_complete,
+      status,
+      email_verified_at,
       notification_preferences
     } = params;
 
     try {
       dbLogger.info('Upserting user profile', { userId: id, email });
 
+      const payload: Record<string, any> = {
+        id,
+        email,
+        display_name: display_name || email.split('@')[0],
+        profile_image_url,
+        bio,
+        phone,
+        location,
+        onboard_complete,
+        notification_preferences,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (status !== undefined) {
+        payload.status = status;
+      }
+
+      if (email_verified_at !== undefined) {
+        payload.email_verified_at = email_verified_at;
+      }
+
       const { data, error } = await supabase
         .from('users')
-        .upsert({
-          id,
-          email,
-          display_name: display_name || email.split('@')[0],
-          profile_image_url,
-          bio,
-          phone,
-          location,
-          onboard_complete,
-          notification_preferences,
-          updated_at: new Date().toISOString(),
-        }, {
+        .upsert(payload, {
           onConflict: 'id'
         })
         .select()
