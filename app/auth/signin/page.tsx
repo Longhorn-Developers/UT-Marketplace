@@ -119,7 +119,22 @@ export default function SignIn() {
           return;
         }
         
-        const { error } = await signUp(email, password);
+        const { error, status } = await signUp(email, password);
+
+        if (status === 'existing-confirmed') {
+          setError('This email is already associated with an existing account.');
+          setLoading(false);
+          return;
+        }
+
+        if (status === 'existing-unverified') {
+          setError('Please check your email to complete verification.');
+          // Send them to confirmation page where they can resend
+          router.push(`/auth/confirmation?email=${encodeURIComponent(email)}`);
+          setLoading(false);
+          return;
+        }
+
         if (error) throw error;
         
         // Redirect to confirmation page with email

@@ -4,7 +4,7 @@ import Hero from "../components/home/Hero";
 import Testomonials from "../components/home/Testomonials";
 import RecentListings from "../components/home/Recents";
 import CategorySection from "../components/home/CategorySection";
-import { ShieldCheck, Zap, MessageCircle, Users, Star, CheckCircle } from 'lucide-react';
+import { ShieldCheck, MessageCircle, Users, Star, CheckCircle } from 'lucide-react';
 import BetaPopup from '../components/home/BetaPopup';
 import { FaPlus, FaSearch } from "react-icons/fa";
 import { motion, AnimatePresence, Variants } from "framer-motion";
@@ -17,10 +17,10 @@ const itemVariants: Variants = {
 
 const LiveTicker = () => {
   const [messages] = useState([
-    "🔥 34 items sold in the last hour!",
-    "🎉 169 new listings today!",
-    "👀 26 students browsing now!",
-    "⭐ 500+ positive reviews!",
+    "34 items sold in the last hour!",
+    "169 new listings today!",
+    "26 students browsing now!",
+    "500+ positive reviews!",
   ]);
   const [index, setIndex] = useState(0);
   useEffect(() => {
@@ -62,15 +62,14 @@ const Mascot = () => (
     animate={{ scale: 1, rotate: [0, 10, -10, 0] }}
     transition={{ duration: 2, repeat: Infinity }}
   >
-    <span className="text-[80px] md:text-[120px]">🤘</span>
     <span className="text-[#bf5700] font-bold text-lg mt-2">Hook&apos;em!</span>
   </motion.div>
 );
 
 const HowItWorks = () => (
   <section className="py-12 px-4 md:px-6 max-w-6xl mx-auto">
-    <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center flex items-center justify-center gap-2">
-      <Zap className="text-ut-orange" /> How It Works
+    <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">
+      How It Works
     </h2>
     <div className="grid md:grid-cols-4 gap-8">
       <div className="flex flex-col items-center text-center">

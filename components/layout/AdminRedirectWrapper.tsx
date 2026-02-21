@@ -14,6 +14,7 @@ const AdminRedirectWrapper: React.FC<AdminRedirectWrapperProps> = ({ children, n
   const router = useRouter();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+  const hideChrome = pathname?.startsWith('/auth/confirmation/onboard');
 
   // Ensure component is mounted on client before making admin decisions
   useEffect(() => {
@@ -45,6 +46,9 @@ const AdminRedirectWrapper: React.FC<AdminRedirectWrapperProps> = ({ children, n
 
   // During SSR or initial hydration, always show regular layout to prevent mismatch
   if (!mounted || loading) {
+    if (hideChrome) {
+      return <main className="flex-1">{children}</main>;
+    }
     return (
       <>
         {navbar}
@@ -71,6 +75,10 @@ const AdminRedirectWrapper: React.FC<AdminRedirectWrapperProps> = ({ children, n
   // If user is admin and on admin pages, don't show regular navbar/footer
   if (user && isAdmin && pathname?.startsWith('/admin')) {
     return <>{children}</>;
+  }
+
+  if (hideChrome) {
+    return <main className="flex-1">{children}</main>;
   }
 
   // Regular users get the normal layout

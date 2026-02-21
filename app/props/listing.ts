@@ -25,6 +25,7 @@ export interface ListingPageProps {
   images?: string[];
   condition: string;
   description: string;
+  tags?: string[];
   user: {
     name: string;
     image?: string;
@@ -48,6 +49,7 @@ export interface OwnerPageProps {
   images?: string[];
   condition: string;
   description: string;
+  tags?: string[];
   id?: string;
   is_sold?: boolean;
   is_draft?: boolean;
@@ -65,6 +67,7 @@ export interface Listing {
   images: string[];
   condition: string;
   description: string;
+  tags?: string[];
   user_id: string;
   user_name: string;
   user_image?: string;

@@ -34,6 +34,7 @@ interface Listing {
   location: string;
   condition: string;
   description: string;
+  tags?: string[];
   status: 'pending' | 'approved' | 'denied';
   denial_reason?: string;
 }
@@ -181,6 +182,7 @@ const MyListings = () => {
       category: listing.category,
       condition: listing.condition,
       description: listing.description,
+      tags: listing.tags || [],
       images: listing.images || [],
       is_draft: listing.is_draft,
     });

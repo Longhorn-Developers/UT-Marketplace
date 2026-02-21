@@ -9,7 +9,10 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signUp: (
+    email: string,
+    password: string
+  ) => Promise<{ error: AuthError | null; status?: 'sent' | 'existing-confirmed' | 'existing-unverified' }>;
   signOut: () => Promise<void>;
 }
 
@@ -82,15 +85,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       };
     }
     
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback?type=signup&email=${encodeURIComponent(email)}`,
       },
     });
+
+    if (error) {
+      // Handle duplicate confirmed accounts
+      const message = (error.message || '').toLowerCase();
+      if (message.includes('already registered') || message.includes('user already') || message.includes('registered')) {
+        return { error, status: 'existing-confirmed' };
+      }
+      return { error };
+    }
+
+    // Supabase returns an empty identities array when the email already exists but is unconfirmed.
+    if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      return { error: null, status: 'existing-unverified' };
+    }
     
-    return { error };
+    return { error: null, status: 'sent' };
   };
 
   const signOut = async () => {
