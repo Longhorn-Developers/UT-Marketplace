@@ -98,6 +98,29 @@ const buildSearchOrClause = (term: string) => {
   return parts.join(',');
 };
 
+const buildTrigrams = (value: string) => {
+  const normalized = value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  if (!normalized) return [];
+  const padded = `  ${normalized} `;
+  const trigrams: string[] = [];
+  for (let i = 0; i < padded.length - 2; i += 1) {
+    trigrams.push(padded.slice(i, i + 3));
+  }
+  return trigrams;
+};
+
+const trigramSimilarity = (a: string, b: string) => {
+  const aTris = buildTrigrams(a);
+  const bTris = buildTrigrams(b);
+  if (aTris.length === 0 || bTris.length === 0) return 0;
+  const aSet = new Set(aTris);
+  let overlap = 0;
+  bTris.forEach((tri) => {
+    if (aSet.has(tri)) overlap += 1;
+  });
+  return (2 * overlap) / (aTris.length + bTris.length);
+};
+
 export interface CreateListingParams {
   title: string;
   price: number;
@@ -278,75 +301,37 @@ export class ListingService {
     try {
       dbLogger.info('Fetching listings', params);
 
-      const buildBaseQuery = () => {
-        let query = supabase
-          .from('listings')
-          .select(`*`)
-          .order('created_at', { ascending: false });
+      let query = supabase
+        .from('listings')
+        .select(`*`)
+        .order('created_at', { ascending: false });
 
-        if (excludeSold) {
-          query = query.eq('is_sold', false);
-        }
-
-        if (excludeDrafts) {
-          query = query.eq('is_draft', false);
-        }
-
-        // Note: Status filtering is now done after data processing to handle missing columns
-
-        if (category && category !== 'All') {
-          query = query.eq('category', convertToDbFormat(category, 'category'));
-        }
-
-        if (userId) {
-          query = query.eq('user_id', userId);
-        }
-
-        return query;
-      };
-
-      let listingsData: any[] = [];
-      if (searchTerm && searchTerm.trim()) {
-        const fetchLimit = offset + limit;
-        const searchOr = buildSearchOrClause(searchTerm);
-
-        const [textResult, ilikeResult] = await Promise.all([
-          buildBaseQuery()
-            .textSearch('search_vector', searchTerm, { type: 'websearch' })
-            .limit(fetchLimit),
-          buildBaseQuery()
-            .or(searchOr)
-            .limit(fetchLimit),
-        ]);
-
-        if (textResult.error) {
-          dbLogger.error('Failed to fetch listings (text search)', textResult.error);
-        }
-
-        if (ilikeResult.error) {
-          dbLogger.error('Failed to fetch listings (partial search)', ilikeResult.error);
-        }
-
-        const combined = [...(textResult.data || []), ...(ilikeResult.data || [])];
-        const uniqueMap = new Map<string, any>();
-        combined.forEach((listing) => {
-          uniqueMap.set(listing.id, listing);
-        });
-
-        listingsData = Array.from(uniqueMap.values())
-          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-          .slice(offset, offset + limit);
-      } else {
-        const { data, error } = await buildBaseQuery()
-          .range(offset, offset + limit - 1);
-
-        if (error) {
-          dbLogger.error('Failed to fetch listings', error);
-          return [];
-        }
-
-        listingsData = data || [];
+      if (excludeSold) {
+        query = query.eq('is_sold', false);
       }
+
+      if (excludeDrafts) {
+        query = query.eq('is_draft', false);
+      }
+
+      // Note: Status filtering is now done after data processing to handle missing columns
+
+      if (category && category !== 'All') {
+        query = query.eq('category', convertToDbFormat(category, 'category'));
+      }
+
+      if (userId) {
+        query = query.eq('user_id', userId);
+      }
+
+      const { data, error } = await query.range(offset, offset + limit - 1);
+
+      if (error) {
+        dbLogger.error('Failed to fetch listings', error);
+        return [];
+      }
+
+      let listingsData: any[] = data || [];
 
       if (!listingsData || listingsData.length === 0) {
         return [];
@@ -400,8 +385,42 @@ export class ListingService {
         }
       }
 
-      dbLogger.success('Listings fetched successfully', { count: filteredListings.length });
-      return filteredListings as Listing[];
+      let rankedListings = filteredListings;
+      if (searchTerm && searchTerm.trim()) {
+        const normalized = searchTerm.toLowerCase().trim();
+        const scoreListing = (listing: any) => {
+          const title = listing.title?.toLowerCase() || '';
+          const description = listing.description?.toLowerCase() || '';
+          const locationText = listing.location?.toLowerCase() || '';
+          const categoryText = listing.category?.toLowerCase() || '';
+          const tagsText = Array.isArray(listing.tags) ? listing.tags.join(' ').toLowerCase() : '';
+
+          let score = 0;
+          if (title.includes(normalized)) score += 4;
+          if (categoryText.includes(normalized)) score += 3;
+          if (locationText.includes(normalized)) score += 2;
+          if (description.includes(normalized)) score += 1;
+          if (tagsText.includes(normalized)) score += 1;
+
+          const fuzzyTitle = trigramSimilarity(normalized, title) * 3.5;
+          const fuzzyCategory = trigramSimilarity(normalized, categoryText) * 2.5;
+          const fuzzyLocation = trigramSimilarity(normalized, locationText) * 2.0;
+          const fuzzyTags = trigramSimilarity(normalized, tagsText) * 1.5;
+          const fuzzyDescription = trigramSimilarity(normalized, description) * 0.8;
+          score += fuzzyTitle + fuzzyCategory + fuzzyLocation + fuzzyTags + fuzzyDescription;
+
+          return score;
+        };
+
+        rankedListings = [...filteredListings].sort((a, b) => {
+          const scoreDiff = scoreListing(b) - scoreListing(a);
+          if (scoreDiff !== 0) return scoreDiff;
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+      }
+
+      dbLogger.success('Listings fetched successfully', { count: rankedListings.length });
+      return rankedListings as Listing[];
     } catch (error) {
       dbLogger.error('Error in getListings', error);
       return [];

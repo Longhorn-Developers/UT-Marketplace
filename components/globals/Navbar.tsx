@@ -78,6 +78,7 @@ const Navbar = () => {
           .from("listings")
           .select("title, category, location")
           .eq("is_draft", false)
+          .neq("is_sold", true)
           .or(`title.ilike.%${term}%,location.ilike.%${term}%`)
           .limit(8);
 
