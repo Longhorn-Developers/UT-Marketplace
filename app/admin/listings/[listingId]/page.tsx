@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { X, MapPin, Calendar, Package, Star, Flag, CheckCircle, XCircle, User, DollarSign, Tag, Info, Clock, AlertTriangle, Eye, MessageSquare, Heart, Shield, ExternalLink, ArrowLeft } from 'lucide-react';
 import { ListingService } from '../../../lib/database/ListingService';
@@ -47,16 +47,12 @@ const AdminListingDetailPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
-  useEffect(() => {
-    if (listingId) {
-      fetchListing();
-    }
-  }, [listingId]);
+  const fetchListing = useCallback(async () => {
+    if (!listingId) return;
 
-  const fetchListing = async () => {
     try {
       setLoading(true);
-      
+
       // Get the raw listing data directly from Supabase to access created_at
       const { data: rawData, error } = await supabase
         .from('listings')
@@ -113,7 +109,11 @@ const AdminListingDetailPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [listingId, user?.id]);
+
+  useEffect(() => {
+    fetchListing();
+  }, [fetchListing]);
 
   const handleApprove = async () => {
     if (!user?.id) return;

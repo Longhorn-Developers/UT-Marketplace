@@ -40,6 +40,7 @@ const Create = () => {
   const [showCustomLocationInput, setShowCustomLocationInput] = useState(false);
   const [locationLat, setLocationLat] = useState<number | null>(null);
   const [locationLng, setLocationLng] = useState<number | null>(null);
+  const [showMapPicker, setShowMapPicker] = useState(false);
   const [condition, setCondition] = useState("");
   const [saving, setSaving] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -438,22 +439,43 @@ const Create = () => {
                 </div>
               </div>
             )}
-            {/* <div className="my-2">
-              <MapPicker
-                value={locationLat && locationLng ? { lat: locationLat, lng: locationLng } : undefined}
-                onChange={({ lat, lng }) => {
-                  setLocationLat(lat);
-                  setLocationLng(lng);
+            <div className="mt-3 flex items-center gap-2 text-sm text-gray-600">
+              <input
+                id="show-map-picker"
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-[#bf5700] focus:ring-[#bf5700]"
+                checked={showMapPicker}
+                onChange={(e) => {
+                  const next = e.target.checked;
+                  setShowMapPicker(next);
+                  if (!next) {
+                    setLocationLat(null);
+                    setLocationLng(null);
+                  }
                 }}
-                height="250px"
               />
-              <div className="text-xs text-gray-500 mt-1">
-                Click on the map to select a location. This will help buyers see where the item is located.
-                {locationLat && locationLng && (
-                  <span className="ml-2 text-green-600">Location selected!</span>
-                )}
+              <label htmlFor="show-map-picker">
+                Add a precise map pin (optional)
+              </label>
+            </div>
+            {showMapPicker && (
+              <div className="my-3 rounded-xl border border-gray-200 overflow-hidden">
+                <MapPicker
+                  value={locationLat && locationLng ? { lat: locationLat, lng: locationLng } : undefined}
+                  onChange={({ lat, lng }) => {
+                    setLocationLat(lat);
+                    setLocationLng(lng);
+                  }}
+                  height="240px"
+                />
+                <div className="text-xs text-gray-500 px-3 py-2 bg-gray-50">
+                  Click the map to drop a pin. Buyers will see an approximate area, not your exact address.
+                  {locationLat && locationLng && (
+                    <span className="ml-2 text-green-600">Pin saved.</span>
+                  )}
+                </div>
               </div>
-            </div> */}
+            )}
           </div>
 
           <div className="mb-6">

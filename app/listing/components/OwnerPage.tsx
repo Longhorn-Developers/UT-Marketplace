@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 import { toast, ToastContainer } from "react-toastify";
@@ -7,6 +7,7 @@ import EditForm from "./EditForm";
 import { MapPin, Calendar, Tag, CheckCircle2, Send, Clock, XCircle } from "lucide-react";
 import { OwnerPageProps } from "../../props/listing";
 import { determineListingStatus } from "../../lib/utils/statusUtils";
+import Image from "next/image";
 
 const categoryOptions = [
   "Furniture",
@@ -68,7 +69,7 @@ const OwnerPage: React.FC<OwnerPageProps> = ({
     setIsDraft(is_draft);
   }, [is_draft]);
 
-  const fetchListing = async () => {
+  const fetchListing = useCallback(async () => {
     if (!id) return;
     const { data, error } = await supabase
       .from("listings")
@@ -96,11 +97,11 @@ const OwnerPage: React.FC<OwnerPageProps> = ({
       
       setSelectedImageIdx(0);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     fetchListing();
-  }, []);
+  }, [fetchListing]);
 
   useEffect(() => {
     const fetchRelated = async () => {
@@ -230,10 +231,12 @@ const OwnerPage: React.FC<OwnerPageProps> = ({
             <div className="aspect-[4/3] bg-gray-100 rounded-xl overflow-hidden relative">
               {form.images && form.images[selectedImageIdx] ? (
                 <>
-                  <img
+                  <Image
                     src={form.images[selectedImageIdx]}
                     alt={form.title}
-                    className={`w-full h-full object-cover ${isSold ? 'opacity-50' : ''}`}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className={`object-cover ${isSold ? 'opacity-50' : ''}`}
                   />
                   {isSold && (
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -270,9 +273,12 @@ const OwnerPage: React.FC<OwnerPageProps> = ({
                         : "border-transparent"
                     }`}
                   >
-                    <img
+                    <Image
                       src={img}
                       alt={`Thumbnail ${idx + 1}`}
+                      width={120}
+                      height={80}
+                      sizes="120px"
                       className="w-full h-[80px] object-cover"
                     />
                   </button>

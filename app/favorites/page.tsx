@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { ListingService } from '../lib/database/ListingService';
 import { Listing } from '../props/listing';
@@ -14,14 +14,7 @@ export default function FavoritesPage() {
   const [watchlist, setWatchlist] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchFavorites();
-      fetchWatchlist();
-    }
-  }, [user?.id]);
-
-  const fetchFavorites = async () => {
+  const fetchFavorites = useCallback(async () => {
     if (!user?.id) return;
     setLoading(true);
     try {
@@ -32,9 +25,9 @@ export default function FavoritesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id]);
 
-  const fetchWatchlist = async () => {
+  const fetchWatchlist = useCallback(async () => {
     if (!user?.id) return;
     setLoading(true);
     try {
@@ -45,7 +38,14 @@ export default function FavoritesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchFavorites();
+      fetchWatchlist();
+    }
+  }, [user?.id, fetchFavorites, fetchWatchlist]);
 
   const handleRemoveItem = async (listingId: string, type: 'favorite' | 'watchlist') => {
     if (!user?.id) return;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Bell } from 'lucide-react';
 import { supabase } from '../../app/lib/supabaseClient';
 import * as timeago from 'timeago.js';
@@ -16,36 +16,7 @@ const Notifications = () => {
   const router = useRouter();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!user?.id) return;
-
-    fetchNotifications();
-
-    // Subscribe to messages using the new service layer
-    const messageSubscription = MessageService.subscribeToMessages(
-      user.id,
-      (message: Message) => {
-        if (message.receiver_id === user.id) {
-          handleNewMessage(message);
-        } else if (message.is_read && message.receiver_id === user.id) {
-          // Remove the notification if message is marked as read
-          setNotifications(prev => 
-            prev.filter(n => n.id !== message.id)
-          );
-          setUnreadCount(prev => Math.max(0, prev - 1));
-        }
-      },
-      (error) => {
-        dbLogger.error('Notification subscription error', error);
-      }
-    );
-
-    return () => {
-      messageSubscription.unsubscribe();
-    };
-  }, [user]);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     if (!user?.id) return;
 
     try {
@@ -74,7 +45,36 @@ const Notifications = () => {
     } catch (error) {
       dbLogger.error('Error fetching notifications', error);
     }
-  };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    fetchNotifications();
+
+    // Subscribe to messages using the new service layer
+    const messageSubscription = MessageService.subscribeToMessages(
+      user.id,
+      (message: Message) => {
+        if (message.receiver_id === user.id) {
+          handleNewMessage(message);
+        } else if (message.is_read && message.receiver_id === user.id) {
+          // Remove the notification if message is marked as read
+          setNotifications(prev => 
+            prev.filter(n => n.id !== message.id)
+          );
+          setUnreadCount(prev => Math.max(0, prev - 1));
+        }
+      },
+      (error) => {
+        dbLogger.error('Notification subscription error', error);
+      }
+    );
+
+    return () => {
+      messageSubscription.unsubscribe();
+    };
+  }, [user?.id, fetchNotifications]);
 
   const handleNewMessage = async (message: Message) => {
     try {

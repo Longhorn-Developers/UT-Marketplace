@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabaseClient';
 import { Camera, Loader2 } from 'lucide-react';
@@ -36,15 +36,7 @@ export default function SettingsPage() {
     profile_image_url: null,
   });
 
-  useEffect(() => {
-    if (!user?.id) {
-      router.push('/auth/signin');
-      return;
-    }
-    fetchUserSettings();
-  }, [user]);
-
-  const fetchUserSettings = async () => {
+  const fetchUserSettings = useCallback(async () => {
     if (!user?.id) return;
 
     try {
@@ -80,7 +72,15 @@ export default function SettingsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id, user?.email, user?.user_metadata?.name]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      router.push('/auth/signin');
+      return;
+    }
+    fetchUserSettings();
+  }, [user?.id, router, fetchUserSettings]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

@@ -5,6 +5,7 @@ import { supabase } from "../../lib/supabaseClient";
 import ListingCard from "../../browse/components/ListingCard";
 import * as timeago from "timeago.js";
 import { Mail, Star, CheckCircle2, MessageCircle } from "lucide-react";
+import Image from "next/image";
 import { useAuth } from '../../context/AuthContext';
 import { Listing } from "../../props/listing";
 import { Rating } from "../../props/rating";
@@ -227,7 +228,13 @@ const PublicProfile = () => {
         <div className="flex flex-col md:flex-row gap-6 items-center md:items-start">
           <div className="w-32 h-32 rounded-full bg-gray-100 flex items-center justify-center text-4xl font-bold text-gray-400">
             {profileImage ? (
-              <img src={profileImage} alt={displayName || 'User'} className="w-32 h-32 rounded-full object-cover" />
+              <Image
+                src={profileImage}
+                alt={displayName || 'User'}
+                width={128}
+                height={128}
+                className="w-32 h-32 rounded-full object-cover"
+              />
             ) : (
               <span>{displayName?.[0]?.toUpperCase() || '?'}</span>
             )}

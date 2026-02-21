@@ -408,17 +408,32 @@ const ListingPage: React.FC<ListingPageProps> = ({
 
     {/* Map Section */}
     {(location_lat && location_lng) && (
-      <div className="max-w-6xl mx-auto mt-8">
-        <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
-          <MapPin size={18} className="text-[#bf5700]" />
-          Location on Map
-        </h2>
-        <div className="rounded-xl overflow-hidden border">
+      <div className="max-w-6xl mx-auto mt-10">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-[#fff2e6] text-[#bf5700] flex items-center justify-center shadow-sm">
+              <MapPin size={18} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Location</p>
+              <p className="text-xs text-gray-500">
+                Approximate area {location ? `• ${location}` : ""}
+              </p>
+            </div>
+          </div>
+          <span className="text-xs text-gray-400">Map data © OpenStreetMap</span>
+        </div>
+        <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_20px_60px_-40px_rgba(15,23,42,0.6)]">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.7),transparent_55%)]" />
           <MapPicker
             value={{ lat: location_lat, lng: location_lng }}
             onChange={undefined}
-            height="250px"
+            height="260px"
           />
+          <div className="pointer-events-none absolute bottom-4 left-4 flex items-center gap-2 rounded-full border border-white/70 bg-white/90 px-3 py-1.5 text-xs text-gray-700 shadow-lg backdrop-blur">
+            <MapPin size={14} className="text-[#bf5700]" />
+            {location || "UT Austin area"}
+          </div>
         </div>
       </div>
     )}

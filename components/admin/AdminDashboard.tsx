@@ -22,6 +22,7 @@ import {
 import { AdminService, AdminStats, AdminListingReport, AdminUserReport, AdminListing } from '../../app/lib/database/AdminService';
 import { useAuth } from '../../app/context/AuthContext';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 interface RecentActivity {
   id: string;
@@ -538,9 +539,11 @@ const AdminDashboard: React.FC = () => {
                     <div className="flex-1">
                       <div className="flex items-start gap-3">
                         {listing.images && listing.images.length > 0 && (
-                          <img
+                          <Image
                             src={listing.images[0]}
                             alt={listing.title}
+                            width={64}
+                            height={64}
                             className="w-16 h-16 object-cover rounded-lg"
                           />
                         )}

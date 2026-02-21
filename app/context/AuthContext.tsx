@@ -73,7 +73,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return { error };
   };
 
-  const signUp = async (email: string, password: string) => {
+  const signUp: AuthContextType['signUp'] = async (email: string, password: string) => {
     // Validate email domain for UT Austin
     if (!email.toLowerCase().endsWith('@utexas.edu')) {
       return { 
