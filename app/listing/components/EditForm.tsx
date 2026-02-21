@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import ImageUpload from "../../create/components/ImageUpload";
 import Image from "next/image";
 import dynamic from "next/dynamic";
+import ListingCard from "../../browse/components/ListingCard";
 
 const MapPicker = dynamic(() => import("./MapPicker"), { ssr: false });
 
@@ -20,6 +21,10 @@ const EditForm = ({
 }) => {
   const [localForm, setLocalForm] = useState(form);
   const [images, setImages] = useState<(File | string)[]>(form.images || []);
+  const [tagsInput, setTagsInput] = useState(
+    Array.isArray(form.tags) ? form.tags.join(", ") : ""
+  );
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const hasLatLng = typeof localForm.location_lat === 'number' && typeof localForm.location_lng === 'number';
   
@@ -39,6 +44,35 @@ const EditForm = ({
       setCustomLocation(localForm.location);
     }
   }, [localForm.location]);
+
+  const parseTags = (value: string) =>
+    value
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+
+  React.useEffect(() => {
+    if (!images.length) {
+      setPreviewImage(null);
+      return;
+    }
+
+    const first = images[0];
+    if (typeof first === 'string') {
+      setPreviewImage(first);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPreviewImage(typeof reader.result === 'string' ? reader.result : null);
+    };
+    reader.readAsDataURL(first);
+
+    return () => {
+      reader.abort();
+    };
+  }, [images]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -91,7 +125,7 @@ const EditForm = ({
       return;
     }
     
-    const updatedForm = { ...localForm, location: finalLocation };
+    const updatedForm = { ...localForm, location: finalLocation, tags: parseTags(tagsInput) };
     setForm(updatedForm);
     
     // Preserve the draft status in the submission
@@ -332,6 +366,40 @@ const EditForm = ({
               className="w-full border rounded-md px-3 py-2 text-sm min-h-[80px]"
             />
           </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+              <Tag size={14} /> Tags
+            </label>
+            <input
+              type="text"
+              value={tagsInput}
+              onChange={(e) => setTagsInput(e.target.value)}
+              className="w-full border rounded-md px-3 py-2 text-sm"
+              placeholder="e.g. lamp, desk, dorm"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Separate tags with commas to improve search.
+            </p>
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Search Preview</h3>
+            <div className="max-w-sm">
+              <ListingCard
+                title={localForm.title || "Untitled Listing"}
+                price={localForm.price || 0}
+                location={localForm.location || "Location"}
+                category={localForm.category || "Category"}
+                timePosted={"Just now"}
+                images={previewImage ? [previewImage] : []}
+                user={{
+                  name: "You",
+                  user_id: "preview",
+                }}
+                condition={localForm.condition || "Condition"}
+                searchTerm={undefined}
+              />
+            </div>
+          </div>
           <button
             type="submit"
             className="w-full mt-2 px-6 py-2 rounded-lg bg-[#bf5700] text-white font-semibold shadow hover:bg-[#a54700] transition flex items-center justify-center gap-2"
@@ -357,7 +425,7 @@ const EditForm = ({
                   return;
                 }
                 
-                handleEditSubmit({ ...updatedFormForPublish, is_draft: false, images });
+                handleEditSubmit({ ...updatedFormForPublish, is_draft: false, images, tags: parseTags(tagsInput) });
               }}
             >
               <Save size={16} /> Publish Listing

@@ -74,6 +74,7 @@ export interface CreateListingParams {
   condition: string;
   description: string;
   images: string[];
+  tags?: string[];
   userId: string;
   isDraft?: boolean;
   locationLat?: number;
@@ -90,6 +91,7 @@ export interface UpdateListingParams {
   condition?: string;
   description?: string;
   images?: string[];
+  tags?: string[];
   is_sold?: boolean;
   is_draft?: boolean;
   locationLat?: number;
@@ -133,6 +135,7 @@ export class ListingService {
       condition,
       description,
       images,
+      tags = [],
       userId,
       isDraft = false,
       locationLat,
@@ -153,6 +156,7 @@ export class ListingService {
           condition: convertToDbFormat(condition, 'condition'),
           description,
           images,
+          tags,
           user_id: userId,
           is_draft: isDraft,
           is_sold: false,
@@ -197,6 +201,9 @@ export class ListingService {
       }
       if (updateData.condition) {
         updatePayload.condition = convertToDbFormat(updateData.condition, 'condition');
+      }
+      if (updateData.tags) {
+        updatePayload.tags = updateData.tags;
       }
 
       const { data, error } = await supabase
@@ -262,7 +269,7 @@ export class ListingService {
       }
 
       if (searchTerm) {
-        query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+        query = query.textSearch('search_vector', searchTerm, { type: 'websearch' });
       }
 
       if (userId) {
@@ -715,7 +722,7 @@ export class ListingService {
         .order('created_at', { ascending: false });
 
       if (searchTerm) {
-        query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+        query = query.textSearch('search_vector', searchTerm, { type: 'websearch' });
       }
 
       if (filters.category && filters.category !== 'All') {
