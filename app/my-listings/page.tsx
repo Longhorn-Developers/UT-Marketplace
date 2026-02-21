@@ -114,7 +114,7 @@ const MyListings = () => {
         return false;
       }
     }
-    if (Number(listing.price) <= 0) return false;
+    if (Number(listing.price) < 0) return false;
     return true;
   };
 

@@ -193,8 +193,8 @@ const OwnerPage: React.FC<OwnerPageProps> = ({
       }
     }
     
-    if (Number(form.price) <= 0) {
-      toast.error("Price must be greater than 0.");
+    if (Number(form.price) < 0) {
+      toast.error("Price cannot be negative.");
       return;
     }
     

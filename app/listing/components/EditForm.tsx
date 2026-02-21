@@ -111,7 +111,7 @@ const EditForm = ({
         return false;
       }
     }
-    if (Number(localForm.price) <= 0) return false;
+    if (Number(localForm.price) < 0) return false;
     return true;
   };
 
@@ -255,11 +255,11 @@ const EditForm = ({
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
                 <input
                   type="number"
-                  min="0.01"
-                  step="0.01"
+                  min="0"
+                  step="1"
                   className="w-full border rounded-md px-7 py-2 text-sm"
                   value={localForm.price === 0 ? "" : localForm.price}
-                  placeholder="0.00"
+                  placeholder="0"
                   onChange={(e) => {
                     const val = parseFloat(e.target.value);
                     if (isNaN(val) || val < 0) {
@@ -268,13 +268,10 @@ const EditForm = ({
                       setLocalForm({ ...localForm, price: val });
                     }
                   }}
-                  onBlur={() => {
-                    if (localForm.price < 0.01) setLocalForm({ ...localForm, price: 0.01 });
-                  }}
                 />
               </div>
-              {localForm.price < 0.01 && (
-                <p className="text-xs text-red-500 mt-1">Price must be at least $0.01</p>
+              {localForm.price < 0 && (
+                <p className="text-xs text-red-500 mt-1">Price cannot be negative.</p>
               )}
             </div>
             <div className="w-1/3">
