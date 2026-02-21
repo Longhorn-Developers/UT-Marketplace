@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../context/AuthContext';
 import { supabase } from '../../../lib/supabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
+import * as timeago from 'timeago.js';
 import {
   ArrowRight,
   Bell,
@@ -15,10 +16,41 @@ import {
   Plus,
   Search,
   ShieldCheck,
-  Tag,
 } from 'lucide-react';
+import ListingCard from '../../../browse/components/ListingCard';
 
-const slides = [
+const categoryLabels: Record<string, string> = {
+  furniture: 'Furniture',
+  subleases: 'Subleases',
+  tech: 'Tech',
+  vehicles: 'Vehicles',
+  textbooks: 'Textbooks',
+  clothing: 'Clothing',
+  kitchen: 'Kitchen',
+  other: 'Other',
+};
+
+const conditionLabels: Record<string, string> = {
+  new: 'New',
+  like_new: 'Like New',
+  good: 'Good',
+  fair: 'Fair',
+  poor: 'Poor',
+};
+
+const formatCategory = (value?: string | null) => {
+  if (!value) return 'Other';
+  const key = value.toLowerCase();
+  return categoryLabels[key] || value;
+};
+
+const formatCondition = (value?: string | null) => {
+  if (!value) return 'Good';
+  const key = value.toLowerCase().replace(/\s+/g, '_');
+  return conditionLabels[key] || value;
+};
+
+const buildSlides = (listingPreview: ReactNode) => ([
   {
     id: 1,
     step: 'Step 1',
@@ -97,24 +129,7 @@ const slides = [
       'Add up to 5 photos per listing',
       'Approval keeps quality high',
     ],
-    preview: (
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <div className="rounded-xl bg-gray-900 text-white p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-gray-300">New listing</p>
-            <Tag size={14} />
-          </div>
-          <p className="mt-4 text-xl font-semibold">$85</p>
-          <p className="text-sm text-gray-300">Calculus Textbook</p>
-        </div>
-        <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-gray-600">
-          <div className="rounded-xl bg-gray-50 px-3 py-2">Category: Textbooks</div>
-          <div className="rounded-xl bg-gray-50 px-3 py-2">Condition: Good</div>
-          <div className="rounded-xl bg-gray-50 px-3 py-2">Photos: 4</div>
-          <div className="rounded-xl bg-gray-50 px-3 py-2">Status: Pending</div>
-        </div>
-      </div>
-    ),
+    preview: listingPreview,
   },
   {
     id: 4,
@@ -184,7 +199,7 @@ const slides = [
       </div>
     ),
   },
-];
+]);
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -192,6 +207,36 @@ export default function OnboardingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [direction, setDirection] = useState(1);
+  const [latestListing, setLatestListing] = useState<any | null>(null);
+
+  const listingPreview = (
+    <div className="max-w-sm ml-auto pointer-events-none">
+      <ListingCard
+        title={latestListing?.title || 'Ergonomic Desk Chair'}
+        price={latestListing?.price ?? 85}
+        location={latestListing?.location || 'West Campus'}
+        category={latestListing?.category ? formatCategory(latestListing.category) : 'Furniture'}
+        timePosted={latestListing?.created_at ? timeago.format(latestListing.created_at) : 'Just now'}
+        images={
+          latestListing
+            ? (latestListing.images && latestListing.images.length > 0 ? latestListing.images : [])
+            : ['/pattern.jpg']
+        }
+        user={{
+          name:
+            latestListing?.user?.display_name ||
+            latestListing?.user?.email?.split('@')[0] ||
+            'alexm',
+          user_id: latestListing?.user?.id || latestListing?.user_id || 'preview',
+          image: latestListing?.user?.profile_image_url || undefined,
+        }}
+        condition={latestListing?.condition ? formatCondition(latestListing.condition) : 'Good'}
+        userRating={latestListing ? undefined : 4.8}
+      />
+    </div>
+  );
+
+  const slides = buildSlides(listingPreview);
 
   useEffect(() => {
     if (!user) {
@@ -217,6 +262,58 @@ export default function OnboardingPage() {
 
     checkOnboardingStatus();
   }, [user, router]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    let isActive = true;
+
+    const fetchLatestListing = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('listings')
+          .select(`
+            id,
+            title,
+            price,
+            location,
+            category,
+            condition,
+            created_at,
+            images,
+            user_id,
+            user:users!user_id(
+              id,
+              display_name,
+              email,
+              profile_image_url
+            )
+          `)
+          .eq('is_draft', false)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (!isActive) return;
+
+        if (error) {
+          console.error('Error fetching latest listing:', error);
+          setLatestListing(null);
+          return;
+        }
+
+        setLatestListing(data || null);
+      } catch (error) {
+        console.error('Error fetching latest listing:', error);
+      }
+    };
+
+    fetchLatestListing();
+
+    return () => {
+      isActive = false;
+    };
+  }, [user?.id]);
 
   const handleNext = () => {
     if (currentSlide < slides.length - 1) {
@@ -294,7 +391,7 @@ export default function OnboardingPage() {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <div className="max-w-5xl mx-auto px-6 py-10 lg:py-14">
-        <div className="rounded-3xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+        <div className="rounded-3xl border border-gray-200 bg-white shadow-sm overflow-hidden flex flex-col h-[720px]">
           <div className="px-6 py-5 border-b border-gray-100">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -308,17 +405,9 @@ export default function OnboardingPage() {
               </div>
               <span className="text-xs text-gray-500">{activeSlide.step}</span>
             </div>
-            <div className="mt-4 h-1 rounded-full bg-gray-100">
-              <motion.div
-                className="h-1 rounded-full bg-ut-orange"
-                initial={{ width: '0%' }}
-                animate={{ width: `${((currentSlide + 1) / slides.length) * 100}%` }}
-                transition={{ duration: 0.3 }}
-              />
-            </div>
           </div>
 
-          <div className="px-6 py-8 lg:py-10">
+          <div className="px-6 py-8 lg:py-10 flex-1 overflow-hidden">
             <AnimatePresence mode="wait" custom={direction}>
               <motion.div
                 key={activeSlide.id}
@@ -328,7 +417,7 @@ export default function OnboardingPage() {
                 animate="center"
                 exit="exit"
                 transition={{ x: { type: 'spring', stiffness: 200, damping: 26 }, opacity: { duration: 0.2 } }}
-                className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] items-center"
+                className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] items-center h-full w-full"
               >
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-gray-500">{activeSlide.step}</p>
@@ -363,7 +452,7 @@ export default function OnboardingPage() {
             <button
               onClick={handlePrev}
               disabled={currentSlide === 0}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition ${
+              className={`flex items-center justify-center gap-2 px-4 py-2 h-11 min-w-[120px] rounded-full text-sm font-medium transition ${
                 currentSlide === 0
                   ? 'text-gray-400 bg-gray-100 cursor-not-allowed'
                   : 'text-gray-700 bg-gray-100 hover:bg-gray-200'
@@ -390,7 +479,7 @@ export default function OnboardingPage() {
             {currentSlide === slides.length - 1 ? (
               <button
                 onClick={handleComplete}
-                className="flex items-center gap-2 px-5 py-2 rounded-full bg-ut-orange text-white font-semibold hover:bg-[#a54700] transition"
+                className="flex items-center justify-center gap-2 px-5 py-2 h-11 min-w-[140px] rounded-full bg-ut-orange text-white font-semibold hover:bg-[#a54700] transition"
               >
                 Get Started
                 <ArrowRight size={18} />
@@ -398,7 +487,7 @@ export default function OnboardingPage() {
             ) : (
               <button
                 onClick={handleNext}
-                className="flex items-center gap-2 px-5 py-2 rounded-full bg-ut-orange text-white font-semibold hover:bg-[#a54700] transition"
+                className="flex items-center justify-center gap-2 px-5 py-2 h-11 min-w-[140px] rounded-full bg-ut-orange text-white font-semibold hover:bg-[#a54700] transition"
               >
                 Next
                 <ChevronRight size={18} />
