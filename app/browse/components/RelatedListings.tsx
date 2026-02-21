@@ -73,13 +73,22 @@ interface RelatedListingsProps {
   excludeSold?: boolean;
 }
 
+interface RelatedListing extends Listing {
+  user?: {
+    id?: string;
+    display_name?: string;
+    email?: string;
+    profile_image_url?: string;
+  };
+}
+
 const RelatedListings: React.FC<RelatedListingsProps> = ({
   currentListingId,
   category,
   title,
   excludeSold = true,
 }) => {
-  const [relatedListings, setRelatedListings] = useState<Listing[]>([]);
+  const [relatedListings, setRelatedListings] = useState<RelatedListing[]>([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -91,7 +100,15 @@ const RelatedListings: React.FC<RelatedListingsProps> = ({
         
         let query = supabase
           .from("listings")
-          .select("*")
+          .select(`
+            *,
+            user:users!user_id(
+              id,
+              display_name,
+              email,
+              profile_image_url
+            )
+          `)
           .eq("category", convertToDbFormat(category, 'category'))
           .neq("id", currentListingId);
 
@@ -161,7 +178,15 @@ const RelatedListings: React.FC<RelatedListingsProps> = ({
               category={item.category}
               timePosted={timeago.format(item.created_at)}
               images={item.images}
-              user={{ name: item.user_name, user_id: item.user_id }}
+              user={{
+                name:
+                  item.user?.display_name ||
+                  item.user?.email?.split('@')[0] ||
+                  item.user_name ||
+                  'User',
+                user_id: item.user?.id || item.user_id,
+                image: item.user?.profile_image_url || item.user_image || null
+              }}
               condition={item.condition}
             />
           </div>

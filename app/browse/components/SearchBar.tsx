@@ -25,6 +25,7 @@ import SearchInput from "./SearchInput";
 import SortDropdown from "./SortDropdown";
 import FilterModal from "./FilterModal";
 import CategoryButtons from "./CategoryButtons";
+import { supabase } from "../../lib/supabaseClient";
 
 const categories = [
   { name: "All Categories", icon: Search },
@@ -37,6 +38,23 @@ const categories = [
   { name: "Kitchen", icon: Utensils },
   { name: "Other", icon: ShoppingBag },
 ];
+
+const categoryLabels: Record<string, string> = {
+  furniture: 'Furniture',
+  subleases: 'Subleases',
+  tech: 'Tech',
+  vehicles: 'Vehicles',
+  textbooks: 'Textbooks',
+  clothing: 'Clothing',
+  kitchen: 'Kitchen',
+  other: 'Other',
+};
+
+const formatCategory = (value?: string | null) => {
+  if (!value) return '';
+  const key = value.toLowerCase();
+  return categoryLabels[key] || value;
+};
 
 interface SearchBarProps {
   setLoading?: (loading: boolean) => void;
@@ -61,10 +79,82 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
   const [maxPriceValue, setMaxPriceValue] = useState(maxPrice);
   const [postedAfterValue, setPostedAfterValue] = useState(postedAfter);
   const [postedBeforeValue, setPostedBeforeValue] = useState(postedBefore);
+  const [suggestions, setSuggestions] = useState<Array<{ value: string; label: string; type?: string }>>([]);
 
   // Add default min/max for slider
   const minPriceLimit = 0;
   const maxPriceLimit = 5000;
+
+  useEffect(() => {
+    const term = searchValue.trim();
+    if (!term) {
+      setSuggestions([]);
+      return;
+    }
+
+    const handle = window.setTimeout(async () => {
+      try {
+        const { data, error } = await supabase
+          .from("listings")
+          .select("title, category, location")
+          .eq("is_draft", false)
+          .or(`title.ilike.%${term}%,location.ilike.%${term}%`)
+          .limit(8);
+
+        if (error) {
+          console.error("Search suggestions error:", error);
+          return;
+        }
+
+        const titleMatches = new Set<string>();
+        const categoryMatches = new Set<string>();
+        const locationMatches = new Set<string>();
+
+        (data || []).forEach((item) => {
+          if (item.title && item.title.toLowerCase().includes(term)) {
+            titleMatches.add(item.title);
+          }
+          const categoryLabel = formatCategory(item.category);
+          if (categoryLabel && categoryLabel.toLowerCase().includes(term)) {
+            categoryMatches.add(categoryLabel);
+          }
+          if (item.location && item.location.toLowerCase().includes(term)) {
+            locationMatches.add(item.location);
+          }
+        });
+
+        const categoryFromInput = Object.values(categoryLabels).filter((label) =>
+          label.toLowerCase().includes(term)
+        );
+
+        categoryFromInput.forEach((label) => categoryMatches.add(label));
+
+        const combined = [
+          ...Array.from(titleMatches).map((value) => ({
+            value,
+            label: value,
+            type: 'Title',
+          })),
+          ...Array.from(categoryMatches).map((value) => ({
+            value,
+            label: value,
+            type: 'Category',
+          })),
+          ...Array.from(locationMatches).map((value) => ({
+            value,
+            label: value,
+            type: 'Location',
+          })),
+        ].slice(0, 6);
+
+        setSuggestions(combined);
+      } catch (err) {
+        console.error("Search suggestions error:", err);
+      }
+    }, 220);
+
+    return () => window.clearTimeout(handle);
+  }, [searchValue]);
 
   useEffect(() => {
     setSearchValue(search);
@@ -97,12 +187,12 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
     router.push(`/browse${params.toString() ? `?${params.toString()}` : ""}`);
   };
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const applySearchValue = (value: string) => {
     if (setLoading) setLoading(true);
-    setSearchValue(e.target.value);
+    setSearchValue(value);
     const params = buildQueryParams({
       category: query,
-      search: e.target.value,
+      search: value,
       sort: sortValue,
       minPrice: minPriceValue,
       maxPrice: maxPriceValue,
@@ -110,6 +200,15 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
       postedBefore: postedBeforeValue,
     });
     router.push(`/browse${params.toString() ? `?${params.toString()}` : ""}`);
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    applySearchValue(e.target.value);
+  };
+
+  const handleSuggestionSelect = (value: string) => {
+    setSuggestions([]);
+    applySearchValue(value);
   };
 
   const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -149,8 +248,14 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
     setPostedBeforeValue("");
     setSearchValue("");
     setSortValue("newest");
+    setSuggestions([]);
     router.push(`/browse`);
     setShowFilters(false);
+  };
+
+  const handleClearSearch = () => {
+    applySearchValue("");
+    setSuggestions([]);
   };
 
   useImperativeHandle(ref, () => ({
@@ -162,7 +267,13 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
       {/* Search Row */}
       <div className="w-full flex justify-center">
         <div className="flex flex-col sm:flex-row items-center gap-2 w-full max-w-5xl">
-          <SearchInput value={searchValue} onChange={handleSearchChange} />
+          <SearchInput
+            value={searchValue}
+            onChange={handleSearchChange}
+            suggestions={suggestions}
+            onSelectSuggestion={handleSuggestionSelect}
+            onClear={handleClearSearch}
+          />
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
               className="flex items-center gap-2 border rounded-md px-4 py-2 bg-white shadow-sm border-gray-200 hover:bg-gray-100 transition w-full sm:w-auto justify-center"

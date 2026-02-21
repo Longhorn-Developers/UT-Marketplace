@@ -3,13 +3,36 @@ import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { MessageCircle, Settings, LogOut, Plus, X, User, Menu, Heart } from "lucide-react";
 import { useAuth } from "../../app/context/AuthContext";
+import { useRouter } from "next/navigation";
+import { supabase } from "../../app/lib/supabaseClient";
+import SearchInput from "../../app/browse/components/SearchInput";
 import Notifications from "./Notifications";
+
+const categoryLabels: Record<string, string> = {
+  furniture: 'Furniture',
+  subleases: 'Subleases',
+  tech: 'Tech',
+  vehicles: 'Vehicles',
+  textbooks: 'Textbooks',
+  clothing: 'Clothing',
+  kitchen: 'Kitchen',
+  other: 'Other',
+};
+
+const formatCategory = (value?: string | null) => {
+  if (!value) return '';
+  const key = value.toLowerCase();
+  return categoryLabels[key] || value;
+};
 
 const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const { user, isAdmin, signOut } = useAuth();
   const profileMenuRef = useRef<HTMLDivElement>(null);
+  const [searchValue, setSearchValue] = useState("");
+  const [suggestions, setSuggestions] = useState<Array<{ value: string; label: string; type?: string }>>([]);
+  const router = useRouter();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -30,6 +53,100 @@ const Navbar = () => {
     setProfileMenuOpen(false);
   };
 
+  const handleSearchSubmit = (event?: React.FormEvent) => {
+    event?.preventDefault();
+    const trimmed = searchValue.trim();
+    if (!trimmed) return;
+    router.push(`/browse?search=${encodeURIComponent(trimmed)}`);
+  };
+
+  useEffect(() => {
+    if (!user?.id) {
+      setSuggestions([]);
+      return;
+    }
+
+    const term = searchValue.trim();
+    if (!term) {
+      setSuggestions([]);
+      return;
+    }
+
+    const handle = window.setTimeout(async () => {
+      try {
+        const { data, error } = await supabase
+          .from("listings")
+          .select("title, category, location")
+          .eq("is_draft", false)
+          .or(`title.ilike.%${term}%,location.ilike.%${term}%`)
+          .limit(8);
+
+        if (error) {
+          console.error("Search suggestions error:", error);
+          return;
+        }
+
+        const titleMatches = new Set<string>();
+        const categoryMatches = new Set<string>();
+        const locationMatches = new Set<string>();
+
+        (data || []).forEach((item) => {
+          if (item.title && item.title.toLowerCase().includes(term)) {
+            titleMatches.add(item.title);
+          }
+          const categoryLabel = formatCategory(item.category);
+          if (categoryLabel && categoryLabel.toLowerCase().includes(term)) {
+            categoryMatches.add(categoryLabel);
+          }
+          if (item.location && item.location.toLowerCase().includes(term)) {
+            locationMatches.add(item.location);
+          }
+        });
+
+        const categoryFromInput = Object.values(categoryLabels).filter((label) =>
+          label.toLowerCase().includes(term)
+        );
+
+        categoryFromInput.forEach((label) => categoryMatches.add(label));
+
+        const combined = [
+          ...Array.from(titleMatches).map((value) => ({
+            value,
+            label: value,
+            type: 'Title',
+          })),
+          ...Array.from(categoryMatches).map((value) => ({
+            value,
+            label: value,
+            type: 'Category',
+          })),
+          ...Array.from(locationMatches).map((value) => ({
+            value,
+            label: value,
+            type: 'Location',
+          })),
+        ].slice(0, 6);
+
+        setSuggestions(combined);
+      } catch (err) {
+        console.error("Search suggestions error:", err);
+      }
+    }, 220);
+
+    return () => window.clearTimeout(handle);
+  }, [searchValue, user?.id]);
+
+  const handleSuggestionSelect = (value: string) => {
+    setSearchValue(value);
+    setSuggestions([]);
+    router.push(`/browse?search=${encodeURIComponent(value)}`);
+  };
+
+  const handleClearSearch = () => {
+    setSearchValue("");
+    setSuggestions([]);
+  };
+
   return (
     <div className="bg-ut-orange p-4 text-white flex justify-between items-center shadow-md sticky top-0 z-50">
       <Link
@@ -40,7 +157,16 @@ const Navbar = () => {
       </Link>
 
       {/* Desktop Navigation */}
-      <div className="hidden md:flex items-center space-x-6">
+      <div className="hidden md:flex items-center space-x-6 flex-1 justify-end">
+        <form onSubmit={handleSearchSubmit} className="relative max-w-md w-full">
+          <SearchInput
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            suggestions={suggestions}
+            onSelectSuggestion={handleSuggestionSelect}
+            onClear={handleClearSearch}
+          />
+        </form>
         <Link
           href="/browse"
           className="text-white transition duration-100 font-semibold relative group hover:scale-110"
@@ -143,6 +269,15 @@ const Navbar = () => {
       {menuOpen && (
         <div className="absolute top-full left-0 right-0 bg-ut-orange md:hidden p-4 z-40 shadow-lg">
           <div className="flex flex-col space-y-4">
+            <form onSubmit={handleSearchSubmit} className="relative">
+              <SearchInput
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                suggestions={suggestions}
+                onSelectSuggestion={handleSuggestionSelect}
+                onClear={handleClearSearch}
+              />
+            </form>
             <Link
               href="/browse"
               className="text-white hover:text-white/80 transition font-semibold flex items-center"

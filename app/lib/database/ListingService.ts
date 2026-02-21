@@ -66,6 +66,38 @@ const convertFromDbFormat = (value: string, type: 'category' | 'condition') => {
   return value;
 };
 
+const categoryLabelMap: Record<string, string> = {
+  'furniture': 'Furniture',
+  'subleases': 'Subleases',
+  'tech': 'Tech',
+  'vehicles': 'Vehicles',
+  'textbooks': 'Textbooks',
+  'clothing': 'Clothing',
+  'kitchen': 'Kitchen',
+  'other': 'Other',
+};
+
+const getCategoryMatches = (term: string) => {
+  const normalized = term.toLowerCase();
+  return Object.entries(categoryLabelMap)
+    .filter(([, label]) => label.toLowerCase().includes(normalized))
+    .map(([dbValue]) => dbValue);
+};
+
+const buildSearchOrClause = (term: string) => {
+  const normalized = term.trim().replace(/,+/g, ' ');
+  if (!normalized) return '';
+  const likeValue = `%${normalized}%`;
+  const parts = [
+    `title.ilike.${likeValue}`,
+    `description.ilike.${likeValue}`,
+    `location.ilike.${likeValue}`,
+  ];
+  const categoryMatches = getCategoryMatches(normalized);
+  categoryMatches.forEach((value) => parts.push(`category.eq.${value}`));
+  return parts.join(',');
+};
+
 export interface CreateListingParams {
   title: string;
   price: number;
@@ -246,41 +278,74 @@ export class ListingService {
     try {
       dbLogger.info('Fetching listings', params);
 
-      let query = supabase
-        .from('listings')
-        .select(`
-          *
-        `)
-        .range(offset, offset + limit - 1)
-        .order('created_at', { ascending: false });
+      const buildBaseQuery = () => {
+        let query = supabase
+          .from('listings')
+          .select(`*`)
+          .order('created_at', { ascending: false });
 
-      if (excludeSold) {
-        query = query.eq('is_sold', false);
-      }
+        if (excludeSold) {
+          query = query.eq('is_sold', false);
+        }
 
-      if (excludeDrafts) {
-        query = query.eq('is_draft', false);
-      }
+        if (excludeDrafts) {
+          query = query.eq('is_draft', false);
+        }
 
-      // Note: Status filtering is now done after data processing to handle missing columns
+        // Note: Status filtering is now done after data processing to handle missing columns
 
-      if (category && category !== 'All') {
-        query = query.eq('category', convertToDbFormat(category, 'category'));
-      }
+        if (category && category !== 'All') {
+          query = query.eq('category', convertToDbFormat(category, 'category'));
+        }
 
-      if (searchTerm) {
-        query = query.textSearch('search_vector', searchTerm, { type: 'websearch' });
-      }
+        if (userId) {
+          query = query.eq('user_id', userId);
+        }
 
-      if (userId) {
-        query = query.eq('user_id', userId);
-      }
+        return query;
+      };
 
-      const { data: listingsData, error } = await query;
+      let listingsData: any[] = [];
+      if (searchTerm && searchTerm.trim()) {
+        const fetchLimit = offset + limit;
+        const searchOr = buildSearchOrClause(searchTerm);
 
-      if (error) {
-        dbLogger.error('Failed to fetch listings', error);
-        return [];
+        const [textResult, ilikeResult] = await Promise.all([
+          buildBaseQuery()
+            .textSearch('search_vector', searchTerm, { type: 'websearch' })
+            .limit(fetchLimit),
+          buildBaseQuery()
+            .or(searchOr)
+            .limit(fetchLimit),
+        ]);
+
+        if (textResult.error) {
+          dbLogger.error('Failed to fetch listings (text search)', textResult.error);
+        }
+
+        if (ilikeResult.error) {
+          dbLogger.error('Failed to fetch listings (partial search)', ilikeResult.error);
+        }
+
+        const combined = [...(textResult.data || []), ...(ilikeResult.data || [])];
+        const uniqueMap = new Map<string, any>();
+        combined.forEach((listing) => {
+          uniqueMap.set(listing.id, listing);
+        });
+
+        listingsData = Array.from(uniqueMap.values())
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          .slice(offset, offset + limit);
+      } else {
+        const { data, error } = await buildBaseQuery()
+          .range(offset, offset + limit - 1);
+
+        if (error) {
+          dbLogger.error('Failed to fetch listings', error);
+          return [];
+        }
+
+        listingsData = data || [];
       }
 
       if (!listingsData || listingsData.length === 0) {
@@ -706,50 +771,77 @@ export class ListingService {
     try {
       dbLogger.info('Searching listings', { searchTerm, filters });
 
-      let query = supabase
-        .from('listings')
-        .select(`
-          *,
-          user:users!user_id(
-            id,
-            display_name,
-            profile_image_url
-          )
-        `)
-        .eq('is_sold', false)
-        .eq('is_draft', false)
-        .eq('status', 'approved')
-        .order('created_at', { ascending: false });
+      const baseQuery = () => {
+        let base = supabase
+          .from('listings')
+          .select(`
+            *,
+            user:users!user_id(
+              id,
+              display_name,
+              profile_image_url
+            )
+          `)
+          .eq('is_sold', false)
+          .eq('is_draft', false)
+          .eq('status', 'approved')
+          .order('created_at', { ascending: false });
 
-      if (searchTerm) {
-        query = query.textSearch('search_vector', searchTerm, { type: 'websearch' });
-      }
+        if (filters.category && filters.category !== 'All') {
+          base = base.eq('category', convertToDbFormat(filters.category, 'category'));
+        }
 
-      if (filters.category && filters.category !== 'All') {
-        query = query.eq('category', convertToDbFormat(filters.category, 'category'));
-      }
+        if (filters.minPrice !== undefined) {
+          base = base.gte('price', filters.minPrice);
+        }
 
-      if (filters.minPrice !== undefined) {
-        query = query.gte('price', filters.minPrice);
-      }
+        if (filters.maxPrice !== undefined) {
+          base = base.lte('price', filters.maxPrice);
+        }
 
-      if (filters.maxPrice !== undefined) {
-        query = query.lte('price', filters.maxPrice);
-      }
+        if (filters.condition) {
+          base = base.eq('condition', convertToDbFormat(filters.condition, 'condition'));
+        }
 
-      if (filters.condition) {
-        query = query.eq('condition', convertToDbFormat(filters.condition, 'condition'));
-      }
+        if (filters.location) {
+          base = base.ilike('location', `%${filters.location}%`);
+        }
 
-      if (filters.location) {
-        query = query.ilike('location', `%${filters.location}%`);
-      }
+        return base;
+      };
 
-      const { data, error } = await query;
+      let data: any[] = [];
+      if (searchTerm && searchTerm.trim()) {
+        const searchOr = buildSearchOrClause(searchTerm);
 
-      if (error) {
-        dbLogger.error('Failed to search listings', error);
-        return [];
+        const [textResult, ilikeResult] = await Promise.all([
+          baseQuery().textSearch('search_vector', searchTerm, { type: 'websearch' }),
+          baseQuery().or(searchOr),
+        ]);
+
+        if (textResult.error) {
+          dbLogger.error('Failed to search listings (text search)', textResult.error);
+        }
+
+        if (ilikeResult.error) {
+          dbLogger.error('Failed to search listings (partial search)', ilikeResult.error);
+        }
+
+        const combined = [...(textResult.data || []), ...(ilikeResult.data || [])];
+        const uniqueMap = new Map<string, any>();
+        combined.forEach((listing) => {
+          uniqueMap.set(listing.id, listing);
+        });
+        data = Array.from(uniqueMap.values());
+      } else {
+        const { data: queryData, error } = await baseQuery();
+
+        if (error) {
+          dbLogger.error('Failed to search listings', error);
+          return [];
+        }
+
+        data = queryData || [];
       }
 
       const convertedData = data?.map(listing => ({
