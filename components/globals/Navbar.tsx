@@ -63,6 +63,14 @@ const Navbar = () => {
     setRecentSearches(updated);
   };
 
+  const removeRecentSearch = (value: string) => {
+    if (typeof window === "undefined") return;
+    const existing = loadRecentSearches();
+    const updated = existing.filter((item) => item !== value);
+    window.localStorage.setItem(recentKey, JSON.stringify(updated));
+    setRecentSearches(updated);
+  };
+
   useEffect(() => {
     setRecentSearches(loadRecentSearches());
   }, []);
@@ -239,6 +247,7 @@ const Navbar = () => {
             onChange={(e) => setSearchValue(e.target.value)}
             suggestions={suggestions}
             onSelectSuggestion={handleSuggestionSelect}
+            onRemoveSuggestion={removeRecentSearch}
             onClear={handleClearSearch}
             onCommit={saveRecentSearch}
           />
