@@ -192,6 +192,7 @@ const ListingPage: React.FC<ListingPageProps> = ({
   };
 
   const isOwner = currentUser?.id === listingUserEmail;
+  const isSignedIn = Boolean(currentUser?.id);
 
   return (
     <>
@@ -339,34 +340,34 @@ const ListingPage: React.FC<ListingPageProps> = ({
               <div className="flex gap-2">
                 <button 
                   onClick={handleToggleFavorite}
-                  disabled={favoriteLoading || currentUser?.id === listingUserEmail}
+                  disabled={!isSignedIn || favoriteLoading || currentUser?.id === listingUserEmail}
                   className={`flex-1 border py-2 rounded text-sm transition flex items-center justify-center gap-1 ${
                     isFavorited 
                       ? 'border-red-500 bg-red-50 text-red-600' 
                       : 'border-gray-300 hover:bg-gray-50'
-                  } ${favoriteLoading || currentUser?.id === listingUserEmail ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  } ${!isSignedIn || favoriteLoading || currentUser?.id === listingUserEmail ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <Heart 
                     size={16} 
                     className={isFavorited ? 'text-red-500' : ''} 
                     fill={isFavorited ? 'currentColor' : 'none'}
                   />
-                  {favoriteLoading ? 'Saving...' : isFavorited ? 'Saved' : 'Save'}
+                  {!isSignedIn ? 'Sign in to Save' : favoriteLoading ? 'Saving...' : isFavorited ? 'Saved' : 'Save'}
                 </button>
                 <button 
                   onClick={handleToggleWatchlist}
-                  disabled={watchlistLoading || currentUser?.id === listingUserEmail}
+                  disabled={!isSignedIn || watchlistLoading || currentUser?.id === listingUserEmail}
                   className={`flex-1 border py-2 rounded text-sm transition flex items-center justify-center gap-1 ${
                     isWatchlisted 
                       ? 'border-blue-500 bg-blue-50 text-blue-600' 
                       : 'border-gray-300 hover:bg-gray-50'
-                  } ${watchlistLoading || currentUser?.id === listingUserEmail ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  } ${!isSignedIn || watchlistLoading || currentUser?.id === listingUserEmail ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <Eye 
                     size={16} 
                     className={isWatchlisted ? 'text-blue-500' : ''}
                   />
-                  {watchlistLoading ? 'Adding...' : isWatchlisted ? 'Watching' : 'Watch'}
+                  {!isSignedIn ? 'Sign in to Watch' : watchlistLoading ? 'Adding...' : isWatchlisted ? 'Watching' : 'Watch'}
                 </button>
                 <button 
                   onClick={handleShare}
@@ -386,7 +387,7 @@ const ListingPage: React.FC<ListingPageProps> = ({
                       : 'text-gray-500 hover:text-red-600'
                   }`}
                 >
-                  Report this listing
+                  {!currentUser ? 'Sign in to report' : 'Report this listing'}
                 </button>
                 {currentUser && currentUser.id !== listingUserEmail && (
                   <>

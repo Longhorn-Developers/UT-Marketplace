@@ -12,7 +12,7 @@ import {
   Save,
   Send,
 } from "lucide-react";
-import { useAuth } from '../context/AuthContext';
+import { useAuthGuard } from '../lib/hooks/useAuthGuard';
 import { useRouter } from 'next/navigation';
 import ImageUploader from "./components/ImageUpload";
 import dynamic from "next/dynamic";
@@ -28,7 +28,7 @@ const MapPicker = dynamic(() => import("../listing/components/MapPicker"), { ssr
 const Create = () => {
   const [images, setImages] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isProtected } = useAuthGuard();
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
@@ -250,7 +250,7 @@ const Create = () => {
   }
 
   // Show not logged in component if user is not authenticated
-  if (!user) {
+  if (isProtected && !user) {
     return (
       <motion.div 
         className="bg-gray-50 min-h-screen"

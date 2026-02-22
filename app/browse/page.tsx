@@ -15,8 +15,6 @@ import {
   loadingVariants,
 } from "../props/animations";
 import BrowseLoader from "./components/BrowseLoader";
-import { useAuth } from "../context/AuthContext";
-import NotLoggedIn from "../../components/globals/NotLoggedIn";
 
 const Browse = () => {
   const searchParams = useSearchParams();
@@ -31,7 +29,6 @@ const Browse = () => {
   const [listings, setListings] = useState<any[]>([]);
   const searchBarRef = useRef<any>(null);
   const [loading, setLoading] = useState(true);
-  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     const fetchListings = async () => {
@@ -101,37 +98,6 @@ const Browse = () => {
       searchBarRef.current.handleClearFilters();
     }
   };
-
-  // Show loading while auth is being checked
-  if (authLoading) {
-    return (
-      <motion.div 
-        className="flex items-center justify-center min-h-[60vh]"
-        variants={loadingVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <BrowseLoader />
-      </motion.div>
-    );
-  }
-
-  // Show not logged in component if user is not authenticated
-  if (!user) {
-    return (
-      <motion.div 
-        className="bg-gray-50 min-h-screen"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <NotLoggedIn 
-          message="Please log in to browse listings"
-          className="p-8"
-        />
-      </motion.div>
-    );
-  }
 
   return (
     <motion.div 

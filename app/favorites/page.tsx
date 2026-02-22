@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuthGuard } from '../lib/hooks/useAuthGuard';
 import { ListingService } from '../lib/database/ListingService';
 import { Listing } from '../props/listing';
 import Link from 'next/link';
@@ -8,7 +8,7 @@ import { Heart, Eye, MapPin, Calendar, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 
 export default function FavoritesPage() {
-  const { user } = useAuth();
+  const { user, isProtected } = useAuthGuard();
   const [activeTab, setActiveTab] = useState<'favorite' | 'watchlist'>('favorite');
   const [favorites, setFavorites] = useState<Listing[]>([]);
   const [watchlist, setWatchlist] = useState<Listing[]>([]);
@@ -68,7 +68,7 @@ export default function FavoritesPage() {
     }
   };
 
-  if (!user) {
+  if (isProtected && !user) {
     return (
       <div className="bg-gray-50 min-h-screen py-8">
         <div className="max-w-6xl mx-auto px-4 text-center">

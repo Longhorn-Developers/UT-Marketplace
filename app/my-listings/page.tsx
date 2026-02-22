@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { supabase } from "../lib/supabaseClient";
-import { useAuth } from "../context/AuthContext";
+import { useAuthGuard } from "../lib/hooks/useAuthGuard";
 import { useRouter } from "next/navigation";
 import { Edit, Trash2, Eye, Send, Clock, CheckCircle, XCircle, RefreshCw } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
@@ -56,7 +56,7 @@ const leaseOptions = ["6 months", "12 months", "Summer", "Flexible"];
 const MyListings = () => {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isProtected } = useAuthGuard();
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<any | null>(null);
@@ -224,7 +224,7 @@ const MyListings = () => {
   }
 
   // Show not logged in component if user is not authenticated
-  if (!user) {
+  if (isProtected && !user) {
     return (
       <motion.div 
         className="bg-gray-50 min-h-screen"

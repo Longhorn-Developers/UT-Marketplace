@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { isAdminPath, isProtectedApiPath, isProtectedPath, isPublicPath } from './app/lib/routes/access';
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -35,22 +36,40 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  // Skip onboarding check for auth-related routes
-  if (request.nextUrl.pathname.startsWith('/auth/')) {
+  const pathname = request.nextUrl.pathname;
+  const isPublic = isPublicPath(pathname);
+  const isProtected = isProtectedPath(pathname) || isProtectedApiPath(pathname);
+  const isAdmin = isAdminPath(pathname);
+
+  if (isPublic) {
     return response;
   }
 
-  // If user is authenticated, check onboarding status
-  if (session?.user) {
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if ((isProtected || isAdmin) && !session?.user) {
+    return NextResponse.redirect(new URL('/auth/signin', request.url));
+  }
+
+  if (isAdmin && session?.user) {
+    const { data: adminProfile, error: adminError } = await supabase
+      .from('users')
+      .select('is_admin')
+      .eq('id', session.user.id)
+      .single();
+
+    if (adminError || !adminProfile?.is_admin) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+  }
+
+  if ((isProtected || isAdmin) && session?.user) {
     const { data: profile } = await supabase
       .from('users')
       .select('onboard_complete')
       .eq('id', session.user.id)
       .single();
-      
-    // If onboarding not complete, redirect to onboarding
+
     if (!profile?.onboard_complete) {
       return NextResponse.redirect(new URL('/auth/confirmation/onboard', request.url));
     }
@@ -61,13 +80,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/settings/:path*',
-    '/create/:path*',
-    '/my-listings/:path*',
-    '/messages/:path*',
-    '/favorites/:path*',
-    '/profile/:path*',
-    '/admin/:path*',
+    '/((?!_next|.*\\..*|api).*)',
     '/api/user-settings/:path*',
   ],
 }; 

@@ -263,7 +263,7 @@ const PublicProfile = () => {
               </div>
             </div>
             {/* Action Buttons */}
-            {user?.id && user.id !== profileUserId && (
+            {user?.id && user.id !== profileUserId ? (
               <div className="mt-6 flex gap-3">
                 <button
                   onClick={() => router.push(`/messages?user=${profileUserId}`)}
@@ -288,7 +288,23 @@ const PublicProfile = () => {
                   </button>
                 )}
               </div>
-            )}
+            ) : !user?.id ? (
+              <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => router.push('/auth/signin')}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[#bf5700] text-[#bf5700] text-sm hover:bg-[#bf5700] hover:text-white transition"
+                >
+                  <MessageCircle size={16} />
+                  Sign in to Message
+                </button>
+                <button
+                  onClick={() => router.push('/auth/signin')}
+                  className="px-4 py-2 rounded-lg bg-[#bf5700] text-white text-sm hover:bg-[#a54700] transition"
+                >
+                  Sign in to Rate
+                </button>
+              </div>
+            ) : null}
             {/* Recent Ratings */}
             {ratings.length > 0 && (
               <div className="mt-6">

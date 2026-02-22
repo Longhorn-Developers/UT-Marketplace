@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabaseClient';
 import { Camera, Loader2 } from 'lucide-react';
 import Image from 'next/image';
-import { useAuth } from '../context/AuthContext';
+import { useAuthGuard } from '../lib/hooks/useAuthGuard';
 import BrowseLoader from "../browse/components/BrowseLoader";
 import { UserService } from '../lib/database/UserService';
 
@@ -20,7 +20,7 @@ interface UserSettings {
 }
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user, isProtected } = useAuthGuard();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -83,12 +83,12 @@ export default function SettingsPage() {
   }, [user?.id, user?.email, user?.user_metadata?.name]);
 
   useEffect(() => {
-    if (!user?.id) {
+    if (isProtected && !user?.id) {
       router.push('/auth/signin');
       return;
     }
     fetchUserSettings();
-  }, [user?.id, router, fetchUserSettings]);
+  }, [user?.id, router, fetchUserSettings, isProtected]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
