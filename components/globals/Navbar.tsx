@@ -5,25 +5,11 @@ import { MessageCircle, Settings, LogOut, Plus, X, User, Menu, Heart } from "luc
 import { useAuth } from "../../app/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../app/lib/supabaseClient";
+import { categoryLabels, formatCategory, derivePopularSearches } from "../../app/lib/search/searchUtils";
 import SearchInput from "../../app/browse/components/SearchInput";
 import Notifications from "./Notifications";
 
-const categoryLabels: Record<string, string> = {
-  furniture: 'Furniture',
-  subleases: 'Subleases',
-  tech: 'Tech',
-  vehicles: 'Vehicles',
-  textbooks: 'Textbooks',
-  clothing: 'Clothing',
-  kitchen: 'Kitchen',
-  other: 'Other',
-};
-
-const formatCategory = (value?: string | null) => {
-  if (!value) return '';
-  const key = value.toLowerCase();
-  return categoryLabels[key] || value;
-};
+const recentKey = "utm_recent_searches";
 
 const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -32,6 +18,8 @@ const Navbar = () => {
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const [searchValue, setSearchValue] = useState("");
   const [suggestions, setSuggestions] = useState<Array<{ value: string; label: string; type?: string }>>([]);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [popularSearches, setPopularSearches] = useState<string[]>([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -53,22 +41,93 @@ const Navbar = () => {
     setProfileMenuOpen(false);
   };
 
+  const loadRecentSearches = () => {
+    if (typeof window === "undefined") return [];
+    const raw = window.localStorage.getItem(recentKey);
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const saveRecentSearch = (value: string) => {
+    if (typeof window === "undefined") return;
+    const trimmed = value.trim();
+    if (!trimmed || trimmed.length < 2) return;
+    const existing = loadRecentSearches();
+    const updated = [trimmed, ...existing.filter((item) => item !== trimmed)].slice(0, 8);
+    window.localStorage.setItem(recentKey, JSON.stringify(updated));
+    setRecentSearches(updated);
+  };
+
+  useEffect(() => {
+    setRecentSearches(loadRecentSearches());
+  }, []);
+
+  useEffect(() => {
+    const loadPopularSearches = async () => {
+      try {
+        let query = supabase
+          .from("listings")
+          .select("title, category, tags")
+          .eq("is_draft", false)
+          .neq("is_sold", true)
+          .order("created_at", { ascending: false })
+          .limit(200);
+
+        let { data, error } = await query.eq("status", "approved");
+        if (error) {
+          const retry = await supabase
+            .from("listings")
+            .select("title, category, tags")
+            .eq("is_draft", false)
+            .neq("is_sold", true)
+            .order("created_at", { ascending: false })
+            .limit(200);
+          data = retry.data;
+          error = retry.error;
+        }
+
+        if (error) {
+          console.error("Popular searches error:", error);
+          return;
+        }
+
+        const popular = derivePopularSearches(data || [], 8);
+        setPopularSearches(popular);
+      } catch (err) {
+        console.error("Popular searches error:", err);
+      }
+    };
+
+    loadPopularSearches();
+  }, []);
+
   const handleSearchSubmit = (event?: React.FormEvent) => {
     event?.preventDefault();
     const trimmed = searchValue.trim();
     if (!trimmed) return;
+    saveRecentSearch(trimmed);
     router.push(`/browse?search=${encodeURIComponent(trimmed)}`);
   };
 
   useEffect(() => {
-    if (!user?.id) {
-      setSuggestions([]);
-      return;
-    }
-
     const term = searchValue.trim();
     if (!term) {
-      setSuggestions([]);
+      const recent = recentSearches.map((value) => ({
+        value,
+        label: value,
+        type: "Recent",
+      }));
+      const trending = popularSearches.map((value) => ({
+        value,
+        label: value,
+        type: "Trending",
+      }));
+      setSuggestions([...recent, ...trending].slice(0, 8));
       return;
     }
 
@@ -126,7 +185,21 @@ const Navbar = () => {
             label: value,
             type: 'Location',
           })),
-        ].slice(0, 6);
+          ...recentSearches
+            .filter((value) => value.toLowerCase().includes(term))
+            .map((value) => ({
+              value,
+              label: value,
+              type: "Recent",
+            })),
+          ...popularSearches
+            .filter((value) => value.toLowerCase().includes(term))
+            .map((value) => ({
+              value,
+              label: value,
+              type: "Trending",
+            })),
+        ].slice(0, 8);
 
         setSuggestions(combined);
       } catch (err) {
@@ -135,11 +208,12 @@ const Navbar = () => {
     }, 220);
 
     return () => window.clearTimeout(handle);
-  }, [searchValue, user?.id]);
+  }, [searchValue, recentSearches]);
 
   const handleSuggestionSelect = (value: string) => {
     setSearchValue(value);
     setSuggestions([]);
+    saveRecentSearch(value);
     router.push(`/browse?search=${encodeURIComponent(value)}`);
   };
 
@@ -166,6 +240,7 @@ const Navbar = () => {
             suggestions={suggestions}
             onSelectSuggestion={handleSuggestionSelect}
             onClear={handleClearSearch}
+            onCommit={saveRecentSearch}
           />
         </form>
         <Link
@@ -277,6 +352,7 @@ const Navbar = () => {
                 suggestions={suggestions}
                 onSelectSuggestion={handleSuggestionSelect}
                 onClear={handleClearSearch}
+                onCommit={saveRecentSearch}
               />
             </form>
             <Link

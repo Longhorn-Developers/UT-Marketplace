@@ -27,6 +27,7 @@ import SortDropdown from "./SortDropdown";
 import FilterModal from "./FilterModal";
 import CategoryButtons from "./CategoryButtons";
 import { supabase } from "../../lib/supabaseClient";
+import { categoryLabels, formatCategory, derivePopularSearches } from "../../lib/search/searchUtils";
 
 const categories = [
   { name: "All Categories", icon: Search },
@@ -39,23 +40,6 @@ const categories = [
   { name: "Kitchen", icon: Utensils },
   { name: "Other", icon: ShoppingBag },
 ];
-
-const categoryLabels: Record<string, string> = {
-  furniture: 'Furniture',
-  subleases: 'Subleases',
-  tech: 'Tech',
-  vehicles: 'Vehicles',
-  textbooks: 'Textbooks',
-  clothing: 'Clothing',
-  kitchen: 'Kitchen',
-  other: 'Other',
-};
-
-const formatCategory = (value?: string | null) => {
-  if (!value) return '';
-  const key = value.toLowerCase();
-  return categoryLabels[key] || value;
-};
 
 interface SearchBarProps {
   setLoading?: (loading: boolean) => void;
@@ -89,14 +73,94 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
     postedBeforeValue: string;
     showCustomRange: boolean;
   } | null>(null);
+  const recentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [popularSearches, setPopularSearches] = useState<string[]>([]);
 
   // Add default min/max for slider
   const minPriceLimit = 0;
 
+  const recentKey = "utm_recent_searches";
+
+  const loadRecentSearches = () => {
+    if (typeof window === "undefined") return [];
+    const raw = window.localStorage.getItem(recentKey);
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const saveRecentSearch = (value: string) => {
+    if (typeof window === "undefined") return;
+    const trimmed = value.trim();
+    if (!trimmed || trimmed.length < 2) return;
+    const existing = loadRecentSearches();
+    const updated = [trimmed, ...existing.filter((item) => item !== trimmed)].slice(0, 8);
+    window.localStorage.setItem(recentKey, JSON.stringify(updated));
+    setRecentSearches(updated);
+  };
+
+  useEffect(() => {
+    setRecentSearches(loadRecentSearches());
+  }, []);
+
+  useEffect(() => {
+    const loadPopularSearches = async () => {
+      try {
+        let query = supabase
+          .from("listings")
+          .select("title, category, tags")
+          .eq("is_draft", false)
+          .neq("is_sold", true)
+          .order("created_at", { ascending: false })
+          .limit(200);
+
+        let { data, error } = await query.eq("status", "approved");
+        if (error) {
+          const retry = await supabase
+            .from("listings")
+            .select("title, category, tags")
+            .eq("is_draft", false)
+            .neq("is_sold", true)
+            .order("created_at", { ascending: false })
+            .limit(200);
+          data = retry.data;
+          error = retry.error;
+        }
+
+        if (error) {
+          console.error("Popular searches error:", error);
+          return;
+        }
+
+        const popular = derivePopularSearches(data || [], 8);
+        setPopularSearches(popular);
+      } catch (err) {
+        console.error("Popular searches error:", err);
+      }
+    };
+
+    loadPopularSearches();
+  }, []);
+
   useEffect(() => {
     const term = searchValue.trim();
     if (!term) {
-      setSuggestions([]);
+      const recent = recentSearches.map((value) => ({
+        value,
+        label: value,
+        type: "Recent",
+      }));
+      const trending = popularSearches.map((value) => ({
+        value,
+        label: value,
+        type: "Trending",
+      }));
+      setSuggestions([...recent, ...trending].slice(0, 8));
       return;
     }
 
@@ -154,7 +218,21 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
             label: value,
             type: 'Location',
           })),
-        ].slice(0, 6);
+          ...recentSearches
+            .filter((value) => value.toLowerCase().includes(term))
+            .map((value) => ({
+              value,
+              label: value,
+              type: "Recent",
+            })),
+          ...popularSearches
+            .filter((value) => value.toLowerCase().includes(term))
+            .map((value) => ({
+              value,
+              label: value,
+              type: "Trending",
+            })),
+        ].slice(0, 8);
 
         setSuggestions(combined);
       } catch (err) {
@@ -163,7 +241,7 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
     }, 220);
 
     return () => window.clearTimeout(handle);
-  }, [searchValue]);
+  }, [searchValue, recentSearches]);
 
   useEffect(() => {
     setSearchValue(search);
@@ -217,6 +295,7 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
 
   const handleSuggestionSelect = (value: string) => {
     setSuggestions([]);
+    saveRecentSearch(value);
     applySearchValue(value);
   };
 
@@ -286,6 +365,16 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
     setSuggestions([]);
   };
 
+  useEffect(() => {
+    if (recentTimerRef.current) clearTimeout(recentTimerRef.current);
+    recentTimerRef.current = setTimeout(() => {
+      saveRecentSearch(searchValue);
+    }, 800);
+    return () => {
+      if (recentTimerRef.current) clearTimeout(recentTimerRef.current);
+    };
+  }, [searchValue]);
+
   useImperativeHandle(ref, () => ({
     handleClearFilters,
   }));
@@ -312,6 +401,7 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
             suggestions={suggestions}
             onSelectSuggestion={handleSuggestionSelect}
             onClear={handleClearSearch}
+            onCommit={saveRecentSearch}
           />
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <button

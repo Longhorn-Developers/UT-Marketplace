@@ -35,6 +35,14 @@ export default function SettingsPage() {
     },
     profile_image_url: null,
   });
+  const [searchHistoryCleared, setSearchHistoryCleared] = useState(false);
+
+  const clearSearchHistory = () => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.removeItem('utm_recent_searches');
+    setSearchHistoryCleared(true);
+    setTimeout(() => setSearchHistoryCleared(false), 2000);
+  };
 
   const fetchUserSettings = useCallback(async () => {
     if (!user?.id) return;
@@ -329,6 +337,23 @@ export default function SettingsPage() {
             <span className="ml-2 text-gray-700">Browser Notifications</span>
           </label>
         </div>
+      </div>
+
+      {/* Search History */}
+      <div className="bg-white rounded-lg shadow p-6 mb-8">
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Search</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Clear your recent search history.
+        </p>
+        <button
+          onClick={clearSearchHistory}
+          className="px-4 py-2 bg-gray-100 text-gray-900 rounded-lg hover:bg-gray-200 transition"
+        >
+          Clear Search History
+        </button>
+        {searchHistoryCleared && (
+          <p className="text-sm text-green-600 mt-2">Search history cleared.</p>
+        )}
       </div>
 
       {/* Developer Tools */}

@@ -7,6 +7,7 @@ interface SearchInputProps {
   suggestions?: Array<{ value: string; label: string; type?: string }>;
   onSelectSuggestion?: (value: string) => void;
   onClear?: () => void;
+  onCommit?: (value: string) => void;
 }
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -34,6 +35,7 @@ const SearchInput: React.FC<SearchInputProps> = ({
   suggestions = [],
   onSelectSuggestion,
   onClear,
+  onCommit,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const showSuggestions = isFocused && suggestions.length > 0;
@@ -49,7 +51,10 @@ const SearchInput: React.FC<SearchInputProps> = ({
           value={value}
           onChange={onChange}
           onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
+          onBlur={() => {
+            setIsFocused(false);
+            if (onCommit) onCommit(value);
+          }}
         />
         {value && onClear && (
           <button
