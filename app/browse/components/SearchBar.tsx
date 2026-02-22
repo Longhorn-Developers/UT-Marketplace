@@ -4,6 +4,7 @@ import React, {
   useEffect,
   forwardRef,
   useImperativeHandle,
+  useRef,
 } from "react";
 import {
   Search,
@@ -65,7 +66,7 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
   const searchParams = useSearchParams();
   const query = searchParams.get("category") || "";
   const search = searchParams.get("search") || "";
-  const sort = searchParams.get("sort") || "newest";
+  const sort = searchParams.get("sort") || "relevance";
   const minPrice = searchParams.get("minPrice") || "";
   const maxPrice = searchParams.get("maxPrice") || "";
   const postedAfter = searchParams.get("postedAfter") || "";
@@ -80,10 +81,17 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
   const [postedAfterValue, setPostedAfterValue] = useState(postedAfter);
   const [postedBeforeValue, setPostedBeforeValue] = useState(postedBefore);
   const [suggestions, setSuggestions] = useState<Array<{ value: string; label: string; type?: string }>>([]);
+  const [showCustomRange, setShowCustomRange] = useState(Boolean(postedAfter) || Boolean(postedBefore));
+  const filterSnapshotRef = useRef<{
+    minPriceValue: string;
+    maxPriceValue: string;
+    postedAfterValue: string;
+    postedBeforeValue: string;
+    showCustomRange: boolean;
+  } | null>(null);
 
   // Add default min/max for slider
   const minPriceLimit = 0;
-  const maxPriceLimit = 5000;
 
   useEffect(() => {
     const term = searchValue.trim();
@@ -238,7 +246,14 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
       postedAfter: postedAfterValue,
       postedBefore: postedBeforeValue,
     });
-    router.push(`/browse${params.toString() ? `?${params.toString()}` : ""}`);
+    const nextQuery = params.toString();
+    const currentQuery = searchParams.toString();
+    if (nextQuery === currentQuery) {
+      if (setLoading) setLoading(false);
+      setShowFilters(false);
+      return;
+    }
+    router.push(`/browse${nextQuery ? `?${nextQuery}` : ""}`);
     setShowFilters(false);
   };
 
@@ -247,10 +262,22 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
     setMaxPriceValue("");
     setPostedAfterValue("");
     setPostedBeforeValue("");
+    setShowCustomRange(false);
     setSearchValue("");
-    setSortValue("newest");
+    setSortValue("relevance");
     setSuggestions([]);
     router.push(`/browse`);
+    setShowFilters(false);
+  };
+
+  const handleCancelFilters = () => {
+    if (filterSnapshotRef.current) {
+      setMinPriceValue(filterSnapshotRef.current.minPriceValue);
+      setMaxPriceValue(filterSnapshotRef.current.maxPriceValue);
+      setPostedAfterValue(filterSnapshotRef.current.postedAfterValue);
+      setPostedBeforeValue(filterSnapshotRef.current.postedBeforeValue);
+      setShowCustomRange(filterSnapshotRef.current.showCustomRange);
+    }
     setShowFilters(false);
   };
 
@@ -262,6 +289,17 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
   useImperativeHandle(ref, () => ({
     handleClearFilters,
   }));
+
+  useEffect(() => {
+    if (!showFilters) return;
+    filterSnapshotRef.current = {
+      minPriceValue,
+      maxPriceValue,
+      postedAfterValue,
+      postedBeforeValue,
+      showCustomRange,
+    };
+  }, [showFilters]);
 
   return (
     <div className="w-full flex flex-col gap-4 px-4">
@@ -291,20 +329,24 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
       {/* Filters Dropdown */}
       {showFilters && (
         <div className="w-full flex justify-center">
-          <FilterModal
-            minPriceValue={minPriceValue}
-            maxPriceValue={maxPriceValue}
-            postedAfterValue={postedAfterValue}
-            postedBeforeValue={postedBeforeValue}
-            minPriceLimit={minPriceLimit}
-            maxPriceLimit={maxPriceLimit}
-            setMinPriceValue={setMinPriceValue}
-            setMaxPriceValue={setMaxPriceValue}
-            setPostedAfterValue={setPostedAfterValue}
-            setPostedBeforeValue={setPostedBeforeValue}
-            onApply={handleApplyFilters}
-            onClear={handleClearFilters}
-          />
+          <div className="max-w-5xl w-full">
+              <FilterModal
+                minPriceValue={minPriceValue}
+                maxPriceValue={maxPriceValue}
+                postedAfterValue={postedAfterValue}
+                postedBeforeValue={postedBeforeValue}
+                minPriceLimit={minPriceLimit}
+                setMinPriceValue={setMinPriceValue}
+                setMaxPriceValue={setMaxPriceValue}
+                setPostedAfterValue={setPostedAfterValue}
+                setPostedBeforeValue={setPostedBeforeValue}
+                onApply={handleApplyFilters}
+                onClear={handleClearFilters}
+                onCancel={handleCancelFilters}
+                showCustomRange={showCustomRange}
+                setShowCustomRange={setShowCustomRange}
+              />
+          </div>
         </div>
       )}
 

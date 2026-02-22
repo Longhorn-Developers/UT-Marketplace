@@ -11,8 +11,11 @@ const SortDropdown: React.FC<SortDropdownProps> = ({ value, onChange }) => (
     value={value}
     onChange={onChange}
   >
-    <option value="newest">Sort: Newest first</option>
-    <option value="oldest">Sort: Oldest first</option>
+    <option value="relevance">Sort: Relevance</option>
+    <option value="price-asc">Price: Low to High</option>
+    <option value="price-desc">Price: High to Low</option>
+    <option value="newest">Date: Newest to Oldest</option>
+    <option value="oldest">Date: Oldest to Newest</option>
   </select>
 );
 

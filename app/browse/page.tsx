@@ -22,7 +22,7 @@ const Browse = () => {
   const searchParams = useSearchParams();
   const queryCategory = searchParams.get("category");
   const searchTerm = searchParams.get("search") || "";
-  const sortOrder = searchParams.get("sort") || "newest";
+  const sortOrder = searchParams.get("sort") || "relevance";
   const minPrice = searchParams.get("minPrice");
   const maxPrice = searchParams.get("maxPrice");
   const postedAfter = searchParams.get("postedAfter");
@@ -35,6 +35,7 @@ const Browse = () => {
 
   useEffect(() => {
     const fetchListings = async () => {
+      setLoading(true);
       try {
         const listingsData = await ListingService.getListings({
           category: queryCategory || undefined,
@@ -44,13 +45,8 @@ const Browse = () => {
           limit: 100 // Increased limit for browse page
         });
 
-        // Apply client-side sorting since ListingService returns newest first by default
-        const sortedListings = sortOrder === "oldest" 
-          ? [...listingsData].reverse() 
-          : listingsData;
-
-        // Listings already have user_name and user_image from ListingService
-        const formattedListings = sortedListings;
+        // Defer sorting to client-side to support relevance/price/date
+        const formattedListings = listingsData;
 
         setListings(formattedListings);
       } catch (error) {
@@ -62,7 +58,7 @@ const Browse = () => {
     };
 
     fetchListings();
-  }, [queryCategory, searchTerm, sortOrder]);
+  }, [queryCategory, searchTerm, sortOrder, minPrice, maxPrice, postedAfter, postedBefore]);
 
   let filteredListings = listings;
   if (minPrice) {
@@ -76,6 +72,27 @@ const Browse = () => {
   }
   if (postedBefore) {
     filteredListings = filteredListings.filter((listing) => new Date(listing.created_at) <= new Date(postedBefore));
+  }
+
+  if (sortOrder === "price-asc") {
+    filteredListings = [...filteredListings].sort((a, b) => Number(a.price) - Number(b.price));
+  } else if (sortOrder === "price-desc") {
+    filteredListings = [...filteredListings].sort((a, b) => Number(b.price) - Number(a.price));
+  } else if (sortOrder === "oldest") {
+    filteredListings = [...filteredListings].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+  } else if (sortOrder === "newest") {
+    filteredListings = [...filteredListings].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  } else if (sortOrder === "relevance") {
+    // Keep server ordering for relevance; fallback to newest if no search term
+    if (!searchTerm) {
+      filteredListings = [...filteredListings].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+    }
   }
 
   // Helper to clear filters from child
