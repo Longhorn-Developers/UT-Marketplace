@@ -115,6 +115,8 @@ const Browse = () => {
           <motion.div 
             className="flex items-center justify-center min-h-[60vh]"
             variants={loadingVariants}
+            initial="hidden"
+            animate="visible"
           >
             <BrowseLoader />
           </motion.div>
@@ -122,6 +124,8 @@ const Browse = () => {
           <motion.div 
             className="flex flex-col items-center justify-center min-h-[60vh]"
             variants={emptyStateVariants}
+            initial="hidden"
+            animate="visible"
           >
             <span className="text-gray-500 text-lg mb-4">No listings match your search or filters.</span>
             <button
@@ -133,16 +137,14 @@ const Browse = () => {
             </button>
           </motion.div>
         ) : (
-          <motion.div 
+          <div 
             className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-8"
-            variants={containerVariants}
           >
-            {filteredListings.map((listing, index) => (
-              <motion.div
+            {filteredListings.map((listing) => (
+              <div
                 key={listing.id}
                 onClick={() => (window.location.href = `/listing/${listing.id}`)}
                 className="cursor-pointer"
-                variants={itemVariants}
               >
                 <ListingCard
                   key={listing.id}
@@ -156,9 +158,9 @@ const Browse = () => {
                   condition={listing.condition}
                   searchTerm={searchTerm}
                 />
-              </motion.div>
+              </div>
             ))}
-          </motion.div>
+          </div>
         )}
       </div>
     </motion.div>

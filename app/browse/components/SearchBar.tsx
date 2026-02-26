@@ -224,7 +224,13 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
       postedAfter: postedAfterValue,
       postedBefore: postedBeforeValue,
     });
-    router.push(`/browse${params.toString() ? `?${params.toString()}` : ""}`);
+    const nextQuery = params.toString();
+    const currentQuery = searchParams.toString();
+    if (nextQuery === currentQuery) {
+      if (setLoading) setLoading(false);
+      return;
+    }
+    router.push(`/browse${nextQuery ? `?${nextQuery}` : ""}`);
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {

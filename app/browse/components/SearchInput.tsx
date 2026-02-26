@@ -87,7 +87,11 @@ const SearchInput: React.FC<SearchInputProps> = ({
               key={`${suggestion.value}-${index}`}
               role="button"
               tabIndex={0}
-              onMouseDown={() => onSelectSuggestion?.(suggestion.value)}
+              onMouseDown={(event) => {
+                const target = event.target as HTMLElement | null;
+                if (target?.closest("button")) return;
+                onSelectSuggestion?.(suggestion.value);
+              }}
               className="w-full text-left px-4 py-2.5 hover:bg-gray-50 transition flex items-center justify-between gap-3 cursor-pointer"
             >
               <div className="min-w-0">
@@ -104,7 +108,10 @@ const SearchInput: React.FC<SearchInputProps> = ({
                 {suggestion.type === "Recent" && onRemoveSuggestion && (
                   <button
                     type="button"
-                    onMouseDown={(event) => event.preventDefault()}
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }}
                     onClick={(event) => {
                       event.stopPropagation();
                       onRemoveSuggestion(suggestion.value);
