@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 const ScrollToTop = () => {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const isFirst = useRef(true);
   const scrollContainerRef = useRef<HTMLElement | null>(null);
 
@@ -50,6 +49,10 @@ const ScrollToTop = () => {
     };
 
     requestAnimationFrame(step);
+    // Hard fallback in case the scroll container switches between routes.
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   };
 
   useEffect(() => {
@@ -59,7 +62,7 @@ const ScrollToTop = () => {
     }
     requestAnimationFrame(scrollToTop);
     setTimeout(scrollToTop, 120);
-  }, [pathname, searchParams.toString()]);
+  }, [pathname]);
 
   return null;
 };
