@@ -26,8 +26,8 @@ import SearchInput from "./SearchInput";
 import SortDropdown from "./SortDropdown";
 import FilterModal from "./FilterModal";
 import CategoryButtons from "./CategoryButtons";
-import { supabase } from "../../lib/supabaseClient";
-import { categoryLabels, formatCategory, derivePopularSearches } from "../../lib/search/searchUtils";
+import { fetchPopularSearches } from "../../lib/search/popularSearches";
+import { fetchSearchSuggestions } from "../../lib/search/suggestionsClient";
 
 const categories = [
   { name: "All Categories", icon: Search },
@@ -73,7 +73,6 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
     postedBeforeValue: string;
     showCustomRange: boolean;
   } | null>(null);
-  const recentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [popularSearches, setPopularSearches] = useState<string[]>([]);
 
@@ -118,45 +117,15 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
 
   useEffect(() => {
     const loadPopularSearches = async () => {
-      try {
-        let query = supabase
-          .from("listings")
-          .select("title, category, tags")
-          .eq("is_draft", false)
-          .neq("is_sold", true)
-          .order("created_at", { ascending: false })
-          .limit(200);
-
-        let { data, error } = await query.eq("status", "approved");
-        if (error) {
-          const retry = await supabase
-            .from("listings")
-            .select("title, category, tags")
-            .eq("is_draft", false)
-            .neq("is_sold", true)
-            .order("created_at", { ascending: false })
-            .limit(200);
-          data = retry.data;
-          error = retry.error;
-        }
-
-        if (error) {
-          console.error("Popular searches error:", error);
-          return;
-        }
-
-        const popular = derivePopularSearches(data || [], 8);
-        setPopularSearches(popular);
-      } catch (err) {
-        console.error("Popular searches error:", err);
-      }
+      const popular = await fetchPopularSearches(8);
+      setPopularSearches(popular);
     };
 
     loadPopularSearches();
   }, []);
 
   useEffect(() => {
-    const term = searchValue.trim();
+    const term = searchValue.trim().toLowerCase();
     if (!term) {
       const recent = recentSearches.map((value) => ({
         value,
@@ -172,84 +141,60 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
       return;
     }
 
+    if (term.length < 2) {
+      const recent = recentSearches
+        .filter((value) => value.toLowerCase().includes(term))
+        .map((value) => ({
+          value,
+          label: value,
+          type: "Recent",
+        }));
+      const trending = popularSearches
+        .filter((value) => value.toLowerCase().includes(term))
+        .map((value) => ({
+          value,
+          label: value,
+          type: "Trending",
+        }));
+      setSuggestions([...recent, ...trending].slice(0, 8));
+      return;
+    }
+
     const handle = window.setTimeout(async () => {
       try {
-        const { data, error } = await supabase
-          .from("listings")
-          .select("title, category, location")
-          .eq("is_draft", false)
-          .neq("is_sold", true)
-          .or(`title.ilike.%${term}%,location.ilike.%${term}%`)
-          .limit(8);
+        const apiSuggestions = await fetchSearchSuggestions(term);
+        const recent = recentSearches
+          .filter((value) => value.toLowerCase().includes(term))
+          .map((value) => ({
+            value,
+            label: value,
+            type: "Recent",
+          }));
+        const trending = popularSearches
+          .filter((value) => value.toLowerCase().includes(term))
+          .map((value) => ({
+            value,
+            label: value,
+            type: "Trending",
+          }));
 
-        if (error) {
-          console.error("Search suggestions error:", error);
-          return;
-        }
-
-        const titleMatches = new Set<string>();
-        const categoryMatches = new Set<string>();
-        const locationMatches = new Set<string>();
-
-        (data || []).forEach((item) => {
-          if (item.title && item.title.toLowerCase().includes(term)) {
-            titleMatches.add(item.title);
-          }
-          const categoryLabel = formatCategory(item.category);
-          if (categoryLabel && categoryLabel.toLowerCase().includes(term)) {
-            categoryMatches.add(categoryLabel);
-          }
-          if (item.location && item.location.toLowerCase().includes(term)) {
-            locationMatches.add(item.location);
-          }
+        const combined = [...apiSuggestions, ...recent, ...trending];
+        const seen = new Set<string>();
+        const deduped = combined.filter((item) => {
+          const key = item.value.toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
         });
 
-        const categoryFromInput = Object.values(categoryLabels).filter((label) =>
-          label.toLowerCase().includes(term)
-        );
-
-        categoryFromInput.forEach((label) => categoryMatches.add(label));
-
-        const combined = [
-          ...Array.from(titleMatches).map((value) => ({
-            value,
-            label: value,
-            type: 'Title',
-          })),
-          ...Array.from(categoryMatches).map((value) => ({
-            value,
-            label: value,
-            type: 'Category',
-          })),
-          ...Array.from(locationMatches).map((value) => ({
-            value,
-            label: value,
-            type: 'Location',
-          })),
-          ...recentSearches
-            .filter((value) => value.toLowerCase().includes(term))
-            .map((value) => ({
-              value,
-              label: value,
-              type: "Recent",
-            })),
-          ...popularSearches
-            .filter((value) => value.toLowerCase().includes(term))
-            .map((value) => ({
-              value,
-              label: value,
-              type: "Trending",
-            })),
-        ].slice(0, 8);
-
-        setSuggestions(combined);
+        setSuggestions(deduped.slice(0, 8));
       } catch (err) {
         console.error("Search suggestions error:", err);
       }
-    }, 220);
+    }, 450);
 
     return () => window.clearTimeout(handle);
-  }, [searchValue, recentSearches]);
+  }, [searchValue, recentSearches, popularSearches]);
 
   useEffect(() => {
     setSearchValue(search);
@@ -272,39 +217,53 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
     const newQuery = name === "All Categories" ? "" : name;
     const params = buildQueryParams({
       category: newQuery,
-      search: searchValue,
+      search,
       sort: sortValue,
       minPrice: minPriceValue,
       maxPrice: maxPriceValue,
       postedAfter: postedAfterValue,
       postedBefore: postedBeforeValue,
     });
-    router.push(`/browse${params.toString() ? `?${params.toString()}` : ""}`);
-  };
-
-  const applySearchValue = (value: string) => {
-    if (setLoading) setLoading(true);
-    setSearchValue(value);
-    const params = buildQueryParams({
-      category: query,
-      search: value,
-      sort: sortValue,
-      minPrice: minPriceValue,
-      maxPrice: maxPriceValue,
-      postedAfter: postedAfterValue,
-      postedBefore: postedBeforeValue,
-    });
-    router.push(`/browse${params.toString() ? `?${params.toString()}` : ""}`);
+    const nextQuery = params.toString();
+    const currentQuery = searchParams.toString();
+    if (nextQuery === currentQuery) {
+      if (setLoading) setLoading(false);
+      return;
+    }
+    router.push(`/browse${nextQuery ? `?${nextQuery}` : ""}`);
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    applySearchValue(e.target.value);
+    setSearchValue(e.target.value);
+  };
+
+  const commitSearchValue = (value: string) => {
+    const trimmed = value.trim();
+    setSearchValue(trimmed);
+    if (setLoading) setLoading(true);
+    const params = buildQueryParams({
+      category: query,
+      search: trimmed,
+      sort: sortValue,
+      minPrice: minPriceValue,
+      maxPrice: maxPriceValue,
+      postedAfter: postedAfterValue,
+      postedBefore: postedBeforeValue,
+    });
+    router.push(`/browse${params.toString() ? `?${params.toString()}` : ""}`);
+  };
+
+  const handleSearchSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    saveRecentSearch(searchValue);
+    commitSearchValue(searchValue);
   };
 
   const handleSuggestionSelect = (value: string) => {
+    setSearchValue(value);
     setSuggestions([]);
     saveRecentSearch(value);
-    applySearchValue(value);
+    commitSearchValue(value);
   };
 
   const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -312,7 +271,7 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
     setSortValue(e.target.value);
     const params = buildQueryParams({
       category: query,
-      search: searchValue,
+      search,
       sort: e.target.value,
       minPrice: minPriceValue,
       maxPrice: maxPriceValue,
@@ -326,7 +285,7 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
     if (setLoading) setLoading(true);
     const params = buildQueryParams({
       category: query,
-      search: searchValue,
+      search,
       sort: sortValue,
       minPrice: minPriceValue,
       maxPrice: maxPriceValue,
@@ -350,7 +309,6 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
     setPostedAfterValue("");
     setPostedBeforeValue("");
     setShowCustomRange(false);
-    setSearchValue("");
     setSortValue("relevance");
     setSuggestions([]);
     router.push(`/browse`);
@@ -369,19 +327,10 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
   };
 
   const handleClearSearch = () => {
-    applySearchValue("");
+    setSearchValue("");
     setSuggestions([]);
+    commitSearchValue("");
   };
-
-  useEffect(() => {
-    if (recentTimerRef.current) clearTimeout(recentTimerRef.current);
-    recentTimerRef.current = setTimeout(() => {
-      saveRecentSearch(searchValue);
-    }, 800);
-    return () => {
-      if (recentTimerRef.current) clearTimeout(recentTimerRef.current);
-    };
-  }, [searchValue]);
 
   useImperativeHandle(ref, () => ({
     handleClearFilters,
@@ -403,15 +352,17 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
       {/* Search Row */}
       <div className="w-full flex justify-center">
         <div className="flex flex-col sm:flex-row items-center gap-2 w-full max-w-5xl">
-          <SearchInput
-            value={searchValue}
-            onChange={handleSearchChange}
-            suggestions={suggestions}
-            onSelectSuggestion={handleSuggestionSelect}
-            onRemoveSuggestion={removeRecentSearch}
-            onClear={handleClearSearch}
-            onCommit={saveRecentSearch}
-          />
+          <form onSubmit={handleSearchSubmit} className="w-full">
+            <SearchInput
+              value={searchValue}
+              onChange={handleSearchChange}
+              suggestions={suggestions}
+              onSelectSuggestion={handleSuggestionSelect}
+              onRemoveSuggestion={removeRecentSearch}
+              onClear={handleClearSearch}
+              onCommit={saveRecentSearch}
+            />
+          </form>
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
               className="flex items-center gap-2 border rounded-md px-4 py-2 bg-white shadow-sm border-gray-200 hover:bg-gray-100 transition w-full sm:w-auto justify-center"

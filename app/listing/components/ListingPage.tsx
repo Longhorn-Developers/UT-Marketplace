@@ -210,14 +210,15 @@ const ListingPage: React.FC<ListingPageProps> = ({
     <div className="max-w-6xl mx-auto mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
       {/* Left: Image section */}
       <div className="flex flex-col gap-4">
-        <div className="aspect-[4/3] bg-gray-100 rounded-xl overflow-hidden">
+        <div className="aspect-[4/3] bg-gray-100 rounded-xl overflow-hidden relative">
           {images && images[selectedImageIdx] ? (
             <Image
               src={images[selectedImageIdx]}
               alt={title}
-              width={100}
-              height={100}
-              className="w-full h-full object-cover"
+              fill
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="object-cover"
+              priority
             /> 
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-400 text-2xl">
@@ -239,8 +240,9 @@ const ListingPage: React.FC<ListingPageProps> = ({
                 <Image
                   src={img}
                   alt={`Thumbnail ${idx + 1}`}
-                  width={100}
-                  height={100}
+                  width={160}
+                  height={120}
+                  sizes="80px"
                   className="w-full h-[80px] object-cover"
                 />
               </button>
