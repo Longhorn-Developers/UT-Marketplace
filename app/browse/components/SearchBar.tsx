@@ -26,9 +26,8 @@ import SearchInput from "./SearchInput";
 import SortDropdown from "./SortDropdown";
 import FilterModal from "./FilterModal";
 import CategoryButtons from "./CategoryButtons";
-import { supabase } from "../../lib/supabaseClient";
-import { categoryLabels, formatCategory } from "../../lib/search/searchUtils";
 import { fetchPopularSearches } from "../../lib/search/popularSearches";
+import { fetchSearchSuggestions } from "../../lib/search/suggestionsClient";
 
 const categories = [
   { name: "All Categories", icon: Search },
@@ -163,75 +162,32 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
 
     const handle = window.setTimeout(async () => {
       try {
-        const { data, error } = await supabase
-          .from("listings")
-          .select("title, category, location")
-          .eq("is_draft", false)
-          .neq("is_sold", true)
-          .or(`title.ilike.%${term}%,location.ilike.%${term}%`)
-          .limit(8);
+        const apiSuggestions = await fetchSearchSuggestions(term);
+        const recent = recentSearches
+          .filter((value) => value.toLowerCase().includes(term))
+          .map((value) => ({
+            value,
+            label: value,
+            type: "Recent",
+          }));
+        const trending = popularSearches
+          .filter((value) => value.toLowerCase().includes(term))
+          .map((value) => ({
+            value,
+            label: value,
+            type: "Trending",
+          }));
 
-        if (error) {
-          console.error("Search suggestions error:", error);
-          return;
-        }
-
-        const titleMatches = new Set<string>();
-        const categoryMatches = new Set<string>();
-        const locationMatches = new Set<string>();
-
-        (data || []).forEach((item) => {
-          if (item.title && item.title.toLowerCase().includes(term)) {
-            titleMatches.add(item.title);
-          }
-          const categoryLabel = formatCategory(item.category);
-          if (categoryLabel && categoryLabel.toLowerCase().includes(term)) {
-            categoryMatches.add(categoryLabel);
-          }
-          if (item.location && item.location.toLowerCase().includes(term)) {
-            locationMatches.add(item.location);
-          }
+        const combined = [...apiSuggestions, ...recent, ...trending];
+        const seen = new Set<string>();
+        const deduped = combined.filter((item) => {
+          const key = item.value.toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
         });
 
-        const categoryFromInput = Object.values(categoryLabels).filter((label) =>
-          label.toLowerCase().includes(term)
-        );
-
-        categoryFromInput.forEach((label) => categoryMatches.add(label));
-
-        const combined = [
-          ...Array.from(titleMatches).map((value) => ({
-            value,
-            label: value,
-            type: 'Title',
-          })),
-          ...Array.from(categoryMatches).map((value) => ({
-            value,
-            label: value,
-            type: 'Category',
-          })),
-          ...Array.from(locationMatches).map((value) => ({
-            value,
-            label: value,
-            type: 'Location',
-          })),
-          ...recentSearches
-            .filter((value) => value.toLowerCase().includes(term))
-            .map((value) => ({
-              value,
-              label: value,
-              type: "Recent",
-            })),
-          ...popularSearches
-            .filter((value) => value.toLowerCase().includes(term))
-            .map((value) => ({
-              value,
-              label: value,
-              type: "Trending",
-            })),
-        ].slice(0, 8);
-
-        setSuggestions(combined);
+        setSuggestions(deduped.slice(0, 8));
       } catch (err) {
         console.error("Search suggestions error:", err);
       }
