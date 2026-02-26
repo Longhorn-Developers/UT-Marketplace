@@ -5,6 +5,7 @@ import Navbar from "../components/globals/Navbar";
 import { AuthProvider } from './context/AuthContext';
 import FooterWrapper from "../components/globals/FooterWrapper";
 import AdminRedirectWrapper from "../components/layout/AdminRedirectWrapper";
+import ScrollToTop from "../components/globals/ScrollToTop";
 
 // Using Roboto Flex for better typography flexibility
 const robotoFlex = Roboto_Flex({
@@ -31,6 +32,7 @@ export default function RootLayout({
       <body className="font-sans">
         <div className="flex flex-col min-h-screen">
           <AuthProvider>
+            <ScrollToTop />
             <AdminRedirectWrapper 
               navbar={<Navbar />}
               footer={<FooterWrapper />}

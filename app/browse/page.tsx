@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState, useRef, Suspense } from "react";
 import { motion } from "framer-motion";
+import { ArrowUp } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import SearchBar from "./components/SearchBar";
 import ListingCard from "./components/ListingCard";
@@ -29,6 +30,37 @@ const Browse = () => {
   const [listings, setListings] = useState<any[]>([]);
   const searchBarRef = useRef<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const scrollContainerRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const getScrollTop = (event?: Event) => {
+      const target = event?.target;
+      if (target && (target as HTMLElement).scrollTop !== undefined) {
+        const element = target as HTMLElement;
+        if (element.scrollHeight > element.clientHeight) {
+          scrollContainerRef.current = element;
+          return element.scrollTop;
+        }
+      }
+      return (
+        document.scrollingElement?.scrollTop ||
+        document.documentElement.scrollTop ||
+        document.body.scrollTop ||
+        window.scrollY ||
+        0
+      );
+    };
+
+    const handleScroll = (event?: Event) => {
+      const scrollTop = getScrollTop(event);
+      setShowScrollTop(scrollTop > 400);
+    };
+
+    handleScroll();
+    document.addEventListener("scroll", handleScroll, { passive: true, capture: true });
+    return () => document.removeEventListener("scroll", handleScroll, true);
+  }, []);
 
   useEffect(() => {
     const fetchListings = async () => {
@@ -100,12 +132,13 @@ const Browse = () => {
   };
 
   return (
-    <motion.div 
-      className="bg-gray-50 min-h-screen"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
+    <>
+      <motion.div 
+        className="bg-gray-50 min-h-screen"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
       <div className="p-8">
         <motion.div variants={searchBarVariants}>
           <SearchBar ref={searchBarRef} setLoading={setLoading} />
@@ -164,6 +197,30 @@ const Browse = () => {
         )}
       </div>
     </motion.div>
+
+      {showScrollTop && (
+        <button
+          type="button"
+          onClick={() => {
+            const target =
+              scrollContainerRef.current ||
+              document.scrollingElement ||
+              document.documentElement ||
+              document.body;
+
+            if (target && "scrollTo" in target) {
+              target.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+            } else {
+              window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+            }
+          }}
+          className="fixed bottom-6 right-6 z-50 flex items-center justify-center h-11 w-11 rounded-full bg-white border border-gray-200 text-gray-700 shadow-lg hover:border-[#bf5700] hover:text-[#bf5700] transition"
+          aria-label="Back to top"
+        >
+          <ArrowUp size={18} />
+        </button>
+      )}
+    </>
   );
 };
 

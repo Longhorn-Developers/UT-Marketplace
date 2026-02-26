@@ -65,6 +65,16 @@ const Footer = () => {
                   </Link>
                 </li>
                 <li>
+                  <Link href="/about" className="text-sm hover:text-ut-orange">
+                    About UTMP
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/contact" className="text-sm hover:text-ut-orange">
+                    Contact Us
+                  </Link>
+                </li>
+                <li>
                   <Link href="/safety" className="text-sm hover:text-ut-orange">
                     Safety Tips
                   </Link>
