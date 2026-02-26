@@ -5,7 +5,8 @@ import { MessageCircle, Settings, LogOut, Plus, X, User, Menu, Heart, Compass, L
 import { useAuth } from "../../app/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../app/lib/supabaseClient";
-import { categoryLabels, formatCategory, derivePopularSearches } from "../../app/lib/search/searchUtils";
+import { categoryLabels, formatCategory } from "../../app/lib/search/searchUtils";
+import { fetchPopularSearches } from "../../app/lib/search/popularSearches";
 import SearchInput from "../../app/browse/components/SearchInput";
 import Notifications from "./Notifications";
 
@@ -100,38 +101,8 @@ const Navbar = () => {
 
   useEffect(() => {
     const loadPopularSearches = async () => {
-      try {
-        let query = supabase
-          .from("listings")
-          .select("title, category, tags")
-          .eq("is_draft", false)
-          .neq("is_sold", true)
-          .order("created_at", { ascending: false })
-          .limit(200);
-
-        let { data, error } = await query.eq("status", "approved");
-        if (error) {
-          const retry = await supabase
-            .from("listings")
-            .select("title, category, tags")
-            .eq("is_draft", false)
-            .neq("is_sold", true)
-            .order("created_at", { ascending: false })
-            .limit(200);
-          data = retry.data;
-          error = retry.error;
-        }
-
-        if (error) {
-          console.error("Popular searches error:", error);
-          return;
-        }
-
-        const popular = derivePopularSearches(data || [], 8);
-        setPopularSearches(popular);
-      } catch (err) {
-        console.error("Popular searches error:", err);
-      }
+      const popular = await fetchPopularSearches(8);
+      setPopularSearches(popular);
     };
 
     loadPopularSearches();
@@ -146,7 +117,7 @@ const Navbar = () => {
   };
 
   useEffect(() => {
-    const term = searchValue.trim();
+    const term = searchValue.trim().toLowerCase();
     if (!term) {
       const recent = recentSearches.map((value) => ({
         value,
@@ -158,6 +129,25 @@ const Navbar = () => {
         label: value,
         type: "Trending",
       }));
+      setSuggestions([...recent, ...trending].slice(0, 8));
+      return;
+    }
+
+    if (term.length < 2) {
+      const recent = recentSearches
+        .filter((value) => value.toLowerCase().includes(term))
+        .map((value) => ({
+          value,
+          label: value,
+          type: "Recent",
+        }));
+      const trending = popularSearches
+        .filter((value) => value.toLowerCase().includes(term))
+        .map((value) => ({
+          value,
+          label: value,
+          type: "Trending",
+        }));
       setSuggestions([...recent, ...trending].slice(0, 8));
       return;
     }
@@ -236,10 +226,10 @@ const Navbar = () => {
       } catch (err) {
         console.error("Search suggestions error:", err);
       }
-    }, 220);
+    }, 450);
 
     return () => window.clearTimeout(handle);
-  }, [searchValue, recentSearches]);
+  }, [searchValue, recentSearches, popularSearches]);
 
   const handleSuggestionSelect = (value: string) => {
     setSearchValue(value);
