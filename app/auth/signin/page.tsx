@@ -149,10 +149,15 @@ export default function SignIn() {
         if (user) {
           const { data: profile } = await supabase
             .from('users')
-            .select('onboard_complete')
+            .select('onboard_complete, is_admin')
             .eq('id', user.id)
             .single();
-            
+
+          if (profile?.is_admin) {
+            router.push('/admin');
+            return;
+          }
+
           if (!profile?.onboard_complete) {
             router.push('/auth/confirmation/onboard');
           } else {

@@ -101,6 +101,11 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Admins go straight to admin dashboard
+    if ((existingProfile as any)?.is_admin) {
+      return NextResponse.redirect(`${requestUrl.origin}/admin`);
+    }
+
     // Check if existing user has completed onboarding
     if (!existingProfile.onboard_complete) {
       return NextResponse.redirect(

@@ -115,6 +115,9 @@ const AdminDashboard: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      const timeout = setTimeout(() => {
+        setLoading(false);
+      }, 6000);
       try {
         // Check system health and fetch stats
         const statsData = await checkSystemHealth();
@@ -133,6 +136,7 @@ const AdminDashboard: React.FC = () => {
       } catch (error) {
         console.error('Error fetching admin data:', error);
       } finally {
+        clearTimeout(timeout);
         setLoading(false);
       }
     };

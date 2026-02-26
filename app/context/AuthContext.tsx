@@ -25,6 +25,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
 
   useEffect(() => {
+    let loadingTimeout: ReturnType<typeof setTimeout> | null = null;
+    loadingTimeout = setTimeout(() => {
+      setLoading(false);
+    }, 4000);
+
     // Check active sessions and sets the user
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -34,6 +39,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setIsAdmin(false);
       }
       setLoading(false);
+      if (loadingTimeout) {
+        clearTimeout(loadingTimeout);
+      }
     });
 
     // Listen for changes on auth state (signed in, signed out, etc.)
@@ -48,7 +56,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       router.refresh();
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      if (loadingTimeout) {
+        clearTimeout(loadingTimeout);
+      }
+      subscription.unsubscribe();
+    };
   }, [router]);
 
   const checkAdminStatus = async (userId: string) => {
