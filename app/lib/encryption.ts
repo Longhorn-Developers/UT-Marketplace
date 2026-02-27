@@ -302,3 +302,24 @@ export function isValidKey(key: string | null | undefined): boolean {
     return false;
   }
 }
+
+/**
+ * Checks if a message appears to be encrypted
+ * Encrypted messages are base64-encoded and typically much longer than plain text
+ */
+export function isEncryptedMessage(content: string | null | undefined): boolean {
+  if (!content || typeof content !== 'string') return false;
+
+  // Encrypted RSA messages are at least 256 bytes (2048-bit key)
+  // When base64-encoded, that's at least ~344 characters
+  // Use a slightly lower threshold to be safe
+  if (content.length < 300) return false;
+
+  // Check if it's valid base64
+  try {
+    atob(content);
+    return true;
+  } catch {
+    return false;
+  }
+}

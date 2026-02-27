@@ -11,7 +11,7 @@ import {
   ConversationQueryParams,
   dbLogger
 } from './utils';
-import { encryptMessage, decryptMessage } from '../encryption';
+import { encryptMessage, decryptMessage, isEncryptedMessage } from '../encryption';
 import { getPublicKey } from './KeyService';
 
 export interface SendMessageParams {
@@ -130,8 +130,13 @@ export class MessageService {
               // Only decrypt messages where current user is the receiver
               // (messages are encrypted with receiver's public key)
               if (msg.receiver_id === userId) {
-                const decryptedContent = await decryptMessage(msg.content, privateKey);
-                return { ...msg, content: decryptedContent };
+                // Check if the message is actually encrypted before trying to decrypt
+                if (isEncryptedMessage(msg.content)) {
+                  const decryptedContent = await decryptMessage(msg.content, privateKey);
+                  return { ...msg, content: decryptedContent };
+                }
+                // If not encrypted, it's an old plain text message - return as-is
+                return msg;
               }
               // For sent messages, try to decrypt (they should be encrypted with the other user's key)
               // If decryption fails, it's likely an old unencrypted message
@@ -191,7 +196,7 @@ export class MessageService {
 
         // Decrypt last message if possible
         let lastMessage = message.content;
-        if (privateKey && message.receiver_id === userId) {
+        if (privateKey && message.receiver_id === userId && isEncryptedMessage(message.content)) {
           try {
             lastMessage = await decryptMessage(message.content, privateKey);
           } catch (error) {
