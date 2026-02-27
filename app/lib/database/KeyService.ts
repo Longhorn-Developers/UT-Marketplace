@@ -66,8 +66,15 @@ export async function generateAndStoreUserKeys(
     const encryptedPrivateKey = await encryptPrivateKey(privateKey, password);
     console.log('Step 2 complete: Private key encrypted');
 
+    // Step 3: Check current auth context
+    console.log('Step 3a: Checking auth context...');
+    const { data: { user } } = await supabase.auth.getUser();
+    console.log('Current authenticated user:', user?.id);
+    console.log('Trying to insert for user:', userId);
+    console.log('Match:', user?.id === userId);
+
     // Step 3: Store in database
-    console.log('Step 3: Storing keys in database...');
+    console.log('Step 3b: Storing keys in database...');
     const { data, error } = await supabase.from('user_keys').insert({
       user_id: userId,
       public_key: publicKey,
@@ -76,7 +83,10 @@ export async function generateAndStoreUserKeys(
 
     if (error) {
       console.error('❌ Failed to store user keys in database:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      console.error('Error details:', error.details);
+      console.error('Error hint:', error.hint);
       return null;
     }
 
@@ -191,13 +201,16 @@ export async function getPublicKey(userId: string): Promise<string | null> {
       .maybeSingle();
 
     if (error) {
-      console.error(`Failed to fetch public key for user ${userId}:`, error);
+      console.error(`❌ Database error fetching public key for user ${userId}:`);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      console.error('Error details:', error.details);
       return null;
     }
 
     if (!data) {
       // User doesn't have encryption keys yet - not an error
-      console.log(`No public key found for user ${userId} (encryption not set up for this user)`);
+      console.warn(`⚠️ No public key found for user ${userId} (encryption not set up for this user yet)`);
       return null;
     }
 
