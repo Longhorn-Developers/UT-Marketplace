@@ -79,6 +79,15 @@ export class MessageService {
         }
       }
 
+      // DEBUG: Log what we're about to insert
+      console.log('🔍 DEBUG - About to insert message:', {
+        sender_id: senderId,
+        receiver_id: receiverId,
+        content_length: contentToStore.length,
+        sender_encrypted_content_length: senderContentToStore?.length || 0,
+        has_sender_encrypted: !!senderContentToStore
+      });
+
       const { data, error } = await supabase
         .from('messages')
         .insert({
@@ -91,6 +100,16 @@ export class MessageService {
         })
         .select()
         .single();
+
+      // DEBUG: Log what was actually inserted
+      if (data) {
+        console.log('🔍 DEBUG - Message inserted:', {
+          id: data.id,
+          content_length: data.content?.length || 0,
+          sender_encrypted_content_length: data.sender_encrypted_content?.length || 0,
+          has_sender_encrypted: !!data.sender_encrypted_content
+        });
+      }
 
       if (error) {
         dbLogger.error('Failed to send message', error);
