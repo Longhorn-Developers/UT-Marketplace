@@ -13,6 +13,7 @@ import {
 } from './utils';
 import { encryptMessage, decryptMessage, isEncryptedMessage } from '../encryption';
 import { getPublicKey } from './KeyService';
+import { cacheSentMessage, getCachedMessage } from './SentMessageCache';
 
 export interface SendMessageParams {
   senderId: string;
@@ -85,6 +86,13 @@ export class MessageService {
 
       dbLogger.success('Message sent successfully', { messageId: data.id });
 
+      // Cache the plain text content so sender can see it after refresh
+      // (sent messages are encrypted with receiver's key, so sender can't decrypt them)
+      if (contentToStore !== content) {
+        // Message was encrypted, cache the original
+        cacheSentMessage(data.id, content);
+      }
+
       // Return message with original (decrypted) content for UI
       return {
         ...data,
@@ -138,13 +146,15 @@ export class MessageService {
                 // If not encrypted, it's an old plain text message - return as-is
                 return msg;
               }
-              // For sent messages, try to decrypt (they should be encrypted with the other user's key)
-              // If decryption fails, it's likely an old unencrypted message
-              else if (msg.sender_id === userId) {
-                // Sent messages were encrypted with receiver's public key
-                // We can't decrypt them (we don't have receiver's private key)
-                // Just return as-is (will show encrypted or plain text)
-                return msg;
+              // For sent messages that are encrypted, we can't decrypt them
+              // (they're encrypted with receiver's public key, not ours)
+              // Try to get from cache first, otherwise show placeholder
+              else if (msg.sender_id === userId && isEncryptedMessage(msg.content)) {
+                const cachedContent = getCachedMessage(msg.id);
+                return {
+                  ...msg,
+                  content: cachedContent || '🔒 Encrypted message (sent by you)'
+                };
               }
               return msg;
             } catch (error) {
@@ -203,6 +213,10 @@ export class MessageService {
             // If decryption fails, show encrypted indicator
             lastMessage = "🔒 Encrypted message";
           }
+        } else if (message.sender_id === userId && isEncryptedMessage(message.content)) {
+          // Sent message - try to get from cache
+          const cachedContent = getCachedMessage(message.id);
+          lastMessage = cachedContent || "🔒 Encrypted message (sent by you)";
         } else if (this.looksEncrypted(message.content)) {
           // Message is encrypted but we can't decrypt it
           lastMessage = "🔒 Encrypted message";
