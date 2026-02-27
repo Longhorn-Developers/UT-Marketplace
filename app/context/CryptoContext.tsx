@@ -53,6 +53,29 @@ export function CryptoProvider({ children }: { children: React.ReactNode }) {
   const [privateKey, setPrivateKey] = useState<string | null>(null);
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [keysInitialized, setKeysInitialized] = useState(false);
+
+  // On mount, try to restore keys from sessionStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const storedPrivateKey = sessionStorage.getItem('crypto_private_key');
+      const storedPublicKey = sessionStorage.getItem('crypto_public_key');
+      const storedUserId = sessionStorage.getItem('crypto_user_id');
+
+      if (storedPrivateKey && storedPublicKey && isValidKey(storedPrivateKey) && isValidKey(storedPublicKey)) {
+        setPrivateKey(storedPrivateKey);
+        setPublicKey(storedPublicKey);
+        setUserId(storedUserId);
+        console.log('🔄 Encryption keys restored from sessionStorage');
+      }
+    } catch (error) {
+      console.warn('Failed to restore keys from sessionStorage:', error);
+    } finally {
+      setKeysInitialized(true);
+    }
+  }, []);
 
   /**
    * Set both encryption keys
@@ -67,7 +90,23 @@ export function CryptoProvider({ children }: { children: React.ReactNode }) {
 
     setPrivateKey(newPrivateKey);
     setPublicKey(newPublicKey);
-    console.log('✅ Encryption keys loaded into memory');
+
+    // Persist keys in sessionStorage (cleared when browser closes)
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem('crypto_private_key', newPrivateKey);
+        sessionStorage.setItem('crypto_public_key', newPublicKey);
+        if (userId) {
+          sessionStorage.setItem('crypto_user_id', userId);
+        }
+        console.log('✅ Encryption keys loaded into memory and persisted');
+      } catch (error) {
+        console.warn('Failed to persist keys to sessionStorage:', error);
+        console.log('✅ Encryption keys loaded into memory');
+      }
+    } else {
+      console.log('✅ Encryption keys loaded into memory');
+    }
   };
 
   /**
@@ -78,7 +117,19 @@ export function CryptoProvider({ children }: { children: React.ReactNode }) {
     setPrivateKey(null);
     setPublicKey(null);
     setUserId(null);
-    console.log('🔒 Encryption keys cleared from memory');
+
+    // Clear from sessionStorage as well
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.removeItem('crypto_private_key');
+        sessionStorage.removeItem('crypto_public_key');
+        sessionStorage.removeItem('crypto_user_id');
+      } catch (error) {
+        console.warn('Failed to clear keys from sessionStorage:', error);
+      }
+    }
+
+    console.log('🔒 Encryption keys cleared from memory and sessionStorage');
   };
 
   /**
@@ -95,6 +146,18 @@ export function CryptoProvider({ children }: { children: React.ReactNode }) {
       setPrivateKey(null);
       setPublicKey(null);
       setUserId(null);
+
+      // sessionStorage is automatically cleared when browser closes,
+      // but we clear it here too for extra security when component unmounts
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.removeItem('crypto_private_key');
+          sessionStorage.removeItem('crypto_public_key');
+          sessionStorage.removeItem('crypto_user_id');
+        } catch (error) {
+          // Ignore errors during unmount
+        }
+      }
     };
   }, []);
 
