@@ -8,6 +8,8 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   isAdmin: boolean;
+  isSuspended: boolean;
+  suspensionUntil: Date | null;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
@@ -19,6 +21,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isSuspended, setIsSuspended] = useState(false);
+  const [suspensionUntil, setSuspensionUntil] = useState<Date | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -26,9 +30,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        checkAdminStatus(session.user.id);
+        checkUserStatus(session.user.id);
       } else {
         setIsAdmin(false);
+        setIsSuspended(false);
+        setSuspensionUntil(null);
       }
       setLoading(false);
     });
@@ -37,9 +43,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        checkAdminStatus(session.user.id);
+        checkUserStatus(session.user.id);
       } else {
         setIsAdmin(false);
+        setIsSuspended(false);
+        setSuspensionUntil(null);
       }
       setLoading(false);
       router.refresh();
@@ -48,19 +56,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => subscription.unsubscribe();
   }, [router]);
 
-  const checkAdminStatus = async (userId: string) => {
+  const checkUserStatus = async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('is_admin')
+        .select('is_admin, is_suspended, suspension_until')
         .eq('id', userId)
         .single();
 
       if (!error && data) {
         setIsAdmin(data.is_admin || false);
+
+        // Check if suspension is still active
+        const until = data.suspension_until ? new Date(data.suspension_until) : null;
+        const stillSuspended = data.is_suspended && until !== null && until > new Date();
+
+        setIsSuspended(stillSuspended);
+        setSuspensionUntil(stillSuspended ? until : null);
+
+        // Auto-lift if the suspension period has passed
+        if (data.is_suspended && (!until || until <= new Date())) {
+          supabase
+            .from('users')
+            .update({ is_suspended: false, suspension_until: null })
+            .eq('id', userId)
+            .then(() => {});
+        }
       }
     } catch (error) {
-      console.error('Error checking admin status:', error);
+      console.error('Error checking user status:', error);
       setIsAdmin(false);
     }
   };
@@ -83,14 +107,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signOut = async () => {
-    setIsAdmin(false); // Clear admin state immediately
-    setUser(null);     // Clear user state immediately
+    setIsAdmin(false);
+    setIsSuspended(false);
+    setSuspensionUntil(null);
+    setUser(null);
     await supabase.auth.signOut();
     router.push('/');
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin, isSuspended, suspensionUntil, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );

@@ -11,6 +11,9 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import AdminLayout from '../../../components/admin/AdminLayout';
 import { SEVERITY_DESCRIPTIONS, SEVERITY_STRIKE_VALUES, type Severity } from '../../lib/database/StrikeService';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 interface ReportData {
   id: string;
   type: 'listing' | 'user';
@@ -35,6 +38,8 @@ type ActionOption = 'warn' | 'temp_suspend' | 'ban' | 'dismiss';
 type SeverityFilter = 'all' | Severity;
 type StatusFilter = 'all' | 'pending' | 'resolved' | 'dismissed';
 type TypeFilter = 'all' | 'listing' | 'user';
+
+// ─── Severity helpers ─────────────────────────────────────────────────────────
 
 const SEVERITY_CONFIG: Record<Severity, {
   label: string;
@@ -79,6 +84,8 @@ function getRecommendedAction(strikes: number, severity: Severity): ActionOption
   if (newTotal >= 1) return 'warn';
   return 'dismiss';
 }
+
+// ─── Badge components ─────────────────────────────────────────────────────────
 
 function SeverityBadge({ severity }: { severity: Severity }) {
   const cfg = SEVERITY_CONFIG[severity];
@@ -145,6 +152,8 @@ function StatusBadge({ status }: { status: string }) {
       return null;
   }
 }
+
+// ─── Action Modal ─────────────────────────────────────────────────────────────
 
 interface ActionModalProps {
   report: ReportData;
@@ -364,6 +373,8 @@ function ActionModal({ report, onClose, onActionTaken, adminId }: ActionModalPro
   );
 }
 
+// ─── Details Modal (read-only view) ──────────────────────────────────────────
+
 function DetailsModal({ report, onClose, onTakeAction }: {
   report: ReportData;
   onClose: () => void;
@@ -469,6 +480,7 @@ function DetailsModal({ report, onClose, onTakeAction }: {
   );
 }
 
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 const AdminReportsPage = () => {
   const { user } = useAuth();
@@ -598,6 +610,8 @@ const AdminReportsPage = () => {
 
   const pending = reports.filter(r => r.status === 'pending');
   const highSeverityPending = pending.filter(r => r.severity === 'high');
+
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   if (loading) {
     return (

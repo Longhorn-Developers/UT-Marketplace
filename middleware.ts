@@ -2,6 +2,9 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+// Routes that suspended users cannot access
+const SUSPENSION_BLOCKED_PATHS = ['/create', '/messages'];
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
     request: {
@@ -36,23 +39,49 @@ export async function middleware(request: NextRequest) {
   );
 
   const { data: { session } } = await supabase.auth.getSession();
-  
-  // Skip onboarding check for auth-related routes
+
+  // Skip checks for auth-related routes
   if (request.nextUrl.pathname.startsWith('/auth/')) {
     return response;
   }
 
-  // If user is authenticated, check onboarding status
+  // Skip checks for the suspended page itself (prevent redirect loop)
+  if (request.nextUrl.pathname.startsWith('/suspended')) {
+    return response;
+  }
+
   if (session?.user) {
     const { data: profile } = await supabase
       .from('users')
-      .select('onboard_complete')
+      .select('onboard_complete, is_banned, is_suspended, suspension_until')
       .eq('id', session.user.id)
       .single();
-      
-    // If onboarding not complete, redirect to onboarding
+
+    // Redirect to onboarding if not complete
     if (!profile?.onboard_complete) {
       return NextResponse.redirect(new URL('/auth/confirmation/onboard', request.url));
+    }
+
+    // Block banned users from all protected routes
+    if (profile?.is_banned) {
+      return NextResponse.redirect(new URL('/suspended?reason=banned', request.url));
+    }
+
+    // Check active suspension: is_suspended=true AND suspension_until is in the future
+    const isSuspensionActive =
+      profile?.is_suspended &&
+      profile?.suspension_until &&
+      new Date(profile.suspension_until) > new Date();
+
+    if (isSuspensionActive) {
+      const pathname = request.nextUrl.pathname;
+      const isBlocked = SUSPENSION_BLOCKED_PATHS.some(p => pathname.startsWith(p));
+      if (isBlocked) {
+        const until = encodeURIComponent(profile.suspension_until!);
+        return NextResponse.redirect(
+          new URL(`/suspended?reason=suspended&until=${until}`, request.url)
+        );
+      }
     }
   }
 
