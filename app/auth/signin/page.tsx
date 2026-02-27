@@ -99,6 +99,8 @@ export default function SignIn() {
     setPasswordError(null);
     setLoading(true);
 
+    console.log('🚀 handleSubmit called, isSignUp:', isSignUp);
+
     try {
       if (isSignUp) {
         // Validate email domain before attempting sign up
@@ -129,12 +131,18 @@ export default function SignIn() {
         router.push(`/auth/confirmation?email=${encodeURIComponent(email)}`);
         return;
       } else {
+        console.log('📧 Attempting sign in with email:', email);
         const { error } = await signIn(email, password);
         if (error) throw error;
 
+        console.log('✅ Sign in successful, getting user info...');
+
         // Get user info
         const { data: { user } } = await supabase.auth.getUser();
+        console.log('👤 User retrieved:', user?.id);
+
         if (user) {
+          console.log('🔑 User exists, proceeding with key loading...');
           // Load encryption keys
           try {
             console.log('Loading encryption keys...');
@@ -156,17 +164,24 @@ export default function SignIn() {
           }
 
           // Check if user needs to complete onboarding
+          console.log('🔍 Checking onboarding status...');
           const { data: profile } = await supabase
             .from('users')
             .select('onboard_complete')
             .eq('id', user.id)
             .single();
 
+          console.log('📊 Onboarding status:', profile?.onboard_complete);
+
           if (!profile?.onboard_complete) {
+            console.log('➡️ Redirecting to onboarding...');
             router.push('/auth/confirmation/onboard');
           } else {
+            console.log('➡️ Redirecting to home page...');
             router.push('/');
           }
+        } else {
+          console.log('❌ No user found after sign in');
         }
       }
     } catch (error) {
