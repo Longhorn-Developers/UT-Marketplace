@@ -57,12 +57,17 @@ export async function generateAndStoreUserKeys(
     console.log(`Generating encryption keys for user ${userId}...`);
 
     // Step 1: Generate public/private key pair
+    console.log('Step 1: Generating key pair...');
     const { publicKey, privateKey } = await generateKeyPair();
+    console.log('Step 1 complete: Key pair generated');
 
     // Step 2: Encrypt private key with user's password
+    console.log('Step 2: Encrypting private key with password...');
     const encryptedPrivateKey = await encryptPrivateKey(privateKey, password);
+    console.log('Step 2 complete: Private key encrypted');
 
     // Step 3: Store in database
+    console.log('Step 3: Storing keys in database...');
     const { data, error } = await supabase.from('user_keys').insert({
       user_id: userId,
       public_key: publicKey,
@@ -70,7 +75,8 @@ export async function generateAndStoreUserKeys(
     }).select().single();
 
     if (error) {
-      console.error('Failed to store user keys:', error);
+      console.error('❌ Failed to store user keys in database:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
       return null;
     }
 
@@ -82,7 +88,7 @@ export async function generateAndStoreUserKeys(
       encryptedPrivateKey,
     };
   } catch (error) {
-    console.error('Error generating user keys:', error);
+    console.error('❌ Error generating user keys:', error);
     return null;
   }
 }
@@ -104,10 +110,16 @@ export async function getUserKeys(userId: string): Promise<UserKeys | null> {
       .from('user_keys')
       .select('user_id, public_key, encrypted_private_key')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
-    if (error || !data) {
+    if (error) {
       console.error('Failed to fetch user keys:', error);
+      return null;
+    }
+
+    // No keys found for this user (not an error, just doesn't exist yet)
+    if (!data) {
+      console.log(`No encryption keys found for user ${userId}`);
       return null;
     }
 
@@ -176,10 +188,16 @@ export async function getPublicKey(userId: string): Promise<string | null> {
       .from('user_keys')
       .select('public_key')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
-    if (error || !data) {
+    if (error) {
       console.error(`Failed to fetch public key for user ${userId}:`, error);
+      return null;
+    }
+
+    if (!data) {
+      // User doesn't have encryption keys yet - not an error
+      console.log(`No public key found for user ${userId} (encryption not set up for this user)`);
       return null;
     }
 
@@ -241,7 +259,7 @@ export async function hasEncryptionKeys(userId: string): Promise<boolean> {
       .from('user_keys')
       .select('user_id')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     return !error && !!data;
   } catch (error) {
