@@ -51,19 +51,31 @@ export class MessageService {
       dbLogger.info('Sending message', { senderId, receiverId, listingId, encrypted: encryptionEnabled });
 
       let contentToStore = content;
+      let senderContentToStore: string | null = null;
 
       // Encrypt message if encryption is enabled
       if (encryptionEnabled) {
-        // Fetch receiver's public key
-        const receiverPublicKey = await getPublicKey(receiverId);
+        // Fetch both receiver's and sender's public keys
+        const [receiverPublicKey, senderPublicKey] = await Promise.all([
+          getPublicKey(receiverId),
+          getPublicKey(senderId)
+        ]);
 
         if (!receiverPublicKey) {
           dbLogger.warn('Receiver has no public key, sending unencrypted', { receiverId });
           // Fall back to unencrypted if receiver has no keys (backwards compatibility)
         } else {
-          // Encrypt the message
+          // Encrypt the message for receiver (so they can decrypt it)
           contentToStore = await encryptMessage(content, receiverPublicKey);
-          dbLogger.info('Message encrypted successfully');
+          dbLogger.info('Message encrypted for receiver');
+        }
+
+        if (senderPublicKey) {
+          // Encrypt the message for sender (so they can decrypt their own sent messages)
+          senderContentToStore = await encryptMessage(content, senderPublicKey);
+          dbLogger.info('Message encrypted for sender (cross-device support)');
+        } else {
+          dbLogger.warn('Sender has no public key, cannot encrypt sender copy', { senderId });
         }
       }
 
@@ -72,7 +84,8 @@ export class MessageService {
         .insert({
           sender_id: senderId,
           receiver_id: receiverId,
-          content: contentToStore, // Now encrypted (or plain if encryption disabled/unavailable)
+          content: contentToStore, // Encrypted for receiver (or plain if encryption disabled)
+          sender_encrypted_content: senderContentToStore, // Encrypted for sender (cross-device support)
           is_read: false,
           listing_id: listingId || null,
         })
@@ -146,15 +159,24 @@ export class MessageService {
                 // If not encrypted, it's an old plain text message - return as-is
                 return msg;
               }
-              // For sent messages that are encrypted, we can't decrypt them
-              // (they're encrypted with receiver's public key, not ours)
-              // Try to get from cache first, otherwise show placeholder
-              else if (msg.sender_id === userId && isEncryptedMessage(msg.content)) {
-                const cachedContent = getCachedMessage(msg.id);
-                return {
-                  ...msg,
-                  content: cachedContent || '🔒 Encrypted message (sent by you)'
-                };
+              // For sent messages, decrypt the sender_encrypted_content
+              // (encrypted with sender's public key for cross-device support)
+              else if (msg.sender_id === userId) {
+                // Try to decrypt sender's copy first (new messages)
+                if (msg.sender_encrypted_content && isEncryptedMessage(msg.sender_encrypted_content)) {
+                  const decryptedContent = await decryptMessage(msg.sender_encrypted_content, privateKey);
+                  return { ...msg, content: decryptedContent };
+                }
+                // Fall back to localStorage cache (for messages sent before double encryption)
+                else if (isEncryptedMessage(msg.content)) {
+                  const cachedContent = getCachedMessage(msg.id);
+                  return {
+                    ...msg,
+                    content: cachedContent || '🔒 Encrypted message (sent by you)'
+                  };
+                }
+                // Plain text message
+                return msg;
               }
               return msg;
             } catch (error) {
@@ -207,14 +229,22 @@ export class MessageService {
         // Decrypt last message if possible
         let lastMessage = message.content;
         if (privateKey && message.receiver_id === userId && isEncryptedMessage(message.content)) {
+          // Received message - decrypt with our private key
           try {
             lastMessage = await decryptMessage(message.content, privateKey);
           } catch (error) {
             // If decryption fails, show encrypted indicator
             lastMessage = "🔒 Encrypted message";
           }
+        } else if (privateKey && message.sender_id === userId && message.sender_encrypted_content && isEncryptedMessage(message.sender_encrypted_content)) {
+          // Sent message - decrypt sender's copy (new messages with double encryption)
+          try {
+            lastMessage = await decryptMessage(message.sender_encrypted_content, privateKey);
+          } catch (error) {
+            lastMessage = "🔒 Encrypted message (sent by you)";
+          }
         } else if (message.sender_id === userId && isEncryptedMessage(message.content)) {
-          // Sent message - try to get from cache
+          // Sent message without sender_encrypted_content (old messages) - try cache
           const cachedContent = getCachedMessage(message.id);
           lastMessage = cachedContent || "🔒 Encrypted message (sent by you)";
         } else if (this.looksEncrypted(message.content)) {
