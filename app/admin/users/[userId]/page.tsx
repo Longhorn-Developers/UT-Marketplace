@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { User, Mail, Calendar, Package, Star, Activity, Clock, AlertTriangle, Ban, CheckCircle, Shield, ArrowLeft } from 'lucide-react';
 import { supabase } from '../../../lib/supabaseClient';
+import { AdminService } from '../../../lib/database/AdminService';
 import { useAuth } from '../../../context/AuthContext';
 import Image from 'next/image';
 import AdminLayout from '../../../../components/admin/AdminLayout';
@@ -148,7 +149,7 @@ const AdminUserProfilePage = () => {
 
   const handleBanUser = async () => {
     if (!currentUser?.id || !profile) return;
-    
+
     const action = profile.is_banned ? 'unban' : 'ban';
     if (!confirm(`Are you sure you want to ${action} this user?`)) {
       return;
@@ -156,16 +157,21 @@ const AdminUserProfilePage = () => {
 
     setActionLoading(true);
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({ is_banned: !profile.is_banned })
-        .eq('id', userId as string);
+      let result;
 
-      if (error) {
-        throw new Error(error.message);
+      if (profile.is_banned) {
+        // Unban the user
+        result = await AdminService.unbanUser(userId as string, currentUser.id);
+      } else {
+        // Ban the user
+        result = await AdminService.banUser(userId as string, currentUser.id);
       }
 
-      setProfile({ ...profile, is_banned: !profile.is_banned });
+      if (result.success) {
+        setProfile({ ...profile, is_banned: !profile.is_banned });
+      } else {
+        alert(result.error || `Failed to ${action} user`);
+      }
     } catch (error) {
       console.error(`Error ${action}ning user:`, error);
       alert(`Failed to ${action} user`);

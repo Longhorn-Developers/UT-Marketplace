@@ -350,17 +350,85 @@ export class AdminService {
   }
 
   /**
-   * Ban/unban a user
+   * Ban a user
+   */
+  static async banUser(userId: string, adminId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('Starting banUser (using API route)', { userId, adminId });
+      dbLogger.info('Banning user', { userId, adminId });
+
+      // Call server-side API route to ban the user
+      const response = await fetch('/api/admin/ban-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          adminId,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        console.error('API Error:', result.error);
+        return { success: false, error: result.error || 'Failed to ban user' };
+      }
+
+      console.log('✓ User banned successfully via API');
+      dbLogger.success('User banned successfully', { userId });
+      return { success: true };
+    } catch (error) {
+      console.error('Exception in banUser:', error);
+      dbLogger.error('Error in banUser', error);
+      return { success: false, error: 'An error occurred while banning the user' };
+    }
+  }
+
+  /**
+   * Unban a user
+   */
+  static async unbanUser(userId: string, adminId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('Starting unbanUser (using API route)', { userId, adminId });
+      dbLogger.info('Unbanning user', { userId, adminId });
+
+      // Call server-side API route to unban the user
+      const response = await fetch('/api/admin/unban-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          adminId,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        console.error('API Error:', result.error);
+        return { success: false, error: result.error || 'Failed to unban user' };
+      }
+
+      console.log('✓ User unbanned successfully via API');
+      dbLogger.success('User unbanned successfully', { userId });
+      return { success: true };
+    } catch (error) {
+      console.error('Exception in unbanUser:', error);
+      dbLogger.error('Error in unbanUser', error);
+      return { success: false, error: 'An error occurred while unbanning the user' };
+    }
+  }
+
+  /**
+   * Ban/unban a user (legacy toggle method)
    */
   static async toggleUserBan(userId: string, adminId: string): Promise<{ success: boolean; isBanned: boolean }> {
     try {
       dbLogger.info('Toggling user ban status', { userId, adminId });
-
-      // First check if admin
-      const isAdmin = await this.isUserAdmin(adminId);
-      if (!isAdmin) {
-        throw new Error('Unauthorized: Only admins can ban users');
-      }
 
       // Get current ban status
       const { data: currentUser, error: fetchError } = await supabase
@@ -370,23 +438,18 @@ export class AdminService {
         .single();
 
       if (fetchError) {
-        throw fetchError;
+        dbLogger.error('Error fetching user ban status:', fetchError);
+        return { success: false, isBanned: false };
       }
 
-      const newBanStatus = !currentUser.is_banned;
-
-      // Update ban status
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ is_banned: newBanStatus })
-        .eq('id', userId);
-
-      if (updateError) {
-        throw updateError;
+      // Call appropriate API based on current status
+      if (currentUser.is_banned) {
+        const result = await this.unbanUser(userId, adminId);
+        return { success: result.success, isBanned: false };
+      } else {
+        const result = await this.banUser(userId, adminId);
+        return { success: result.success, isBanned: true };
       }
-
-      dbLogger.success('User ban status updated', { userId, isBanned: newBanStatus });
-      return { success: true, isBanned: newBanStatus };
     } catch (error) {
       dbLogger.error('Error toggling user ban:', error);
       return { success: false, isBanned: false };
@@ -798,15 +861,11 @@ export class AdminService {
         return { success: false, error: 'Report not found' };
       }
 
-      // Ban the user
-      const { error: banError } = await supabaseAdmin
-        .from('users')
-        .update({ is_banned: true })
-        .eq('id', report.reported_user_id);
+      // Ban the user using secure API
+      const banResult = await this.banUser(report.reported_user_id, adminId);
 
-      if (banError) {
-        dbLogger.error('Error banning user', banError);
-        return { success: false, error: 'Failed to ban user' };
+      if (!banResult.success) {
+        return { success: false, error: banResult.error || 'Failed to ban user' };
       }
 
       // Delete the report

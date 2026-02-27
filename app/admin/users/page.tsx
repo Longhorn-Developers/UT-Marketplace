@@ -28,10 +28,19 @@ const AdminUsersPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'banned' | 'admin'>('all');
+  const [currentAdminId, setCurrentAdminId] = useState<string | null>(null);
 
   useEffect(() => {
+    fetchCurrentUser();
     fetchUsers();
   }, []);
+
+  const fetchCurrentUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      setCurrentAdminId(user.id);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -126,32 +135,33 @@ const AdminUsersPage = () => {
 
   const handleBanUser = async (userId: string, currentBanStatus: boolean) => {
     const action = currentBanStatus ? 'unban' : 'ban';
-    
+
     if (!confirm(`Are you sure you want to ${action} this user?`)) {
       return;
     }
 
-    try {
-      // Try to update the is_banned column, but handle gracefully if it doesn't exist
-      const { error } = await supabase
-        .from('users')
-        .update({ is_banned: !currentBanStatus })
-        .eq('id', userId);
+    if (!currentAdminId) {
+      toast.error('Admin session not found. Please refresh the page.');
+      return;
+    }
 
-      if (error) {
-        // If the column doesn't exist, we could add it or show a different message
-        console.error(`Error ${action}ning user:`, error);
-        
-        if (error.message?.includes('column') && error.message?.includes('does not exist')) {
-          toast.error(`Ban functionality requires database migration. Column 'is_banned' not found.`);
-        } else {
-          toast.error(`Failed to ${action} user: ${error.message}`);
-        }
-        return;
+    try {
+      let result;
+
+      if (currentBanStatus) {
+        // Unban the user
+        result = await AdminService.unbanUser(userId, currentAdminId);
+      } else {
+        // Ban the user
+        result = await AdminService.banUser(userId, currentAdminId);
       }
 
-      toast.success(`User ${action}ned successfully`);
-      await fetchUsers();
+      if (result.success) {
+        toast.success(`User ${action}ned successfully`);
+        await fetchUsers();
+      } else {
+        toast.error(result.error || `Failed to ${action} user`);
+      }
     } catch (error) {
       console.error(`Error ${action}ning user:`, error);
       toast.error(`Error ${action}ning user`);
