@@ -1,6 +1,7 @@
 export interface ListingCardProps {
   title: string;
   price: number;
+  highestPrice?: number;
   location: string;
   category: string;
   timePosted: string;
@@ -38,6 +39,11 @@ export interface ListingPageProps {
   location_lng?: number;
   status?: 'pending' | 'approved' | 'denied';
   denial_reason?: string;
+  priceHistory?: Array<{
+    old_price: number | null;
+    new_price: number;
+    changed_at: string;
+  }>;
 }
 
 export interface OwnerPageProps {
@@ -61,6 +67,7 @@ export interface Listing {
   id: string;
   title: string;
   price: number;
+  highest_price?: number;
   location: string;
   category: string;
   created_at: string;

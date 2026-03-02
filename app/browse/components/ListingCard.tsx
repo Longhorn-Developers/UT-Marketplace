@@ -18,6 +18,7 @@ const highlight = (text: string, searchTerm?: string) => {
 const ListingCard: React.FC<ListingCardProps> = ({
   title,
   price,
+  highestPrice,
   location,
   category,
   timePosted,
@@ -29,6 +30,10 @@ const ListingCard: React.FC<ListingCardProps> = ({
 }) => {
   const [avatarFailed, setAvatarFailed] = useState(false);
   const showAvatar = Boolean(user.image) && !avatarFailed;
+  const shouldShowOriginalPrice =
+    typeof highestPrice === "number" &&
+    Number.isFinite(highestPrice) &&
+    highestPrice > price;
 
   return (
     <div className="group bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
@@ -61,7 +66,14 @@ const ListingCard: React.FC<ListingCardProps> = ({
           <h3 className="text-sm font-semibold text-gray-900 truncate group-hover:text-[#bf5700] transition-colors duration-200">
             {highlight(title, searchTerm)}
           </h3>
-          <span className="text-[#bf5700] font-bold text-sm">${price}</span>
+          <div className="flex items-center gap-2">
+            {shouldShowOriginalPrice && (
+              <span className="text-xs text-gray-400 line-through">
+                ${highestPrice}
+              </span>
+            )}
+            <span className="text-[#bf5700] font-bold text-sm">${price}</span>
+          </div>
         </div>
         <p className="text-xs text-gray-500">{highlight(location, searchTerm)}</p>
         <p className="text-xs text-gray-500">

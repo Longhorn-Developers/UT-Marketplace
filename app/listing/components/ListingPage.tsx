@@ -11,6 +11,7 @@ import ReportListingModal from "../../../components/modals/ReportListingModal";
 import ReportUserModal from "../../../components/modals/ReportUserModal";
 import Image from "next/image";
 import dynamic from "next/dynamic";
+import * as timeago from 'timeago.js';
 
 const MapPicker = dynamic(() => import("./MapPicker"), { ssr: false });
 
@@ -30,6 +31,7 @@ const ListingPage: React.FC<ListingPageProps> = ({
   location_lat,
   location_lng,
   status,
+  priceHistory = [],
 }) => {
   const [selectedImageIdx, setSelectedImageIdx] = useState(0);
   const { user: currentUser } = useAuth();
@@ -277,6 +279,23 @@ const ListingPage: React.FC<ListingPageProps> = ({
             <h3 className="text-lg font-semibold text-gray-800 mb-1">Description</h3>
             <p className="text-gray-700 text-base leading-relaxed whitespace-pre-line">{description}</p>
           </div>
+
+          {priceHistory.length > 0 && (
+            <div className="mb-6 border border-gray-200 rounded-xl p-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Price history</h3>
+              <div className="space-y-2">
+                {priceHistory.map((entry, index) => (
+                  <div key={`${entry.changed_at}-${index}`} className="flex items-center justify-between text-sm text-gray-600">
+                    <span>
+                      {entry.old_price !== null ? `$${entry.old_price} → ` : ''}
+                      ${entry.new_price}
+                    </span>
+                    <span className="text-xs text-gray-400">{timeago.format(entry.changed_at)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Seller Info */}

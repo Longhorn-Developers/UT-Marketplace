@@ -183,6 +183,7 @@ const Browse = () => {
                   key={listing.id}
                   title={listing.title}
                   price={listing.price}
+                  highestPrice={listing.highest_price}
                   location={listing.location}
                   category={listing.category}
                   timePosted={timeago.format(listing.created_at)}

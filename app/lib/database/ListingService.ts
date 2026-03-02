@@ -303,7 +303,10 @@ export class ListingService {
 
       let query = supabase
         .from('listings')
-        .select(`*`)
+        .select(`
+          *,
+          listing_price_history(old_price, new_price)
+        `)
         .order('created_at', { ascending: false });
 
       if (excludeSold) {
@@ -361,13 +364,27 @@ export class ListingService {
       });
 
       // Join user data with listings and add status information
-      const enrichedListings = listingsData.map(listing => ({
+      const enrichedListings = listingsData.map(listing => {
+        const history = Array.isArray(listing.listing_price_history)
+          ? listing.listing_price_history
+          : [];
+        const historyPrices = history.flatMap((entry: any) => [
+          entry?.old_price,
+          entry?.new_price,
+        ]).filter((value: any) => typeof value === 'number' && Number.isFinite(value));
+        const currentPrice = typeof listing.price === 'number' ? listing.price : Number(listing.price);
+        const highestPriceCandidate = Math.max(currentPrice || 0, ...historyPrices);
+        const highest_price = Number.isFinite(highestPriceCandidate) ? highestPriceCandidate : currentPrice;
+
+        return {
         ...listing,
         category: convertFromDbFormat(listing.category, 'category'),
         condition: convertFromDbFormat(listing.condition, 'condition'),
         user_name: userMap[listing.user_id]?.name || listing.user_id,
         user_image: userMap[listing.user_id]?.image || null,
-      }));
+        highest_price,
+        };
+      });
 
       // Add status information to all listings
       const listingsWithStatus = processListingsWithStatus(enrichedListings);
@@ -521,6 +538,12 @@ export class ListingService {
         .select('rating')
         .eq('rated_id', data.user_id);
 
+      const { data: priceHistory } = await supabase
+        .from('listing_price_history')
+        .select('old_price, new_price, changed_at')
+        .eq('listing_id', data.id)
+        .order('changed_at', { ascending: false });
+
       const averageRating = ratings && ratings.length > 0 
         ? ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length 
         : 0;
@@ -547,6 +570,7 @@ export class ListingService {
         location_lng: data.location_lng,
         status: status,
         denial_reason: denialReason,
+        priceHistory: priceHistory || [],
       };
 
       dbLogger.success('Listing fetched successfully', { listingId });
