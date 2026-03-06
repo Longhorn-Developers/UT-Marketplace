@@ -215,6 +215,23 @@ export async function POST(request: NextRequest) {
         .from('users')
         .update({ is_banned: true, is_suspended: false, suspension_until: null })
         .eq('id', targetUserId);
+
+      // Fetch the user's email and record it in banned_emails to block re-registration
+      const { data: bannedUser } = await db
+        .from('users')
+        .select('email')
+        .eq('id', targetUserId)
+        .single();
+
+      if (bannedUser?.email) {
+        await db.from('banned_emails').upsert({
+          email: bannedUser.email.toLowerCase(),
+          user_id: targetUserId,
+          banned_by: adminId,
+          banned_at: new Date().toISOString(),
+          reason: reason,
+        }, { onConflict: 'email' });
+      }
     } else if (action === 'temp_suspend') {
       const days = typeof suspensionDays === 'number' && suspensionDays > 0
         ? suspensionDays
@@ -229,22 +246,19 @@ export async function POST(request: NextRequest) {
     }
     // 'warn' → no account status change
 
-    // For listing reports: delete the listing (except for 'warn') 
-    if (reportType === 'listing' && action !== 'warn' && report.listing_id) {
+    // Mark report resolved and remove listing for all non-dismiss listing actions
+    if (reportType === 'listing' && report.listing_id) {
       const listingId: string = report.listing_id;
-      await db.from('user_favorites').delete().eq('listing_id', listingId);
-      await db.from('listing_reports').delete().eq('listing_id', listingId);
-      await db.from('listings').delete().eq('id', listingId);
-    } else {
-      // Just mark the individual report as resolved (listing still exists for 'warn')
+      // Mark resolved first (before cascade-deleting the row via listing delete)
       await db
-        .from(reportTable)
+        .from('listing_reports')
         .update({ status: 'resolved', reviewed_at: new Date().toISOString(), reviewed_by: adminId })
         .eq('id', reportId);
-    }
-
-    // For user reports: mark report resolved
-    if (reportType === 'user') {
+      // Remove the listing (warn, temp_suspend, ban all remove the content)
+      await db.from('user_favorites').delete().eq('listing_id', listingId);
+      await db.from('listings').delete().eq('id', listingId);
+    } else {
+      // User reports: mark resolved
       await db
         .from(reportTable)
         .update({ status: 'resolved', reviewed_at: new Date().toISOString(), reviewed_by: adminId })

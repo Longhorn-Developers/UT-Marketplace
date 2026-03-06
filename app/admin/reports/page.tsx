@@ -25,6 +25,7 @@ interface ReportData {
   listing_user_id?: string;
   listing_title?: string;
   reported_user_name?: string;
+  listing_user_name?: string;
   reporter_name?: string;
   // Populated after fetching strike data
   targetUserStrikes?: number;
@@ -507,6 +508,7 @@ const AdminReportsPage = () => {
           reported_listing_id: r.listing_id,
           listing_user_id: listing?.user_id,
           listing_title: listing?.title || 'Unknown Listing',
+          listing_user_name: listing?.listing_owner?.display_name || listing?.listing_owner?.email?.split('@')[0] || undefined,
           reporter_name: reporter?.display_name || reporter?.email?.split('@')[0] || 'Unknown',
         };
       });
@@ -775,10 +777,27 @@ const AdminReportsPage = () => {
                         <div>
                           <p className="text-sm font-medium text-gray-900 capitalize">{report.reason.replace(/_/g, ' ')}</p>
                           {report.type === 'listing' && report.listing_title && (
-                            <p className="text-xs text-blue-600 truncate max-w-[180px]">📋 {report.listing_title}</p>
+                            <a
+                              href={`/listing/${report.reported_listing_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-600 hover:text-blue-800 hover:underline truncate max-w-[180px] flex items-center gap-0.5"
+                            >
+                              📋 {report.listing_title}
+                            </a>
                           )}
-                          {report.type === 'user' && report.reported_user_name && (
-                            <p className="text-xs text-purple-600">👤 {report.reported_user_name}</p>
+                          {report.type === 'listing' && report.listing_user_name && (
+                            <p className="text-xs text-purple-600">👤 {report.listing_user_name}</p>
+                          )}
+                          {report.type === 'user' && (
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-700 border border-purple-200">
+                                User Only
+                              </span>
+                              {report.reported_user_name && (
+                                <p className="text-xs text-purple-600">👤 {report.reported_user_name}</p>
+                              )}
+                            </div>
                           )}
                           {report.description && (
                             <p className="text-xs text-gray-400 truncate max-w-[180px]">{report.description}</p>

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { AdminService } from '../../lib/database/AdminService';
 import { supabase } from '../../lib/supabaseClient';
-import { User, Shield, Search, Ban, CheckCircle2, ExternalLink } from 'lucide-react';
+import { User, Shield, Search, Ban, CheckCircle2, ExternalLink, Clock } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Image from 'next/image';
@@ -18,6 +18,8 @@ interface UserData {
   last_sign_in_at?: string;
   is_admin?: boolean;
   is_banned?: boolean;
+  is_suspended?: boolean;
+  suspension_until?: string | null;
   listing_count?: number;
   review_count?: number;
   average_rating?: number;
@@ -27,7 +29,7 @@ const AdminUsersPage = () => {
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'banned' | 'admin'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'banned' | 'suspended' | 'admin'>('all');
   const [currentAdminId, setCurrentAdminId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -45,7 +47,10 @@ const AdminUsersPage = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      
+
+      // Clear any expired suspensions before loading (fire-and-forget)
+      fetch('/api/admin/lift-expired-suspensions', { method: 'POST' }).catch(() => {});
+
       // First, fetch users with error handling for missing columns
       const { data: usersData, error: usersError } = await supabase
         .from('users')
@@ -96,6 +101,8 @@ const AdminUsersPage = () => {
                 // Handle missing columns gracefully
                 is_admin: user.is_admin ?? false,
                 is_banned: user.is_banned ?? false,
+                is_suspended: user.is_suspended ?? false,
+                suspension_until: user.suspension_until ?? null,
                 display_name: user.display_name ?? null,
                 profile_image_url: user.profile_image_url ?? null,
                 last_sign_in_at: user.last_sign_in_at ?? null,
@@ -109,6 +116,8 @@ const AdminUsersPage = () => {
                 ...user,
                 is_admin: user.is_admin ?? false,
                 is_banned: user.is_banned ?? false,
+                is_suspended: user.is_suspended ?? false,
+                suspension_until: user.suspension_until ?? null,
                 display_name: user.display_name ?? null,
                 profile_image_url: user.profile_image_url ?? null,
                 last_sign_in_at: user.last_sign_in_at ?? null,
@@ -206,10 +215,11 @@ const AdminUsersPage = () => {
       user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (user.display_name && user.display_name.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    const matchesStatus = 
+    const matchesStatus =
       statusFilter === 'all' ||
-      (statusFilter === 'active' && !user.is_banned && !user.is_admin) ||
+      (statusFilter === 'active' && !user.is_banned && !user.is_suspended && !user.is_admin) ||
       (statusFilter === 'banned' && user.is_banned === true) ||
+      (statusFilter === 'suspended' && user.is_suspended === true) ||
       (statusFilter === 'admin' && user.is_admin === true);
     
     return matchesSearch && matchesStatus;
@@ -230,6 +240,20 @@ const AdminUsersPage = () => {
           <Ban size={12} className="mr-1" />
           Banned
         </span>
+      );
+    }
+    if (user.is_suspended === true && user.suspension_until) {
+      const msLeft = new Date(user.suspension_until).getTime() - Date.now();
+      const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+      const label = daysLeft > 0 ? `${daysLeft}d left` : 'Expiring';
+      return (
+        <div className="flex flex-col gap-0.5">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+            <Clock size={12} className="mr-1" />
+            Suspended
+          </span>
+          <span className="text-[10px] text-orange-600 pl-1">{label}</span>
+        </div>
       );
     }
     return (
@@ -284,6 +308,7 @@ const AdminUsersPage = () => {
           >
             <option value="all">All Users</option>
             <option value="active">Active Users</option>
+            <option value="suspended">Suspended Users</option>
             <option value="banned">Banned Users</option>
             <option value="admin">Administrators</option>
           </select>

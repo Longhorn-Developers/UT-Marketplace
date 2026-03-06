@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
 import Image from 'next/image';
 
@@ -15,6 +15,12 @@ export default function SignIn() {
   const [showPassword, setShowPassword] = useState(false);
   const { signIn, signUp } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const urlError = searchParams.get('error');
+    if (urlError) setError(decodeURIComponent(urlError));
+  }, [searchParams]);
 
 
 
@@ -25,6 +31,19 @@ export default function SignIn() {
 
     try {
       if (isSignUp) {
+        // Check if this email is permanently banned before allowing registration
+        const { data: bannedEntry } = await supabase
+          .from('banned_emails')
+          .select('email')
+          .eq('email', email.toLowerCase())
+          .maybeSingle();
+
+        if (bannedEntry) {
+          setError('This email address is not eligible to register on UT Marketplace.');
+          setLoading(false);
+          return;
+        }
+
         const { error } = await signUp(email, password);
         if (error) throw error;
         

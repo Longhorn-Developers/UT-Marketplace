@@ -51,6 +51,11 @@ export interface AdminListingReport {
     price: number;
     user_id: string;
     images?: string[];
+    listing_owner?: {
+      id: string;
+      email: string;
+      display_name?: string;
+    };
   };
   reporter: {
     id: string;
@@ -721,7 +726,7 @@ export class AdminService {
         .from('listing_reports')
         .select(`
           *,
-          listing:listings(id, title, price, user_id, images),
+          listing:listings(id, title, price, user_id, images, listing_owner:users!user_id(id, email, display_name)),
           reporter:users!reporter_id(id, email, display_name)
         `)
         .order('created_at', { ascending: false })
