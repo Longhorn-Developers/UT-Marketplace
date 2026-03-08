@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { supabase } from "../lib/supabaseClient";
 import { useAuthGuard } from "../lib/hooks/useAuthGuard";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Edit, Trash2, Eye, Send, Clock, CheckCircle, XCircle, RefreshCw } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -14,8 +15,6 @@ import {
   headerVariants,
   itemVariants,
   emptyStateVariants,
-  overlayVariants,
-  modalVariants,
 } from "../props/animations";
 import BrowseLoader from "../browse/components/BrowseLoader";
 import * as timeago from "timeago.js";
@@ -252,27 +251,61 @@ const MyListings = () => {
       animate="visible"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div 
-          className="flex justify-between items-center mb-6"
-          variants={headerVariants}
-        >
-          <h1 className="text-2xl font-bold text-gray-900">My Listings</h1>
-          <button
-            onClick={() => router.push("/create")}
-            className="bg-[#bf5700] text-white px-4 py-2 rounded-md hover:bg-[#a54700] transition"
-          >
-            Create New Listing
-          </button>
-        </motion.div>
+        {isEditing && editForm ? (
+          <>
+            <motion.div 
+              className="flex justify-between items-center mb-6"
+              variants={headerVariants}
+            >
+              <h1 className="text-2xl font-bold text-gray-900">Edit Listing</h1>
+              <Link
+                href="/my-listings"
+                onClick={() => {
+                  setIsEditing(false);
+                  setEditId(null);
+                  setEditForm(null);
+                }}
+                className="inline-flex items-center rounded-md border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 hover:text-[#bf5700]"
+              >
+                Back to My Listings
+              </Link>
+            </motion.div>
+            <EditForm
+              mode="page"
+              setIsEditing={setIsEditing}
+              handleEditChange={() => {}}
+              handleEditSubmit={handleEditSubmit}
+              form={editForm}
+              setForm={setEditForm}
+              initialFormState={editForm}
+              categoryOptions={categoryOptions}
+              conditionOptions={conditionOptions}
+              leaseOptions={leaseOptions}
+            />
+          </>
+        ) : (
+          <>
+            <motion.div 
+              className="flex justify-between items-center mb-6"
+              variants={headerVariants}
+            >
+              <h1 className="text-2xl font-bold text-gray-900">My Listings</h1>
+              <button
+                onClick={() => router.push("/create")}
+                className="bg-[#bf5700] text-white px-4 py-2 rounded-md hover:bg-[#a54700] transition"
+              >
+                Create New Listing
+              </button>
+            </motion.div>
 
-        {listings.length === 0 ? (
+            {listings.length === 0 ? (
           <motion.div 
             className="flex flex-col items-center justify-center min-h-[60vh] text-center"
             variants={emptyStateVariants}
           >
             <p className="text-gray-500">You haven&apos;t created any listings yet.</p>
           </motion.div>
-        ) : (
+            ) : (
           <motion.div 
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
             variants={containerVariants}
@@ -418,37 +451,11 @@ const MyListings = () => {
               </motion.div>
             ))}
           </motion.div>
+            )}
+          </>
         )}
       </div>
       <ToastContainer position="top-center" autoClose={3000} />
-      {isEditing && editForm && (
-        <motion.div 
-          className="fixed inset-0 z-40 flex justify-center bg-black/20 backdrop-blur-sm overflow-y-auto pt-16"
-          variants={overlayVariants}
-          initial="hidden"
-          animate="visible"
-          exit="hidden"
-        >
-          <motion.div
-            variants={modalVariants}
-            initial="hidden"
-            animate="visible"
-            exit="hidden"
-          >
-            <EditForm
-              setIsEditing={setIsEditing}
-              handleEditChange={() => {}}
-              handleEditSubmit={handleEditSubmit}
-              form={editForm}
-              setForm={setEditForm}
-              initialFormState={editForm}
-              categoryOptions={categoryOptions}
-              conditionOptions={conditionOptions}
-              leaseOptions={leaseOptions}
-            />
-          </motion.div>
-        </motion.div>
-      )}
     </motion.div>
   );
 };

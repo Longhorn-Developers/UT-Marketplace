@@ -18,7 +18,9 @@ const EditForm = ({
   categoryOptions,
   conditionOptions,
   leaseOptions,
+  mode = "modal",
 }) => {
+  const isPageMode = mode === "page";
   const [localForm, setLocalForm] = useState(form);
   const [images, setImages] = useState<(File | string)[]>(form.images || []);
   const [tagsInput, setTagsInput] = useState(
@@ -141,22 +143,30 @@ const EditForm = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/20 backdrop-blur-sm pt-[80px]">
-      <div className="max-w-2xl w-full bg-white rounded-2xl shadow-2xl border border-[#bf5700]/10 p-0 relative max-h-[90vh] flex flex-col">
-        <button
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (setForm && initialFormState) {
-              setForm(initialFormState);
-            }
-            setIsEditing(false);
-          }}
-        >
-          <X size={20} />
-        </button>
-        <div className="overflow-y-auto p-6 pt-12 flex-1">
+    <div className={isPageMode ? "w-full" : "fixed inset-0 z-50 flex items-start justify-center bg-black/20 backdrop-blur-sm pt-[80px]"}>
+      <div
+        className={`w-full bg-white border border-[#bf5700]/10 p-0 relative ${
+          isPageMode
+            ? "max-w-4xl rounded-2xl shadow-sm"
+            : "max-w-2xl rounded-2xl shadow-2xl max-h-[90vh] flex flex-col"
+        }`}
+      >
+        {!isPageMode && (
+          <button
+            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (setForm && initialFormState) {
+                setForm(initialFormState);
+              }
+              setIsEditing(false);
+            }}
+          >
+            <X size={20} />
+          </button>
+        )}
+        <div className={isPageMode ? "p-6 flex-1" : "overflow-y-auto p-6 pt-12 flex-1"}>
         <h2 className="text-2xl font-bold mb-4 text-[#bf5700] flex items-center gap-2">
           <FileText className="w-6 h-6" /> Edit Listing
         </h2>
