@@ -91,7 +91,7 @@ const ReportUserModal: React.FC<ReportUserModalProps> = ({
             </div>
             <h3 className="text-lg font-bold text-gray-900 mb-2">Report Submitted</h3>
             <p className="text-gray-600">
-              Thank you for reporting this user. We will review your report and take appropriate action.
+              Your report has been submitted. Thank you for helping keep UTMP safe.
             </p>
           </div>
         </div>

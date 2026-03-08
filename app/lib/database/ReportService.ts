@@ -1,5 +1,6 @@
 import { supabase } from '../supabaseClient';
 import { dbLogger } from './utils';
+import { REPORT_SEVERITY_MAP } from './StrikeService';
 
 export interface ReportReason {
   key: string;
@@ -144,7 +145,8 @@ export class ReportService {
         return { success: false, error: 'You cannot report your own listing' };
       }
 
-      // Create the report
+      // Create the report (include severity derived from reason key)
+      const severity = REPORT_SEVERITY_MAP[reason] ?? 'low';
       const { error } = await supabase
         .from('listing_reports')
         .insert({
@@ -152,13 +154,21 @@ export class ReportService {
           reporter_id: reporterId,
           reason,
           description,
-          status: 'pending'
+          status: 'pending',
+          severity,
         });
 
       if (error) {
         dbLogger.error('Failed to create listing report', error);
         return { success: false, error: 'Failed to submit report' };
       }
+
+      // Notify the reporter that their report was received (fire-and-forget via API)
+      fetch('/api/notifications/report-received', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: reporterId }),
+      }).catch(() => {});
 
       dbLogger.success('Listing report created successfully', { listingId, reporterId });
       return { success: true };
@@ -205,7 +215,8 @@ export class ReportService {
         return { success: false, error: 'User not found' };
       }
 
-      // Create the report
+      // Create the report (include severity derived from reason key)
+      const severity = REPORT_SEVERITY_MAP[reason] ?? 'low';
       const { error } = await supabase
         .from('user_reports')
         .insert({
@@ -213,13 +224,21 @@ export class ReportService {
           reporter_id: reporterId,
           reason,
           description,
-          status: 'pending'
+          status: 'pending',
+          severity,
         });
 
       if (error) {
         dbLogger.error('Failed to create user report', error);
         return { success: false, error: 'Failed to submit report' };
       }
+
+      // Notify the reporter that their report was received (fire-and-forget via API)
+      fetch('/api/notifications/report-received', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: reporterId }),
+      }).catch(() => {});
 
       dbLogger.success('User report created successfully', { reportedUserId, reporterId });
       return { success: true };

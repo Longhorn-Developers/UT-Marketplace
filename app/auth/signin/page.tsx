@@ -26,6 +26,12 @@ export default function SignIn() {
   const { signIn, signUp } = useAuth();
   const { setKeys, setUserId } = useCrypto();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const urlError = searchParams.get('error');
+    if (urlError) setError(decodeURIComponent(urlError));
+  }, [searchParams]);
 
   // Check for error parameter in URL
   useEffect(() => {
@@ -109,21 +115,34 @@ export default function SignIn() {
           setLoading(false);
           return;
         }
-        
+
         // Validate password confirmation
         if (password !== confirmPassword) {
           setPasswordError('Passwords do not match');
           setLoading(false);
           return;
         }
-        
+
         // Validate terms acceptance
         if (!termsAccepted) {
           setError('Please accept the Terms and Conditions to continue');
           setLoading(false);
           return;
         }
-        
+
+        // Check if this email is permanently banned before allowing registration
+        const { data: bannedEntry } = await supabase
+          .from('banned_emails')
+          .select('email')
+          .eq('email', email.toLowerCase())
+          .maybeSingle();
+
+        if (bannedEntry) {
+          setError('This email address is not eligible to register on UT Marketplace.');
+          setLoading(false);
+          return;
+        }
+
         const { error, status } = await signUp(email, password);
 
         if (status === 'existing-confirmed') {

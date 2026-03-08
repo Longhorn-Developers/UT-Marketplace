@@ -64,6 +64,22 @@ export async function GET(request: NextRequest) {
       );
     }
     
+    // Check if the user's email is permanently banned
+    if (user.email) {
+      const { data: bannedEntry } = await supabase
+        .from('banned_emails')
+        .select('email')
+        .eq('email', user.email.toLowerCase())
+        .maybeSingle();
+
+      if (bannedEntry) {
+        await supabase.auth.signOut();
+        return NextResponse.redirect(
+          `${requestUrl.origin}/auth/signin?error=${encodeURIComponent('This account has been permanently removed from UT Marketplace.')}`
+        );
+      }
+    }
+
     // Check if this is a new user (first time signing in)
     const existingProfile = await UserService.getUserProfile(user.id);
     

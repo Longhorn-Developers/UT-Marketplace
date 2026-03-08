@@ -91,7 +91,7 @@ const ReportListingModal: React.FC<ReportListingModalProps> = ({
             </div>
             <h3 className="text-lg font-bold text-gray-900 mb-2">Report Submitted</h3>
             <p className="text-gray-600">
-              Thank you for reporting this listing. We will review your report and take appropriate action.
+              Thanks for your report. Our team will review this listing shortly.
             </p>
           </div>
         </div>

@@ -4,16 +4,18 @@ import { useParams, useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 import ListingCard from "../../browse/components/ListingCard";
 import * as timeago from "timeago.js";
-import { Mail, Star, CheckCircle2, MessageCircle } from "lucide-react";
+import { Star, CheckCircle2, MessageCircle, Flag } from "lucide-react";
 import Image from "next/image";
 import { useAuth } from '../../context/AuthContext';
 import { Listing } from "../../props/listing";
 import { Rating } from "../../props/rating";
+import ReportUserModal from "../../../components/modals/ReportUserModal";
 
 const PublicProfile = () => {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
+  // Report User feature enabled
   const [listings, setListings] = useState<Listing[]>([]);
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,12 +24,13 @@ const PublicProfile = () => {
   const [showRatingForm, setShowRatingForm] = useState(false);
   const [hoveredRating, setHoveredRating] = useState<number>(0);
   const [userName, setUserName] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
   const [userHasRated, setUserHasRated] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [bio, setBio] = useState<string | null>(null);
+  const [showReportUserModal, setShowReportUserModal] = useState(false);
 
   useEffect(() => {
     const userId = Array.isArray(params.userId) ? params.userId[0] : params.userId;
@@ -56,7 +59,7 @@ const PublicProfile = () => {
       setDisplayName(userData.display_name || null);
       setProfileImage(userData.profile_image_url || null);
       setBio(userData.bio || null);
-      setUserEmail(userData.email);
+
       setProfileUserId(userData.id);
       setUserName(userData.display_name || userData.email?.split('@')[0] || 'User');
 
@@ -264,7 +267,7 @@ const PublicProfile = () => {
             </div>
             {/* Action Buttons */}
             {user?.id && user.id !== profileUserId ? (
-              <div className="mt-6 flex gap-3">
+              <div className="mt-6 flex flex-wrap gap-3">
                 <button
                   onClick={() => router.push(`/messages?user=${profileUserId}`)}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[#bf5700] text-[#bf5700] text-sm hover:bg-[#bf5700] hover:text-white transition"
@@ -272,21 +275,30 @@ const PublicProfile = () => {
                   <MessageCircle size={16} />
                   Message
                 </button>
-                {userHasRated ? (
-                  <button
-                    onClick={() => setShowRatingForm(true)}
-                    className="px-4 py-2 rounded-lg bg-[#bf5700] text-white text-sm hover:bg-[#a54700] transition"
-                  >
-                    Edit Review
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => setShowRatingForm(true)}
-                    className="px-4 py-2 rounded-lg bg-[#bf5700] text-white text-sm hover:bg-[#a54700] transition"
-                  >
-                    Rate this User
-                  </button>
-                )}
+                <button
+                  onClick={() => setShowReportUserModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg border border-red-600 bg-red-50 text-red-600 text-sm font-bold hover:border-red-700 hover:bg-red-100 transition"
+                >
+                  <Flag size={16} />
+                  Report User
+                </button>
+                {!showRatingForm ? (
+                  userHasRated ? (
+                    <button
+                      onClick={() => setShowRatingForm(true)}
+                      className="px-4 py-2 rounded-lg bg-[#bf5700] text-white text-sm hover:bg-[#a54700] transition"
+                    >
+                      Edit Review
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setShowRatingForm(true)}
+                      className="px-4 py-2 rounded-lg bg-[#bf5700] text-white text-sm hover:bg-[#a54700] transition"
+                    >
+                      Rate this User
+                    </button>
+                  )
+                ) : null}
               </div>
             ) : !user?.id ? (
               <div className="mt-6 flex flex-col sm:flex-row gap-3">
@@ -401,6 +413,15 @@ const PublicProfile = () => {
         </div>
       )}
 
+      {/* Report User Modal */}
+      <ReportUserModal
+        isOpen={showReportUserModal}
+        onClose={() => setShowReportUserModal(false)}
+        reportedUserId={params.userId as string}
+        reportedUserName={displayName || userName || 'User'}
+        reporterId={user?.id || null}
+      />
+
       {/* Rating Modal */}
       {showRatingForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -418,7 +439,7 @@ const PublicProfile = () => {
             </div>
 
             <div className="space-y-4">
-              <div 
+              <div
                 className="flex justify-center gap-1"
                 onMouseLeave={() => setHoveredRating(0)}
               >
@@ -426,7 +447,7 @@ const PublicProfile = () => {
                   const isSelected = star <= userRating;
                   const isHovered = star <= hoveredRating;
                   const shouldHighlight = isSelected || (hoveredRating > 0 && isHovered);
-                  
+
                   return (
                     <button
                       key={star}
@@ -434,7 +455,7 @@ const PublicProfile = () => {
                       onMouseEnter={() => setHoveredRating(star)}
                       className={`text-4xl transition-all duration-200 ${
                         shouldHighlight
-                          ? 'text-yellow-400 scale-110' 
+                          ? 'text-yellow-400 scale-110'
                           : 'text-gray-300'
                       }`}
                     >
@@ -443,7 +464,7 @@ const PublicProfile = () => {
                   );
                 })}
               </div>
-              
+
               <textarea
                 value={ratingComment}
                 onChange={(e) => setRatingComment(e.target.value)}
@@ -451,7 +472,7 @@ const PublicProfile = () => {
                 className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-[#bf5700] focus:border-transparent"
                 rows={4}
               />
-              
+
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={handleSubmitRating}
