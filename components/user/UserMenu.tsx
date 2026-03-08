@@ -3,11 +3,13 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '../../app/context/AuthContext';
+import { useCrypto } from '../../app/context/CryptoContext';
 import { FaUser } from 'react-icons/fa';
 
 const UserMenu = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { user, signOut } = useAuth();
+  const { clearKeys } = useCrypto();
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -22,6 +24,10 @@ const UserMenu = () => {
   }, []);
 
   const handleSignOut = async () => {
+    // Clear encryption keys from memory before signing out
+    clearKeys();
+    console.log('🔒 Encryption keys cleared from memory');
+
     await signOut();
     setIsOpen(false);
   };

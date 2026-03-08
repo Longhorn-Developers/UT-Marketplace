@@ -86,6 +86,7 @@ export interface Message {
   sender_id: string;
   receiver_id: string;
   content: string;
+  sender_encrypted_content?: string | null; // Message encrypted with sender's public key (for cross-device access)
   created_at: string;
   is_read: boolean;
   listing_id?: string;
