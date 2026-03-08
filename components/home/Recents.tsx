@@ -19,7 +19,9 @@ const RecentListings = () => {
       try {
         setLoading(true);
         const data = await ListingService.getListings({
-          limit: 8,
+          // Over-fetch because service applies status filtering after range.
+          // This guarantees we still render a full 8 approved listings on home.
+          limit: 24,
           excludeSold: true,
           excludeDrafts: true
         });
@@ -47,7 +49,7 @@ const RecentListings = () => {
             user_image: userMap[listing.user_id]?.image || null,
           }));
 
-          setListings(listingsWithUser);
+          setListings(listingsWithUser.slice(0, 8));
         } else {
           setListings([]);
         }
