@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import ImageUpload from "../../create/components/ImageUpload";
 import Image from "next/image";
 import dynamic from "next/dynamic";
+import ListingCard from "../../browse/components/ListingCard";
 
 const MapPicker = dynamic(() => import("./MapPicker"), { ssr: false });
 
@@ -20,8 +21,58 @@ const EditForm = ({
 }) => {
   const [localForm, setLocalForm] = useState(form);
   const [images, setImages] = useState<(File | string)[]>(form.images || []);
+  const [tagsInput, setTagsInput] = useState(
+    Array.isArray(form.tags) ? form.tags.join(", ") : ""
+  );
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const hasLatLng = typeof localForm.location_lat === 'number' && typeof localForm.location_lng === 'number';
+  
+  // Location state management
+  const [customLocation, setCustomLocation] = useState("");
+  const [showCustomLocationInput, setShowCustomLocationInput] = useState(false);
+  
+  // Initialize location state based on existing location
+  React.useEffect(() => {
+    const predefinedLocations = [
+      "On Campus", "West Campus", "North Campus", "East Riverside", 
+      "Downtown", "Hyde Park", "Mueller"
+    ];
+    
+    if (localForm.location && !predefinedLocations.includes(localForm.location)) {
+      setShowCustomLocationInput(true);
+      setCustomLocation(localForm.location);
+    }
+  }, [localForm.location]);
+
+  const parseTags = (value: string) =>
+    value
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+
+  React.useEffect(() => {
+    if (!images.length) {
+      setPreviewImage(null);
+      return;
+    }
+
+    const first = images[0];
+    if (typeof first === 'string') {
+      setPreviewImage(first);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPreviewImage(typeof reader.result === 'string' ? reader.result : null);
+    };
+    reader.readAsDataURL(first);
+
+    return () => {
+      reader.abort();
+    };
+  }, [images]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -38,6 +89,19 @@ const EditForm = ({
     setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleLocationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedValue = e.target.value;
+    
+    if (selectedValue === "Add custom location") {
+      setShowCustomLocationInput(true);
+      setLocalForm({ ...localForm, location: "" }); // Reset location since we'll use custom location
+    } else {
+      setShowCustomLocationInput(false);
+      setCustomLocation(""); // Clear custom location when predefined is selected
+      setLocalForm({ ...localForm, location: selectedValue });
+    }
+  };
+
   const validateFields = () => {
     const requiredFields = [
       'title', 'category', 'price', 'condition', 'location', 'description'
@@ -47,18 +111,26 @@ const EditForm = ({
         return false;
       }
     }
-    if (Number(localForm.price) <= 0) return false;
+    if (Number(localForm.price) < 0) return false;
     return true;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setForm(localForm);
-    // If new images are uploaded, add them to the form (you may want to handle upload to storage in parent)
+    
+    const finalLocation = showCustomLocationInput ? customLocation : localForm.location;
+    
+    if (showCustomLocationInput && customLocation.trim().length === 0) {
+      toast.error("Please enter a custom location.");
+      return;
+    }
+    
+    const updatedForm = { ...localForm, location: finalLocation, tags: parseTags(tagsInput) };
+    setForm(updatedForm);
     
     // Preserve the draft status in the submission
     const dataToSubmit = { 
-      ...localForm, 
+      ...updatedForm, 
       is_draft: typeof localForm.is_draft !== 'undefined' ? localForm.is_draft : form.is_draft,
       images,
       location_lat: localForm.location_lat,
@@ -183,11 +255,11 @@ const EditForm = ({
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
                 <input
                   type="number"
-                  min="0.01"
-                  step="0.01"
+                  min="0"
+                  step="1"
                   className="w-full border rounded-md px-7 py-2 text-sm"
                   value={localForm.price === 0 ? "" : localForm.price}
-                  placeholder="0.00"
+                  placeholder="0"
                   onChange={(e) => {
                     const val = parseFloat(e.target.value);
                     if (isNaN(val) || val < 0) {
@@ -196,13 +268,10 @@ const EditForm = ({
                       setLocalForm({ ...localForm, price: val });
                     }
                   }}
-                  onBlur={() => {
-                    if (localForm.price < 0.01) setLocalForm({ ...localForm, price: 0.01 });
-                  }}
                 />
               </div>
-              {localForm.price < 0.01 && (
-                <p className="text-xs text-red-500 mt-1">Price must be at least $0.01</p>
+              {localForm.price < 0 && (
+                <p className="text-xs text-red-500 mt-1">Price cannot be negative.</p>
               )}
             </div>
             <div className="w-1/3">
@@ -234,26 +303,54 @@ const EditForm = ({
             <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
               <MapPin size={14} /> Location
             </label>
-            <input
-              type="text"
-              name="location"
-              value={localForm.location ?? ""}
-              onChange={(e) => setLocalForm({ ...localForm, location: e.target.value })}
-                className="w-full border rounded-md px-3 py-2 text-sm mb-2"
-            />
-              <div className="my-2">
-                <MapPicker
-                  value={hasLatLng ? { lat: localForm.location_lat, lng: localForm.location_lng } : undefined}
-                  onChange={({ lat, lng }) => setLocalForm({ ...localForm, location_lat: lat, location_lng: lng })}
-                  height="200px"
+            <select
+              className="w-full border rounded-md px-3 py-2 text-sm"
+              value={showCustomLocationInput ? "Add custom location" : (localForm.location || "")}
+              onChange={handleLocationChange}
+              required
+            >
+              <option value="">Select a location</option>
+              <option value="On Campus">On Campus</option>
+              <option value="West Campus">West Campus</option>
+              <option value="North Campus">North Campus</option>
+              <option value="East Riverside">East Riverside</option>
+              <option value="Downtown">Downtown</option>
+              <option value="Hyde Park">Hyde Park</option>
+              <option value="Mueller">Mueller</option>
+              <option value="Add custom location">Add custom location</option>
+            </select>
+            {showCustomLocationInput && (
+              <div className="mt-3">
+                <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  Enter custom location
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., South Austin, Specific building name..."
+                  className="w-full border rounded-md px-3 py-2 text-sm"
+                  value={customLocation}
+                  onChange={(e) => setCustomLocation(e.target.value.slice(0, 100))}
+                  maxLength={100}
+                  required
                 />
                 <div className="text-xs text-gray-500 mt-1">
-                  Click on the map to update the location. This helps buyers see where the item is located.
-                  {hasLatLng && (
-                    <span className="ml-2 text-green-600">Location selected!</span>
-                  )}
+                  {customLocation.length}/100 characters
                 </div>
               </div>
+            )}
+            <div className="my-2">
+              <MapPicker
+                value={hasLatLng ? { lat: localForm.location_lat, lng: localForm.location_lng } : undefined}
+                onChange={({ lat, lng }) => setLocalForm({ ...localForm, location_lat: lat, location_lng: lng })}
+                height="200px"
+              />
+              <div className="text-xs text-gray-500 mt-1">
+                Click on the map to update the location. This helps buyers see where the item is located.
+                {hasLatLng && (
+                  <span className="ml-2 text-green-600">Location selected!</span>
+                )}
+              </div>
+            </div>
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
@@ -266,6 +363,40 @@ const EditForm = ({
               className="w-full border rounded-md px-3 py-2 text-sm min-h-[80px]"
             />
           </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+              <Tag size={14} /> Tags
+            </label>
+            <input
+              type="text"
+              value={tagsInput}
+              onChange={(e) => setTagsInput(e.target.value)}
+              className="w-full border rounded-md px-3 py-2 text-sm"
+              placeholder="e.g. lamp, desk, dorm"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Separate tags with commas to improve search.
+            </p>
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Search Preview</h3>
+            <div className="max-w-sm">
+              <ListingCard
+                title={localForm.title || "Untitled Listing"}
+                price={localForm.price || 0}
+                location={localForm.location || "Location"}
+                category={localForm.category || "Category"}
+                timePosted={"Just now"}
+                images={previewImage ? [previewImage] : []}
+                user={{
+                  name: "You",
+                  user_id: "preview",
+                }}
+                condition={localForm.condition || "Condition"}
+                searchTerm={undefined}
+              />
+            </div>
+          </div>
           <button
             type="submit"
             className="w-full mt-2 px-6 py-2 rounded-lg bg-[#bf5700] text-white font-semibold shadow hover:bg-[#a54700] transition flex items-center justify-center gap-2"
@@ -277,11 +408,21 @@ const EditForm = ({
               type="button"
               className="w-full mt-2 px-6 py-2 rounded-lg bg-green-600 text-white font-semibold shadow hover:bg-green-700 transition flex items-center justify-center gap-2"
               onClick={() => {
-                if (!validateFields()) {
+                const finalLocation = showCustomLocationInput ? customLocation : localForm.location;
+                
+                if (showCustomLocationInput && customLocation.trim().length === 0) {
+                  toast.error("Please enter a custom location.");
+                  return;
+                }
+                
+                const updatedFormForPublish = { ...localForm, location: finalLocation };
+                
+                if (!validateFields() || !finalLocation) {
                   toast.error('Please fill in all required fields before publishing.');
                   return;
                 }
-                handleEditSubmit({ ...localForm, is_draft: false, images });
+                
+                handleEditSubmit({ ...updatedFormForPublish, is_draft: false, images, tags: parseTags(tagsInput) });
               }}
             >
               <Save size={16} /> Publish Listing

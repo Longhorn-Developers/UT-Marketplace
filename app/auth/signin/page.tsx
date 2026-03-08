@@ -124,7 +124,22 @@ export default function SignIn() {
           return;
         }
         
-        const { error } = await signUp(email, password);
+        const { error, status } = await signUp(email, password);
+
+        if (status === 'existing-confirmed') {
+          setError('This email is already associated with an existing account.');
+          setLoading(false);
+          return;
+        }
+
+        if (status === 'existing-unverified') {
+          setError('Please check your email to complete verification.');
+          // Send them to confirmation page where they can resend
+          router.push(`/auth/confirmation?email=${encodeURIComponent(email)}`);
+          setLoading(false);
+          return;
+        }
+
         if (error) throw error;
         
         // Redirect to confirmation page with email
@@ -167,11 +182,17 @@ export default function SignIn() {
           console.log('🔍 Checking onboarding status...');
           const { data: profile } = await supabase
             .from('users')
-            .select('onboard_complete')
+            .select('onboard_complete, is_admin')
             .eq('id', user.id)
             .single();
 
           console.log('📊 Onboarding status:', profile?.onboard_complete);
+
+          // Redirect admins to admin panel
+          if (profile?.is_admin) {
+            router.push('/admin');
+            return;
+          }
 
           if (!profile?.onboard_complete) {
             console.log('➡️ Redirecting to onboarding...');

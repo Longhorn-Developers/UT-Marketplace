@@ -23,7 +23,7 @@ const CategorySection = () => {
 
   return (
     <section className="py-12 px-4 md:px-6 max-w-7xl mx-auto">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Browse Categories</h2>
+      <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">Browse Categories</h2>
       <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-4">
         {categories.map((category) => (
           <button

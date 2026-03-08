@@ -13,10 +13,10 @@ const tagData = [
 ];
 
 const taglines = [
-  "Where Longhorns trade with Longhorns 🐂",
-  "Your campus marketplace, simplified ✨",
-  "Buy, sell, connect - UT style 🎓",
-  "The smart way to shop on campus 🚀"
+  "Where Longhorns trade with Longhorns",
+  "Your campus marketplace, simplified",
+  "Buy, sell, connect - UT style",
+  "The smart way to shop on campus"
 ];
 
 const containerVariants: Variants = {

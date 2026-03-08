@@ -6,6 +6,7 @@ import { AuthProvider } from './context/AuthContext';
 import { CryptoProvider } from './context/CryptoContext';
 import FooterWrapper from "../components/globals/FooterWrapper";
 import AdminRedirectWrapper from "../components/layout/AdminRedirectWrapper";
+import ScrollToTop from "../components/globals/ScrollToTop";
 
 // Using Roboto Flex for better typography flexibility
 const robotoFlex = Roboto_Flex({

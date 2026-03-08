@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState, useRef, Suspense } from "react";
 import { motion } from "framer-motion";
+import { ArrowUp } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import SearchBar from "./components/SearchBar";
 import ListingCard from "./components/ListingCard";
@@ -15,14 +16,12 @@ import {
   loadingVariants,
 } from "../props/animations";
 import BrowseLoader from "./components/BrowseLoader";
-import { useAuth } from "../context/AuthContext";
-import NotLoggedIn from "../../components/globals/NotLoggedIn";
 
 const Browse = () => {
   const searchParams = useSearchParams();
   const queryCategory = searchParams.get("category");
   const searchTerm = searchParams.get("search") || "";
-  const sortOrder = searchParams.get("sort") || "newest";
+  const sortOrder = searchParams.get("sort") || "relevance";
   const minPrice = searchParams.get("minPrice");
   const maxPrice = searchParams.get("maxPrice");
   const postedAfter = searchParams.get("postedAfter");
@@ -31,10 +30,41 @@ const Browse = () => {
   const [listings, setListings] = useState<any[]>([]);
   const searchBarRef = useRef<any>(null);
   const [loading, setLoading] = useState(true);
-  const { user, loading: authLoading } = useAuth();
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const scrollContainerRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const getScrollTop = (event?: Event) => {
+      const target = event?.target;
+      if (target && (target as HTMLElement).scrollTop !== undefined) {
+        const element = target as HTMLElement;
+        if (element.scrollHeight > element.clientHeight) {
+          scrollContainerRef.current = element;
+          return element.scrollTop;
+        }
+      }
+      return (
+        document.scrollingElement?.scrollTop ||
+        document.documentElement.scrollTop ||
+        document.body.scrollTop ||
+        window.scrollY ||
+        0
+      );
+    };
+
+    const handleScroll = (event?: Event) => {
+      const scrollTop = getScrollTop(event);
+      setShowScrollTop(scrollTop > 400);
+    };
+
+    handleScroll();
+    document.addEventListener("scroll", handleScroll, { passive: true, capture: true });
+    return () => document.removeEventListener("scroll", handleScroll, true);
+  }, []);
 
   useEffect(() => {
     const fetchListings = async () => {
+      setLoading(true);
       try {
         const listingsData = await ListingService.getListings({
           category: queryCategory || undefined,
@@ -44,13 +74,8 @@ const Browse = () => {
           limit: 100 // Increased limit for browse page
         });
 
-        // Apply client-side sorting since ListingService returns newest first by default
-        const sortedListings = sortOrder === "oldest" 
-          ? [...listingsData].reverse() 
-          : listingsData;
-
-        // Listings already have user_name and user_image from ListingService
-        const formattedListings = sortedListings;
+        // Defer sorting to client-side to support relevance/price/date
+        const formattedListings = listingsData;
 
         setListings(formattedListings);
       } catch (error) {
@@ -62,7 +87,7 @@ const Browse = () => {
     };
 
     fetchListings();
-  }, [queryCategory, searchTerm, sortOrder]);
+  }, [queryCategory, searchTerm, sortOrder, minPrice, maxPrice, postedAfter, postedBefore]);
 
   let filteredListings = listings;
   if (minPrice) {
@@ -78,6 +103,27 @@ const Browse = () => {
     filteredListings = filteredListings.filter((listing) => new Date(listing.created_at) <= new Date(postedBefore));
   }
 
+  if (sortOrder === "price-asc") {
+    filteredListings = [...filteredListings].sort((a, b) => Number(a.price) - Number(b.price));
+  } else if (sortOrder === "price-desc") {
+    filteredListings = [...filteredListings].sort((a, b) => Number(b.price) - Number(a.price));
+  } else if (sortOrder === "oldest") {
+    filteredListings = [...filteredListings].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+  } else if (sortOrder === "newest") {
+    filteredListings = [...filteredListings].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  } else if (sortOrder === "relevance") {
+    // Keep server ordering for relevance; fallback to newest if no search term
+    if (!searchTerm) {
+      filteredListings = [...filteredListings].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+    }
+  }
+
   // Helper to clear filters from child
   const handleClearFilters = () => {
     if (searchBarRef.current && typeof searchBarRef.current.handleClearFilters === 'function') {
@@ -85,44 +131,14 @@ const Browse = () => {
     }
   };
 
-  // Show loading while auth is being checked
-  if (authLoading) {
-    return (
-      <motion.div 
-        className="flex items-center justify-center min-h-[60vh]"
-        variants={loadingVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <BrowseLoader />
-      </motion.div>
-    );
-  }
-
-  // Show not logged in component if user is not authenticated
-  if (!user) {
-    return (
+  return (
+    <>
       <motion.div 
         className="bg-gray-50 min-h-screen"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
       >
-        <NotLoggedIn 
-          message="Please log in to browse listings"
-          className="p-8"
-        />
-      </motion.div>
-    );
-  }
-
-  return (
-    <motion.div 
-      className="bg-gray-50 min-h-screen"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
       <div className="p-8">
         <motion.div variants={searchBarVariants}>
           <SearchBar ref={searchBarRef} setLoading={setLoading} />
@@ -132,6 +148,8 @@ const Browse = () => {
           <motion.div 
             className="flex items-center justify-center min-h-[60vh]"
             variants={loadingVariants}
+            initial="hidden"
+            animate="visible"
           >
             <BrowseLoader />
           </motion.div>
@@ -139,6 +157,8 @@ const Browse = () => {
           <motion.div 
             className="flex flex-col items-center justify-center min-h-[60vh]"
             variants={emptyStateVariants}
+            initial="hidden"
+            animate="visible"
           >
             <span className="text-gray-500 text-lg mb-4">No listings match your search or filters.</span>
             <button
@@ -150,21 +170,20 @@ const Browse = () => {
             </button>
           </motion.div>
         ) : (
-          <motion.div 
+          <div 
             className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-8"
-            variants={containerVariants}
           >
-            {filteredListings.map((listing, index) => (
-              <motion.div
+            {filteredListings.map((listing) => (
+              <div
                 key={listing.id}
                 onClick={() => (window.location.href = `/listing/${listing.id}`)}
                 className="cursor-pointer"
-                variants={itemVariants}
               >
                 <ListingCard
                   key={listing.id}
                   title={listing.title}
                   price={listing.price}
+                  highestPrice={listing.highest_price}
                   location={listing.location}
                   category={listing.category}
                   timePosted={timeago.format(listing.created_at)}
@@ -173,12 +192,36 @@ const Browse = () => {
                   condition={listing.condition}
                   searchTerm={searchTerm}
                 />
-              </motion.div>
+              </div>
             ))}
-          </motion.div>
+          </div>
         )}
       </div>
     </motion.div>
+
+      {showScrollTop && (
+        <button
+          type="button"
+          onClick={() => {
+            const target =
+              scrollContainerRef.current ||
+              document.scrollingElement ||
+              document.documentElement ||
+              document.body;
+
+            if (target && "scrollTo" in target) {
+              target.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+            } else {
+              window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+            }
+          }}
+          className="fixed bottom-6 right-6 z-50 flex items-center justify-center h-11 w-11 rounded-full bg-white border border-gray-200 text-gray-700 shadow-lg hover:border-[#bf5700] hover:text-[#bf5700] transition"
+          aria-label="Back to top"
+        >
+          <ArrowUp size={18} />
+        </button>
+      )}
+    </>
   );
 };
 

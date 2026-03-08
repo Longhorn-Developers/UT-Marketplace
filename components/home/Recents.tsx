@@ -7,7 +7,6 @@ import { ListingService } from "../../app/lib/database/ListingService"
 import { Listing } from "../../app/props/listing"
 import { dbLogger } from "../../app/lib/database/utils"
 import { supabase } from "../../app/lib/supabaseClient"
-import { Clock } from "lucide-react"
 
 const RecentListings = () => {
   const [listings, setListings] = useState<Listing[]>([]);
@@ -67,8 +66,7 @@ const RecentListings = () => {
     <section className="py-12 px-4 md:px-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <div className="flex-1"></div>
-        <h2 className="text-3xl font-bold text-gray-900 flex items-center justify-center gap-2">
-          <Clock className="w-8 h-8 text-ut-orange" />
+        <h2 className="text-3xl font-bold text-gray-900 text-center">
           Recent Listings
         </h2>
         <div className="flex-1 flex justify-end">

@@ -66,6 +66,61 @@ const convertFromDbFormat = (value: string, type: 'category' | 'condition') => {
   return value;
 };
 
+const categoryLabelMap: Record<string, string> = {
+  'furniture': 'Furniture',
+  'subleases': 'Subleases',
+  'tech': 'Tech',
+  'vehicles': 'Vehicles',
+  'textbooks': 'Textbooks',
+  'clothing': 'Clothing',
+  'kitchen': 'Kitchen',
+  'other': 'Other',
+};
+
+const getCategoryMatches = (term: string) => {
+  const normalized = term.toLowerCase();
+  return Object.entries(categoryLabelMap)
+    .filter(([, label]) => label.toLowerCase().includes(normalized))
+    .map(([dbValue]) => dbValue);
+};
+
+const buildSearchOrClause = (term: string) => {
+  const normalized = term.trim().replace(/,+/g, ' ');
+  if (!normalized) return '';
+  const likeValue = `%${normalized}%`;
+  const parts = [
+    `title.ilike.${likeValue}`,
+    `description.ilike.${likeValue}`,
+    `location.ilike.${likeValue}`,
+  ];
+  const categoryMatches = getCategoryMatches(normalized);
+  categoryMatches.forEach((value) => parts.push(`category.eq.${value}`));
+  return parts.join(',');
+};
+
+const buildTrigrams = (value: string) => {
+  const normalized = value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  if (!normalized) return [];
+  const padded = `  ${normalized} `;
+  const trigrams: string[] = [];
+  for (let i = 0; i < padded.length - 2; i += 1) {
+    trigrams.push(padded.slice(i, i + 3));
+  }
+  return trigrams;
+};
+
+const trigramSimilarity = (a: string, b: string) => {
+  const aTris = buildTrigrams(a);
+  const bTris = buildTrigrams(b);
+  if (aTris.length === 0 || bTris.length === 0) return 0;
+  const aSet = new Set(aTris);
+  let overlap = 0;
+  bTris.forEach((tri) => {
+    if (aSet.has(tri)) overlap += 1;
+  });
+  return (2 * overlap) / (aTris.length + bTris.length);
+};
+
 export interface CreateListingParams {
   title: string;
   price: number;
@@ -74,6 +129,7 @@ export interface CreateListingParams {
   condition: string;
   description: string;
   images: string[];
+  tags?: string[];
   userId: string;
   isDraft?: boolean;
   locationLat?: number;
@@ -90,6 +146,7 @@ export interface UpdateListingParams {
   condition?: string;
   description?: string;
   images?: string[];
+  tags?: string[];
   is_sold?: boolean;
   is_draft?: boolean;
   locationLat?: number;
@@ -133,6 +190,7 @@ export class ListingService {
       condition,
       description,
       images,
+      tags = [],
       userId,
       isDraft = false,
       locationLat,
@@ -153,6 +211,7 @@ export class ListingService {
           condition: convertToDbFormat(condition, 'condition'),
           description,
           images,
+          tags,
           user_id: userId,
           is_draft: isDraft,
           is_sold: false,
@@ -198,6 +257,9 @@ export class ListingService {
       if (updateData.condition) {
         updatePayload.condition = convertToDbFormat(updateData.condition, 'condition');
       }
+      if (updateData.tags) {
+        updatePayload.tags = updateData.tags;
+      }
 
       const { data, error } = await supabase
         .from('listings')
@@ -242,9 +304,9 @@ export class ListingService {
       let query = supabase
         .from('listings')
         .select(`
-          *
+          *,
+          listing_price_history(old_price, new_price)
         `)
-        .range(offset, offset + limit - 1)
         .order('created_at', { ascending: false });
 
       if (excludeSold) {
@@ -261,20 +323,18 @@ export class ListingService {
         query = query.eq('category', convertToDbFormat(category, 'category'));
       }
 
-      if (searchTerm) {
-        query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
-      }
-
       if (userId) {
         query = query.eq('user_id', userId);
       }
 
-      const { data: listingsData, error } = await query;
+      const { data, error } = await query.range(offset, offset + limit - 1);
 
       if (error) {
         dbLogger.error('Failed to fetch listings', error);
         return [];
       }
+
+      let listingsData: any[] = data || [];
 
       if (!listingsData || listingsData.length === 0) {
         return [];
@@ -304,13 +364,27 @@ export class ListingService {
       });
 
       // Join user data with listings and add status information
-      const enrichedListings = listingsData.map(listing => ({
+      const enrichedListings = listingsData.map(listing => {
+        const history = Array.isArray(listing.listing_price_history)
+          ? listing.listing_price_history
+          : [];
+        const historyPrices = history.flatMap((entry: any) => [
+          entry?.old_price,
+          entry?.new_price,
+        ]).filter((value: any) => typeof value === 'number' && Number.isFinite(value));
+        const currentPrice = typeof listing.price === 'number' ? listing.price : Number(listing.price);
+        const highestPriceCandidate = Math.max(currentPrice || 0, ...historyPrices);
+        const highest_price = Number.isFinite(highestPriceCandidate) ? highestPriceCandidate : currentPrice;
+
+        return {
         ...listing,
         category: convertFromDbFormat(listing.category, 'category'),
         condition: convertFromDbFormat(listing.condition, 'condition'),
         user_name: userMap[listing.user_id]?.name || listing.user_id,
         user_image: userMap[listing.user_id]?.image || null,
-      }));
+        highest_price,
+        };
+      });
 
       // Add status information to all listings
       const listingsWithStatus = processListingsWithStatus(enrichedListings);
@@ -328,8 +402,42 @@ export class ListingService {
         }
       }
 
-      dbLogger.success('Listings fetched successfully', { count: filteredListings.length });
-      return filteredListings as Listing[];
+      let rankedListings = filteredListings;
+      if (searchTerm && searchTerm.trim()) {
+        const normalized = searchTerm.toLowerCase().trim();
+        const scoreListing = (listing: any) => {
+          const title = listing.title?.toLowerCase() || '';
+          const description = listing.description?.toLowerCase() || '';
+          const locationText = listing.location?.toLowerCase() || '';
+          const categoryText = listing.category?.toLowerCase() || '';
+          const tagsText = Array.isArray(listing.tags) ? listing.tags.join(' ').toLowerCase() : '';
+
+          let score = 0;
+          if (title.includes(normalized)) score += 4;
+          if (categoryText.includes(normalized)) score += 3;
+          if (locationText.includes(normalized)) score += 2;
+          if (description.includes(normalized)) score += 1;
+          if (tagsText.includes(normalized)) score += 1;
+
+          const fuzzyTitle = trigramSimilarity(normalized, title) * 3.5;
+          const fuzzyCategory = trigramSimilarity(normalized, categoryText) * 2.5;
+          const fuzzyLocation = trigramSimilarity(normalized, locationText) * 2.0;
+          const fuzzyTags = trigramSimilarity(normalized, tagsText) * 1.5;
+          const fuzzyDescription = trigramSimilarity(normalized, description) * 0.8;
+          score += fuzzyTitle + fuzzyCategory + fuzzyLocation + fuzzyTags + fuzzyDescription;
+
+          return score;
+        };
+
+        rankedListings = [...filteredListings].sort((a, b) => {
+          const scoreDiff = scoreListing(b) - scoreListing(a);
+          if (scoreDiff !== 0) return scoreDiff;
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+      }
+
+      dbLogger.success('Listings fetched successfully', { count: rankedListings.length });
+      return rankedListings as Listing[];
     } catch (error) {
       dbLogger.error('Error in getListings', error);
       return [];
@@ -430,6 +538,12 @@ export class ListingService {
         .select('rating')
         .eq('rated_id', data.user_id);
 
+      const { data: priceHistory } = await supabase
+        .from('listing_price_history')
+        .select('old_price, new_price, changed_at')
+        .eq('listing_id', data.id)
+        .order('changed_at', { ascending: false });
+
       const averageRating = ratings && ratings.length > 0 
         ? ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length 
         : 0;
@@ -456,6 +570,7 @@ export class ListingService {
         location_lng: data.location_lng,
         status: status,
         denial_reason: denialReason,
+        priceHistory: priceHistory || [],
       };
 
       dbLogger.success('Listing fetched successfully', { listingId });
@@ -699,50 +814,77 @@ export class ListingService {
     try {
       dbLogger.info('Searching listings', { searchTerm, filters });
 
-      let query = supabase
-        .from('listings')
-        .select(`
-          *,
-          user:users!user_id(
-            id,
-            display_name,
-            profile_image_url
-          )
-        `)
-        .eq('is_sold', false)
-        .eq('is_draft', false)
-        .eq('status', 'approved')
-        .order('created_at', { ascending: false });
+      const baseQuery = () => {
+        let base = supabase
+          .from('listings')
+          .select(`
+            *,
+            user:users!user_id(
+              id,
+              display_name,
+              profile_image_url
+            )
+          `)
+          .eq('is_sold', false)
+          .eq('is_draft', false)
+          .eq('status', 'approved')
+          .order('created_at', { ascending: false });
 
-      if (searchTerm) {
-        query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
-      }
+        if (filters.category && filters.category !== 'All') {
+          base = base.eq('category', convertToDbFormat(filters.category, 'category'));
+        }
 
-      if (filters.category && filters.category !== 'All') {
-        query = query.eq('category', convertToDbFormat(filters.category, 'category'));
-      }
+        if (filters.minPrice !== undefined) {
+          base = base.gte('price', filters.minPrice);
+        }
 
-      if (filters.minPrice !== undefined) {
-        query = query.gte('price', filters.minPrice);
-      }
+        if (filters.maxPrice !== undefined) {
+          base = base.lte('price', filters.maxPrice);
+        }
 
-      if (filters.maxPrice !== undefined) {
-        query = query.lte('price', filters.maxPrice);
-      }
+        if (filters.condition) {
+          base = base.eq('condition', convertToDbFormat(filters.condition, 'condition'));
+        }
 
-      if (filters.condition) {
-        query = query.eq('condition', convertToDbFormat(filters.condition, 'condition'));
-      }
+        if (filters.location) {
+          base = base.ilike('location', `%${filters.location}%`);
+        }
 
-      if (filters.location) {
-        query = query.ilike('location', `%${filters.location}%`);
-      }
+        return base;
+      };
 
-      const { data, error } = await query;
+      let data: any[] = [];
+      if (searchTerm && searchTerm.trim()) {
+        const searchOr = buildSearchOrClause(searchTerm);
 
-      if (error) {
-        dbLogger.error('Failed to search listings', error);
-        return [];
+        const [textResult, ilikeResult] = await Promise.all([
+          baseQuery().textSearch('search_vector', searchTerm, { type: 'websearch' }),
+          baseQuery().or(searchOr),
+        ]);
+
+        if (textResult.error) {
+          dbLogger.error('Failed to search listings (text search)', textResult.error);
+        }
+
+        if (ilikeResult.error) {
+          dbLogger.error('Failed to search listings (partial search)', ilikeResult.error);
+        }
+
+        const combined = [...(textResult.data || []), ...(ilikeResult.data || [])];
+        const uniqueMap = new Map<string, any>();
+        combined.forEach((listing) => {
+          uniqueMap.set(listing.id, listing);
+        });
+        data = Array.from(uniqueMap.values());
+      } else {
+        const { data: queryData, error } = await baseQuery();
+
+        if (error) {
+          dbLogger.error('Failed to search listings', error);
+          return [];
+        }
+
+        data = queryData || [];
       }
 
       const convertedData = data?.map(listing => ({

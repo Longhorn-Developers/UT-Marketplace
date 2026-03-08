@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { User, Mail, Calendar, Package, Star, Activity, Clock, AlertTriangle, Ban, CheckCircle, Shield, ArrowLeft } from 'lucide-react';
@@ -60,13 +60,9 @@ const AdminUserProfilePage = () => {
     totalReports: 0
   });
 
-  useEffect(() => {
-    if (userId) {
-      fetchUserProfile();
-    }
-  }, [userId]);
+  const fetchUserProfile = useCallback(async () => {
+    if (!userId) return;
 
-  const fetchUserProfile = async () => {
     try {
       setLoading(true);
       
@@ -144,7 +140,11 @@ const AdminUserProfilePage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
+
+  useEffect(() => {
+    fetchUserProfile();
+  }, [fetchUserProfile]);
 
   const handleBanUser = async () => {
     if (!currentUser?.id || !profile) return;

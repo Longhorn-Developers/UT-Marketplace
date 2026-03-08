@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { motion } from "framer-motion";
-import { useAuth } from "../context/AuthContext";
+import { useAuthGuard } from "../lib/hooks/useAuthGuard";
 import { useCrypto } from "../context/CryptoContext";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ConversationList } from "./components/ConversationList";
@@ -19,7 +19,7 @@ import {
 } from "../props/animations";
 
 const MessagesPage = () => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isProtected } = useAuthGuard();
   const { privateKey } = useCrypto();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -163,7 +163,7 @@ const MessagesPage = () => {
   };
 
   useEffect(() => {
-    if (!authLoading && !user?.id) {
+    if (isProtected && !authLoading && !user?.id) {
       router.push("/auth/signin");
       return;
     }
@@ -205,7 +205,7 @@ const MessagesPage = () => {
     return () => {
       messagesSubscription.unsubscribe();
     };
-  }, [user, router, authLoading, updateConversations, selectedConversation, privateKey]);
+  }, [user, router, authLoading, updateConversations, selectedConversation, privateKey, isProtected]);
 
   useEffect(() => {
     if (!user?.id) return;

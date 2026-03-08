@@ -13,7 +13,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { isValidKey } from '@/app/lib/encryption';
+import { isValidKey } from '../lib/encryption';
 
 // ============================================================================
 // TYPE DEFINITIONS
