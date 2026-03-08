@@ -2,7 +2,6 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { ListingCardProps } from "../../props/listing";
-import UserRatingDisplay from "../../../components/user/UserRatingDisplay";
 import Image from 'next/image';
 import { Image as ImageIcon } from "lucide-react";
 import { Suspense } from "react";
@@ -26,7 +25,6 @@ const ListingCard: React.FC<ListingCardProps> = ({
   user,
   condition,
   searchTerm,
-  userRating,
 }) => {
   const [avatarFailed, setAvatarFailed] = useState(false);
   const showAvatar = Boolean(user.image) && !avatarFailed;
@@ -79,8 +77,8 @@ const ListingCard: React.FC<ListingCardProps> = ({
         <p className="text-xs text-gray-500">
           {category === "Subleases" ? "Lease Duration" : "Condition"}: {highlight(condition, searchTerm)}
         </p>
-        <div className="flex items-center justify-between text-xs text-gray-400 mt-2">
-          <div className="flex flex-row items-center gap-2">
+        <div className="mt-3 flex items-center justify-between gap-3 text-xs text-gray-400">
+          <div className="flex min-w-0 items-center gap-2">
             <Link href={`/profile/${user.user_id}`}>
               {showAvatar ? (
                 <Image
@@ -98,11 +96,10 @@ const ListingCard: React.FC<ListingCardProps> = ({
               )}
             </Link>
             <Link href={`/profile/${user.user_id}`}>
-              <span className="text-gray-700 font-medium">{user.name}</span>
+              <span className="block max-w-[120px] truncate font-medium leading-none text-gray-700">{user.name}</span>
             </Link>
-            <UserRatingDisplay userId={user.user_id} rating={userRating} className="" />
           </div>
-          <span>{timePosted}</span>
+          <span className="shrink-0">{timePosted}</span>
         </div>
       </div>
     </div>

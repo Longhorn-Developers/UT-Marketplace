@@ -231,7 +231,6 @@ export default function OnboardingPage() {
           image: latestListing?.user?.profile_image_url || undefined,
         }}
         condition={latestListing?.condition ? formatCondition(latestListing.condition) : 'Good'}
-        userRating={latestListing ? undefined : 4.8}
       />
     </div>
   );

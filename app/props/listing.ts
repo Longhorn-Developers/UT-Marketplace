@@ -13,7 +13,6 @@ export interface ListingCardProps {
   };
   condition: string;
   searchTerm?: string;
-  userRating?: number;
 }
 
 export interface ListingPageProps {

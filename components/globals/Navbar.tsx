@@ -1,9 +1,21 @@
 "use client";
+
 import Link from "next/link";
-import { useState, useRef, useEffect } from "react";
-import { MessageCircle, Settings, LogOut, Plus, X, User, Menu, Heart, Compass, List } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  Compass,
+  Heart,
+  List,
+  LogOut,
+  Menu,
+  MessageCircle,
+  Plus,
+  Settings,
+  User,
+  X,
+} from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "../../app/context/AuthContext";
-import { useRouter } from "next/navigation";
 import { fetchPopularSearches } from "../../app/lib/search/popularSearches";
 import { fetchSearchSuggestions } from "../../app/lib/search/suggestionsClient";
 import SearchInput from "../../app/browse/components/SearchInput";
@@ -14,43 +26,93 @@ const recentKey = "utm_recent_searches";
 const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const { user, isAdmin, signOut } = useAuth();
-  const profileMenuRef = useRef<HTMLDivElement>(null);
   const [searchValue, setSearchValue] = useState("");
   const [suggestions, setSuggestions] = useState<Array<{ value: string; label: string; type?: string }>>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [popularSearches, setPopularSearches] = useState<string[]>([]);
-  const router = useRouter();
   const [isScrolled, setIsScrolled] = useState(false);
 
+  const activeScrollContainerRef = useRef<HTMLElement | null>(null);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  const { user, isAdmin, signOut } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+
   useEffect(() => {
-    const getScrollTop = (event?: Event) => {
+    const SCROLL_ENTER = 20;
+    const SCROLL_EXIT = 8;
+    let rafId: number | null = null;
+
+    const isScrollableElement = (value: unknown): value is HTMLElement => {
+      if (!(value instanceof HTMLElement)) return false;
+      return value.scrollHeight > value.clientHeight + 1;
+    };
+
+    const getRelevantScrollTop = (event?: Event) => {
       const target = event?.target;
-      if (target && (target as HTMLElement).scrollTop !== undefined) {
-        return (target as HTMLElement).scrollTop;
-      }
-      return (
+      const pageScrollTop =
+        window.scrollY ||
         document.scrollingElement?.scrollTop ||
         document.documentElement.scrollTop ||
         document.body.scrollTop ||
-        0
-      );
+        0;
+
+      if (isScrollableElement(target)) {
+        const isDocumentScrollTarget =
+          target === document.documentElement ||
+          target === document.body ||
+          target === document.scrollingElement;
+
+        if (!isDocumentScrollTarget && (target.scrollTop > 0 || activeScrollContainerRef.current === target)) {
+          activeScrollContainerRef.current = target;
+        }
+      }
+
+      const activeContainer = activeScrollContainerRef.current;
+      if (activeContainer && !document.body.contains(activeContainer)) {
+        activeScrollContainerRef.current = null;
+      }
+
+      const nestedScrollTop = activeScrollContainerRef.current?.scrollTop || 0;
+      return Math.max(pageScrollTop, nestedScrollTop);
     };
-    const handleScroll = (event?: Event) => {
-      const scrollTop = getScrollTop(event);
-      setIsScrolled(scrollTop > 8);
+
+    const updateScrolledState = (event?: Event) => {
+      const scrollTop = getRelevantScrollTop(event);
+      setIsScrolled((prev) => (prev ? scrollTop > SCROLL_EXIT : scrollTop > SCROLL_ENTER));
     };
-    handleScroll();
-    document.addEventListener("scroll", handleScroll, { passive: true, capture: true });
-    return () => document.removeEventListener("scroll", handleScroll, true);
+
+    const handleCapturedScroll = (event: Event) => {
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        updateScrolledState(event);
+      });
+    };
+
+    const handleResize = () => {
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        updateScrolledState();
+      });
+    };
+
+    updateScrolledState();
+    document.addEventListener("scroll", handleCapturedScroll, { passive: true, capture: true });
+    window.addEventListener("resize", handleResize, { passive: true });
+
+    return () => {
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+      document.removeEventListener("scroll", handleCapturedScroll, true);
+      window.removeEventListener("resize", handleResize);
+    };
   }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        profileMenuRef.current &&
-        !profileMenuRef.current.contains(event.target as Node)
-      ) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
         setProfileMenuOpen(false);
       }
     };
@@ -59,9 +121,24 @@ const Navbar = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    setMenuOpen(false);
+    setProfileMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [menuOpen]);
+
   const handleSignOut = async () => {
     await signOut();
     setProfileMenuOpen(false);
+    setMenuOpen(false);
   };
 
   const loadRecentSearches = () => {
@@ -99,12 +176,12 @@ const Navbar = () => {
   }, []);
 
   useEffect(() => {
-    const loadPopularSearches = async () => {
+    const loadPopular = async () => {
       const popular = await fetchPopularSearches(8);
       setPopularSearches(popular);
     };
 
-    loadPopularSearches();
+    loadPopular();
   }, []);
 
   const handleSearchSubmit = (event?: React.FormEvent) => {
@@ -112,22 +189,16 @@ const Navbar = () => {
     const trimmed = searchValue.trim();
     if (!trimmed) return;
     saveRecentSearch(trimmed);
+    setMenuOpen(false);
     router.push(`/browse?search=${encodeURIComponent(trimmed)}`);
   };
 
   useEffect(() => {
     const term = searchValue.trim().toLowerCase();
+
     if (!term) {
-      const recent = recentSearches.map((value) => ({
-        value,
-        label: value,
-        type: "Recent",
-      }));
-      const trending = popularSearches.map((value) => ({
-        value,
-        label: value,
-        type: "Trending",
-      }));
+      const recent = recentSearches.map((value) => ({ value, label: value, type: "Recent" }));
+      const trending = popularSearches.map((value) => ({ value, label: value, type: "Trending" }));
       setSuggestions([...recent, ...trending].slice(0, 8));
       return;
     }
@@ -135,39 +206,23 @@ const Navbar = () => {
     if (term.length < 2) {
       const recent = recentSearches
         .filter((value) => value.toLowerCase().includes(term))
-        .map((value) => ({
-          value,
-          label: value,
-          type: "Recent",
-        }));
+        .map((value) => ({ value, label: value, type: "Recent" }));
       const trending = popularSearches
         .filter((value) => value.toLowerCase().includes(term))
-        .map((value) => ({
-          value,
-          label: value,
-          type: "Trending",
-        }));
+        .map((value) => ({ value, label: value, type: "Trending" }));
       setSuggestions([...recent, ...trending].slice(0, 8));
       return;
     }
 
-    const handle = window.setTimeout(async () => {
+    const timeout = window.setTimeout(async () => {
       try {
         const apiSuggestions = await fetchSearchSuggestions(term);
         const recent = recentSearches
           .filter((value) => value.toLowerCase().includes(term))
-          .map((value) => ({
-            value,
-            label: value,
-            type: "Recent",
-          }));
+          .map((value) => ({ value, label: value, type: "Recent" }));
         const trending = popularSearches
           .filter((value) => value.toLowerCase().includes(term))
-          .map((value) => ({
-            value,
-            label: value,
-            type: "Trending",
-          }));
+          .map((value) => ({ value, label: value, type: "Trending" }));
 
         const combined = [...apiSuggestions, ...recent, ...trending];
         const seen = new Set<string>();
@@ -179,18 +234,19 @@ const Navbar = () => {
         });
 
         setSuggestions(deduped.slice(0, 8));
-      } catch (err) {
-        console.error("Search suggestions error:", err);
+      } catch (error) {
+        console.error("Search suggestions error:", error);
       }
     }, 450);
 
-    return () => window.clearTimeout(handle);
+    return () => window.clearTimeout(timeout);
   }, [searchValue, recentSearches, popularSearches]);
 
   const handleSuggestionSelect = (value: string) => {
     setSearchValue(value);
     setSuggestions([]);
     saveRecentSearch(value);
+    setMenuOpen(false);
     router.push(`/browse?search=${encodeURIComponent(value)}`);
   };
 
@@ -203,38 +259,31 @@ const Navbar = () => {
     "border border-white/25 text-white/90 hover:text-white hover:bg-white/10 hover:border-white/40";
   const navHoverScrolled =
     "border border-gray-200 text-gray-600 hover:text-[#bf5700] hover:border-[#bf5700]/40 hover:bg-[#fff2e6]";
-  const navLinkExpanded = `inline-flex items-center justify-center h-10 px-3 rounded-full text-sm font-semibold transition-colors ${navHoverExpanded}`;
-  const navIconExpanded = `inline-flex items-center justify-center h-10 w-10 rounded-full transition-colors ${navHoverExpanded}`;
-  const navIconScrolled = `inline-flex items-center justify-center h-9 w-9 rounded-full transition-colors ${navHoverScrolled}`;
+  const navLinkExpanded = `inline-flex h-10 items-center justify-center rounded-full px-3 text-sm font-semibold transition-colors ${navHoverExpanded}`;
+  const navIconExpanded = `inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors ${navHoverExpanded}`;
+  const navIconScrolled = `inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors ${navHoverScrolled}`;
+  const mobileItemClass =
+    "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-semibold text-gray-800 transition hover:bg-gray-50";
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-transparent">
+    <header className="sticky top-0 z-50 w-full">
       <div
-        className={`absolute inset-0 transition-opacity duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        className={`absolute inset-0 hidden bg-[#bf5700] transition-opacity duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] md:block ${
           isScrolled ? "opacity-0" : "opacity-100"
-        } bg-[#bf5700]`}
+        }`}
         aria-hidden="true"
       />
+
       <div className="relative mx-auto w-full px-4 py-3">
         <div
-          className={`mx-auto w-full transform-gpu will-change-transform transition-[width,transform,box-shadow,background-color,border-color,backdrop-filter,padding,border-radius] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          className={`mx-auto hidden w-full transform-gpu will-change-transform transition-[width,transform,box-shadow,background-color,border-color,backdrop-filter,padding,border-radius] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] md:block ${
             isScrolled
-              ? "sm:w-[56rem] rounded-full border border-gray-200/70 bg-white/92 backdrop-blur-lg px-4 py-2 shadow-[0_18px_40px_-24px_rgba(15,23,42,0.45)] translate-y-2"
-              : "w-full rounded-none px-6 py-3 border border-transparent shadow-none translate-y-0"
+              ? "sm:w-[56rem] rounded-full border border-gray-200/70 bg-white/92 px-4 py-2 shadow-[0_18px_40px_-24px_rgba(15,23,42,0.45)] backdrop-blur-lg translate-y-2"
+              : "w-full rounded-none border border-transparent px-6 py-3 shadow-none translate-y-0"
           }`}
         >
-          {/* Desktop layout */}
-          <div
-            className={`hidden md:grid w-full items-center grid-cols-[auto_minmax(0,1fr)_auto] ${
-              isScrolled ? "gap-1" : "gap-4"
-            }`}
-          >
-            <Link
-              href="/"
-              className={`text-lg font-semibold tracking-tight transition-colors ${
-                isScrolled ? "text-[#bf5700]" : "text-white"
-              }`}
-            >
+          <div className={`grid w-full items-center grid-cols-[auto_minmax(0,1fr)_auto] ${isScrolled ? "gap-1" : "gap-4"}`}>
+            <Link href="/" className={`text-lg font-semibold tracking-tight transition-colors ${isScrolled ? "text-[#bf5700]" : "text-white"}`}>
               UT Marketplace
             </Link>
 
@@ -256,77 +305,53 @@ const Navbar = () => {
               />
             </form>
 
-            <div className="flex items-center justify-end gap-2 transition-all duration-300 justify-self-end">
-              <Link
-                href="/browse"
-                className={isScrolled ? navIconScrolled : navLinkExpanded}
-              >
+            <div className="flex items-center justify-end gap-2 justify-self-end">
+              <Link href="/browse" className={isScrolled ? navIconScrolled : navLinkExpanded}>
                 {isScrolled ? <Compass size={18} /> : "Browse"}
               </Link>
-              <Link
-                href="/my-listings"
-                className={isScrolled ? navIconScrolled : navLinkExpanded}
-              >
+              <Link href="/my-listings" className={isScrolled ? navIconScrolled : navLinkExpanded}>
                 {isScrolled ? <List size={18} /> : "My Listings"}
               </Link>
-              <Link
-                href="/create"
-                className={isScrolled ? navIconScrolled : navLinkExpanded}
-              >
+              <Link href="/create" className={isScrolled ? navIconScrolled : navLinkExpanded}>
                 {isScrolled ? <Plus size={18} /> : "Create"}
               </Link>
 
               {user ? (
                 <>
-                  <Link
-                    href="/messages"
-                    className={isScrolled ? navIconScrolled : navIconExpanded}
-                  >
+                  <Link href="/messages" className={isScrolled ? navIconScrolled : navIconExpanded}>
                     <MessageCircle size={18} />
                   </Link>
-                  <div className="relative">
-                    <Notifications
-                      buttonClassName={isScrolled ? navIconScrolled : navIconExpanded}
-                    />
-                  </div>
+                  <Notifications buttonClassName={isScrolled ? navIconScrolled : navIconExpanded} />
                   <div className="relative" ref={profileMenuRef}>
                     <button
-                      onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                      type="button"
+                      onClick={() => setProfileMenuOpen((prev) => !prev)}
                       className={isScrolled ? navIconScrolled : navIconExpanded}
                     >
                       <User size={18} />
                     </button>
                     {profileMenuOpen && (
-                      <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-black/5 z-50">
+                      <div className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-black/5">
                         <div className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Account</div>
-                        <Link
-                          href="/profile"
-                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          onClick={() => setProfileMenuOpen(false)}
-                        >
+                        <Link href="/profile" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setProfileMenuOpen(false)}>
                           <User size={16} className="mr-2" />
                           Profile
                         </Link>
-                        <Link
-                          href="/favorites"
-                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          onClick={() => setProfileMenuOpen(false)}
-                        >
+                        <Link href="/favorites" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setProfileMenuOpen(false)}>
                           <Heart size={16} className="mr-2" />
                           Favorites & Watchlist
                         </Link>
-                        <Link
-                          href="/settings"
-                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          onClick={() => setProfileMenuOpen(false)}
-                        >
+                        <Link href="/settings" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setProfileMenuOpen(false)}>
                           <Settings size={16} className="mr-2" />
                           Settings
                         </Link>
-                        <button
-                          onClick={handleSignOut}
-                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        >
+                        {isAdmin && (
+                          <Link href="/admin" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setProfileMenuOpen(false)}>
+                            <List size={16} className="mr-2" />
+                            Admin
+                          </Link>
+                        )}
+                        <button onClick={handleSignOut} className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                           <LogOut size={16} className="mr-2" />
                           Sign out
                         </button>
@@ -339,7 +364,7 @@ const Navbar = () => {
                   href="/auth/signin"
                   className={
                     isScrolled
-                      ? `inline-flex items-center justify-center h-9 px-3 text-xs font-semibold rounded-full transition-colors ${navHoverScrolled}`
+                      ? `inline-flex h-9 items-center justify-center rounded-full px-3 text-xs font-semibold transition-colors ${navHoverScrolled}`
                       : `${navLinkExpanded} px-4`
                   }
                 >
@@ -348,180 +373,108 @@ const Navbar = () => {
               )}
             </div>
           </div>
+        </div>
 
-          {/* Mobile layout */}
-          <div className="flex md:hidden items-center justify-between gap-4">
-            <Link
-              href="/"
-              className={`text-base font-semibold tracking-tight transition-colors ${
-                isScrolled ? "text-gray-900" : "text-white"
-              }`}
-            >
-              UT Marketplace
-            </Link>
+        <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm md:hidden">
+          <Link href="/" className="text-base font-semibold tracking-tight text-gray-900">
+            UT Marketplace
+          </Link>
+          <div className="flex items-center gap-2">
+            {user && (
+              <Notifications buttonClassName="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-600 transition hover:border-[#bf5700]/40 hover:bg-[#fff2e6] hover:text-[#bf5700]" />
+            )}
             <button
-              className={`rounded-full p-2 transition ${
-                isScrolled
-                  ? "border border-gray-200 text-gray-700 hover:text-[#bf5700]"
-                  : "border border-white/30 text-white hover:bg-white/10"
-              }`}
-              onClick={() => setMenuOpen(!menuOpen)}
+              type="button"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-700 transition hover:border-[#bf5700]/40 hover:bg-[#fff2e6] hover:text-[#bf5700]"
+              onClick={() => setMenuOpen((prev) => !prev)}
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={menuOpen}
+              aria-controls="mobile-nav-menu"
             >
-              {menuOpen ? <X size={20} /> : <Menu size={20} />}
+              {menuOpen ? <X size={19} /> : <Menu size={19} />}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile menu */}
       {menuOpen && (
-        <div className={`md:hidden border-t px-4 pb-6 pt-4 shadow-lg ${
-          isScrolled ? "border-gray-200 bg-white" : "border-white/20 bg-[#bf5700]"
-        }`}>
-          <div className="flex flex-col space-y-4">
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-40 bg-black/25 md:hidden"
+            onClick={() => setMenuOpen(false)}
+            aria-label="Close mobile menu backdrop"
+          />
+          <div
+            id="mobile-nav-menu"
+            className="fixed inset-x-3 top-[76px] z-50 max-h-[calc(100vh-88px)] overflow-y-auto rounded-2xl border border-gray-200 bg-white p-4 shadow-xl md:hidden"
+          >
             <form onSubmit={handleSearchSubmit} className="relative">
               <SearchInput
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
                 suggestions={suggestions}
                 onSelectSuggestion={handleSuggestionSelect}
+                onRemoveSuggestion={removeRecentSearch}
                 onClear={handleClearSearch}
                 onCommit={saveRecentSearch}
               />
             </form>
-            <div className="flex flex-col gap-2">
-              <Link
-                href="/browse"
-                className={`rounded-xl border px-4 py-2 text-sm font-semibold transition ${
-                  isScrolled
-                    ? "border-gray-200 text-gray-700 hover:text-[#bf5700]"
-                    : "border-white/30 text-white hover:bg-white/10"
-                }`}
-                onClick={() => setMenuOpen(false)}
-              >
+
+            <nav className="mt-3 space-y-1 border-b border-gray-200 pb-3">
+              <Link href="/browse" className={mobileItemClass} onClick={() => setMenuOpen(false)}>
+                <Compass size={18} className="text-[#bf5700]" />
                 Browse
               </Link>
-              <Link
-                href="/my-listings"
-                className={`rounded-xl border px-4 py-2 text-sm font-semibold transition ${
-                  isScrolled
-                    ? "border-gray-200 text-gray-700 hover:text-[#bf5700]"
-                    : "border-white/30 text-white hover:bg-white/10"
-                }`}
-                onClick={() => setMenuOpen(false)}
-              >
+              <Link href="/my-listings" className={mobileItemClass} onClick={() => setMenuOpen(false)}>
+                <List size={18} className="text-[#bf5700]" />
                 My Listings
               </Link>
-              <Link
-                href="/create"
-                className={`rounded-xl border px-4 py-2 text-sm font-semibold transition ${
-                  isScrolled
-                    ? "border-[#bf5700]/40 text-[#bf5700] hover:bg-[#fff2e6]"
-                    : "border-white/30 text-white hover:bg-white/10"
-                }`}
-                onClick={() => setMenuOpen(false)}
-              >
-                Create <Plus size={16} className="ml-1 inline-block" />
+              <Link href="/create" className={mobileItemClass} onClick={() => setMenuOpen(false)}>
+                <Plus size={18} className="text-[#bf5700]" />
+                Create
               </Link>
-            </div>
+            </nav>
+
             {user ? (
-              <>
-                <div className={`flex items-center gap-3 border-t pt-4 ${
-                  isScrolled ? "border-gray-200" : "border-white/20"
-                }`}>
-                  <Link
-                    href="/messages"
-                    className={`inline-flex items-center justify-center h-9 w-9 rounded-full border transition ${
-                      isScrolled
-                        ? "border-gray-200 text-gray-600 hover:text-[#bf5700] hover:border-[#bf5700]/40 hover:bg-[#fff2e6]"
-                        : "border-white/30 text-white hover:bg-white/10 hover:border-white/40"
-                    }`}
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <MessageCircle size={18} />
+              <div className="pt-3 space-y-1">
+                <Link href="/messages" className={mobileItemClass} onClick={() => setMenuOpen(false)}>
+                  <MessageCircle size={18} className="text-[#bf5700]" />
+                  Messages
+                </Link>
+                <Link href="/profile" className={mobileItemClass} onClick={() => setMenuOpen(false)}>
+                  <User size={18} className="text-[#bf5700]" />
+                  Profile
+                </Link>
+                <Link href="/favorites" className={mobileItemClass} onClick={() => setMenuOpen(false)}>
+                  <Heart size={18} className="text-[#bf5700]" />
+                  Favorites & Watchlist
+                </Link>
+                <Link href="/settings" className={mobileItemClass} onClick={() => setMenuOpen(false)}>
+                  <Settings size={18} className="text-[#bf5700]" />
+                  Settings
+                </Link>
+                {isAdmin && (
+                  <Link href="/admin" className={mobileItemClass} onClick={() => setMenuOpen(false)}>
+                    <List size={18} className="text-[#bf5700]" />
+                    Admin
                   </Link>
-                  <div onClick={() => setMenuOpen(false)} className="flex items-center">
-                    <Notifications
-                      buttonClassName={`inline-flex items-center justify-center h-9 w-9 rounded-full border transition ${
-                        isScrolled
-                          ? "border-gray-200 text-gray-600 hover:text-[#bf5700] hover:border-[#bf5700]/40 hover:bg-[#fff2e6]"
-                          : "border-white/30 text-white hover:bg-white/10 hover:border-white/40"
-                      }`}
-                    />
-                  </div>
-                  <Link
-                    href="/profile"
-                    className={`inline-flex items-center justify-center h-9 w-9 rounded-full border transition ${
-                      isScrolled
-                        ? "border-gray-200 text-gray-600 hover:text-[#bf5700] hover:border-[#bf5700]/40 hover:bg-[#fff2e6]"
-                        : "border-white/30 text-white hover:bg-white/10 hover:border-white/40"
-                    }`}
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <User size={18} />
-                  </Link>
-                </div>
-                <div className="pt-2 flex flex-col gap-2">
-                  <Link
-                    href="/profile"
-                    className={`rounded-xl border px-4 py-2 text-sm font-semibold transition ${
-                      isScrolled
-                        ? "border-gray-200 text-gray-700 hover:text-[#bf5700]"
-                        : "border-white/30 text-white hover:bg-white/10"
-                    }`}
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    Profile
-                  </Link>
-                  <Link
-                    href="/favorites"
-                    className={`rounded-xl border px-4 py-2 text-sm font-semibold transition ${
-                      isScrolled
-                        ? "border-gray-200 text-gray-700 hover:text-[#bf5700]"
-                        : "border-white/30 text-white hover:bg-white/10"
-                    }`}
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    Favorites & Watchlist
-                  </Link>
-                  <Link
-                    href="/settings"
-                    className={`rounded-xl border px-4 py-2 text-sm font-semibold transition ${
-                      isScrolled
-                        ? "border-gray-200 text-gray-700 hover:text-[#bf5700]"
-                        : "border-white/30 text-white hover:bg-white/10"
-                    }`}
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    Settings
-                  </Link>
-                  <button
-                    onClick={handleSignOut}
-                    className={`rounded-xl border px-4 py-2 text-left text-sm font-semibold transition ${
-                      isScrolled
-                        ? "border-gray-200 text-gray-700 hover:text-[#bf5700]"
-                        : "border-white/30 text-white hover:bg-white/10"
-                    }`}
-                  >
-                    Sign out
-                  </button>
-                </div>
-              </>
+                )}
+                <button type="button" onClick={handleSignOut} className={`${mobileItemClass} w-full`}>
+                  <LogOut size={18} className="text-[#bf5700]" />
+                  Sign out
+                </button>
+              </div>
             ) : (
-              <Link
-                href="/auth/signin"
-                className={`rounded-xl border px-4 py-2 text-sm font-semibold transition ${
-                  isScrolled
-                    ? "border-gray-200 text-gray-700 hover:text-[#bf5700]"
-                    : "border-white/30 text-white hover:bg-white/10"
-                }`}
-                onClick={() => setMenuOpen(false)}
-              >
-                Sign In
-              </Link>
+              <div className="pt-3">
+                <Link href="/auth/signin" className={mobileItemClass} onClick={() => setMenuOpen(false)}>
+                  <User size={18} className="text-[#bf5700]" />
+                  Sign In
+                </Link>
+              </div>
             )}
           </div>
-        </div>
+        </>
       )}
     </header>
   );

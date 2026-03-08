@@ -169,7 +169,7 @@ const RelatedListings: React.FC<RelatedListingsProps> = ({
           <div
             key={item.id}
             onClick={() => router.push(`/listing/${item.id}`)}
-            className="transform transition duration-200 hover:scale-105 hover:shadow-lg cursor-pointer"
+            className="cursor-pointer"
           >
             <ListingCard
               title={item.title}

@@ -2,6 +2,7 @@
 import Link from "next/link"
 import ListingCard from "../../app/browse/components/ListingCard"
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import * as timeago from "timeago.js"
 import { ListingService } from "../../app/lib/database/ListingService"
 import { Listing } from "../../app/props/listing"
@@ -11,6 +12,7 @@ import { supabase } from "../../app/lib/supabaseClient"
 const RecentListings = () => {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchRecentListings = async () => {
@@ -63,15 +65,12 @@ const RecentListings = () => {
 
 
   return (
-    <section className="py-12 px-4 md:px-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex-1"></div>
-        <h2 className="text-3xl font-bold text-gray-900 text-center">
-          Recent Listings
-        </h2>
-        <div className="flex-1 flex justify-end">
-          <Link href="/browse" className="text-ut-orange hover:text-ut-orange/80 font-medium">View All</Link>
-        </div>
+    <section className="mx-auto max-w-7xl px-4 pb-16 pt-10 md:px-6">
+      <div className="mb-6 flex items-end justify-between">
+        <h2 className="text-3xl font-bold text-gray-900">Recent Listings</h2>
+        <Link href="/browse" className="text-sm font-semibold text-[#bf5700] hover:text-[#a54700]">
+          View all
+        </Link>
       </div>
       
       {loading ? (
@@ -92,7 +91,11 @@ const RecentListings = () => {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {listings.map((listing) => (
-            <div key={listing.id} onClick={() => window.location.href = `/listing/${listing.id}`} className="cursor-pointer">
+            <div
+              key={listing.id}
+              onClick={() => router.push(`/listing/${listing.id}`)}
+              className="cursor-pointer"
+            >
               <ListingCard
                 title={listing.title}
                 price={listing.price}
@@ -106,18 +109,11 @@ const RecentListings = () => {
                   image: listing.user_image 
                 }}
                 condition={listing.condition}
-                userRating={null}
               />
             </div>
           ))}
         </div>
       )}
-
-      <div className="flex justify-center mt-8">
-        <div className="flex items-center justify-center bg-ut-orange text-white px-6 py-3 rounded-lg font-semibold text-lg transition-all duration-300 hover:scale-105 hover:-translate-y-1">
-          <Link href="/browse" className="text-white">View All</Link>
-        </div>
-      </div>
     </section>
   )
 }
