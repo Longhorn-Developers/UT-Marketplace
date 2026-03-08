@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { motion } from "framer-motion";
 import { useAuthGuard } from "../lib/hooks/useAuthGuard";
+import { useCrypto } from "../context/CryptoContext";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ConversationList } from "./components/ConversationList";
 import { ChatWindow } from "./components/ChatWindow";
@@ -19,6 +20,7 @@ import {
 
 const MessagesPage = () => {
   const { user, loading: authLoading, isProtected } = useAuthGuard();
+  const { privateKey } = useCrypto();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -30,10 +32,13 @@ const MessagesPage = () => {
 
   const updateConversations = useCallback(async () => {
     if (!user?.id) return;
-    
+
     try {
       setLoading(true);
-      const conversations = await MessageService.getConversations(user.id);
+      const conversations = await MessageService.getConversations(
+        user.id,
+        privateKey || undefined
+      );
       setConversations(conversations);
       // Only clear temporary conversation if the selected conversation is now in the list
       if (selectedConversation) {
@@ -50,17 +55,18 @@ const MessagesPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [user, selectedConversation]);
+  }, [user, selectedConversation, privateKey]);
 
   const fetchMessages = useCallback(async (conversationKey: string) => {
     if (!user?.id) return;
     const [partnerId, listingId] = conversationKey.split(":");
-    
+
     try {
       const messages = await MessageService.getMessages({
         userId: user.id,
         otherUserId: partnerId,
-        listingId: listingId === "general" ? null : listingId
+        listingId: listingId === "general" ? null : listingId,
+        privateKey: privateKey || undefined
       });
       
       setMessages(messages);
@@ -81,7 +87,7 @@ const MessagesPage = () => {
     } catch (error) {
       dbLogger.error('Error fetching messages', error);
     }
-  }, [user, updateConversations]);
+  }, [user, updateConversations, privateKey]);
 
   const sendMessage = async (content: string) => {
     if (!selectedConversation || !user?.id) return;
@@ -171,7 +177,7 @@ const MessagesPage = () => {
         if (selectedConversation) {
           const [partnerId, listingId] = selectedConversation.split(":");
           const messageListingId = message.listing_id || "general";
-          
+
           if (
             (message.sender_id === user.id && message.receiver_id === partnerId) ||
             (message.sender_id === partnerId && message.receiver_id === user.id)
@@ -192,13 +198,14 @@ const MessagesPage = () => {
       },
       (error) => {
         dbLogger.error('Message subscription error', error);
-      }
+      },
+      privateKey || undefined
     );
 
     return () => {
       messagesSubscription.unsubscribe();
     };
-  }, [user, router, authLoading, updateConversations, selectedConversation, isProtected]);
+  }, [user, router, authLoading, updateConversations, selectedConversation, privateKey, isProtected]);
 
   useEffect(() => {
     if (!user?.id) return;

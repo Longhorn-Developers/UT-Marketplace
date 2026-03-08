@@ -3,6 +3,7 @@ import { Inter, Roboto_Flex } from "next/font/google";
 import "./globals.css";
 import Navbar from "../components/globals/Navbar";
 import { AuthProvider } from './context/AuthContext';
+import { CryptoProvider } from './context/CryptoContext';
 import FooterWrapper from "../components/globals/FooterWrapper";
 import AdminRedirectWrapper from "../components/layout/AdminRedirectWrapper";
 import ScrollToTop from "../components/globals/ScrollToTop";
@@ -32,13 +33,14 @@ export default function RootLayout({
       <body className="font-sans">
         <div className="flex flex-col min-h-screen">
           <AuthProvider>
-            <ScrollToTop />
-            <AdminRedirectWrapper 
-              navbar={<Navbar />}
-              footer={<FooterWrapper />}
-            >
-              {children}
-            </AdminRedirectWrapper>
+            <CryptoProvider>
+              <AdminRedirectWrapper
+                navbar={<Navbar />}
+                footer={<FooterWrapper />}
+              >
+                {children}
+              </AdminRedirectWrapper>
+            </CryptoProvider>
           </AuthProvider>
         </div>
       </body>

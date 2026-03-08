@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useCrypto } from '../../context/CryptoContext';
+import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import TermsModal from '../../../components/modals/TermsModal';
+import { ensureUserHasKeys } from '../../lib/database/KeyService';
 
 export default function SignIn() {
   const [email, setEmail] = useState('');
@@ -22,6 +24,7 @@ export default function SignIn() {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const { signIn, signUp } = useAuth();
+  const { setKeys, setUserId } = useCrypto();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -102,6 +105,8 @@ export default function SignIn() {
     setPasswordError(null);
     setLoading(true);
 
+    console.log('🚀 handleSubmit called, isSignUp:', isSignUp);
+
     try {
       if (isSignUp) {
         // Validate email domain before attempting sign up
@@ -160,28 +165,63 @@ export default function SignIn() {
         router.push(`/auth/confirmation?email=${encodeURIComponent(email)}`);
         return;
       } else {
+        console.log('📧 Attempting sign in with email:', email);
         const { error } = await signIn(email, password);
         if (error) throw error;
-        
-        // Check if user needs to complete onboarding
+
+        console.log('✅ Sign in successful, getting user info...');
+
+        // Get user info
         const { data: { user } } = await supabase.auth.getUser();
+        console.log('👤 User retrieved:', user?.id);
+
         if (user) {
+          console.log('🔑 User exists, proceeding with key loading...');
+          // Load encryption keys
+          try {
+            console.log('Loading encryption keys...');
+            const keys = await ensureUserHasKeys(user.id, password);
+
+            if (keys) {
+              // Decrypt the private key
+              const { decryptPrivateKey } = await import('../../lib/encryption');
+              const privateKey = await decryptPrivateKey(keys.encryptedPrivateKey, password);
+
+              // Load keys into CryptoContext
+              setKeys(privateKey, keys.publicKey);
+              setUserId(user.id);
+              console.log('✅ Encryption keys loaded successfully');
+            }
+          } catch (keyError) {
+            console.error('⚠️ Failed to load encryption keys:', keyError);
+            // Don't block login if key loading fails
+          }
+
+          // Check if user needs to complete onboarding
+          console.log('🔍 Checking onboarding status...');
           const { data: profile } = await supabase
             .from('users')
             .select('onboard_complete, is_admin')
             .eq('id', user.id)
             .single();
 
+          console.log('📊 Onboarding status:', profile?.onboard_complete);
+
+          // Redirect admins to admin panel
           if (profile?.is_admin) {
             router.push('/admin');
             return;
           }
 
           if (!profile?.onboard_complete) {
+            console.log('➡️ Redirecting to onboarding...');
             router.push('/auth/confirmation/onboard');
           } else {
+            console.log('➡️ Redirecting to home page...');
             router.push('/');
           }
+        } else {
+          console.log('❌ No user found after sign in');
         }
       }
     } catch (error) {
