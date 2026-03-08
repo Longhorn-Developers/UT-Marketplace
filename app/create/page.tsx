@@ -26,6 +26,7 @@ import ListingCard from "../browse/components/ListingCard";
 const MapPicker = dynamic(() => import("../listing/components/MapPicker"), { ssr: false });
 
 const Create = () => {
+  const enableEntryAnimation = process.env.NODE_ENV === "production";
   const [images, setImages] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { user, loading: authLoading, isProtected } = useAuthGuard();
@@ -238,7 +239,7 @@ const Create = () => {
       <motion.div 
         className="flex items-center justify-center min-h-[60vh]"
         variants={containerVariants}
-        initial="hidden"
+        initial={enableEntryAnimation ? "hidden" : false}
         animate="visible"
       >
         <div className="text-center">
@@ -255,7 +256,7 @@ const Create = () => {
       <motion.div 
         className="bg-gray-50 min-h-screen"
         variants={containerVariants}
-        initial="hidden"
+        initial={enableEntryAnimation ? "hidden" : false}
         animate="visible"
       >
         <NotLoggedIn 
@@ -270,7 +271,7 @@ const Create = () => {
     <motion.div 
       className="bg-gray-50 flex-1"
       variants={containerVariants}
-      initial="hidden"
+      initial={enableEntryAnimation ? "hidden" : false}
       animate="visible"
     >
       <div className="max-w-4xl mx-auto py-10 px-4">
