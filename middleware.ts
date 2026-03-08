@@ -90,13 +90,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/settings/:path*',
-    '/create/:path*',
-    '/my-listings/:path*',
-    '/messages/:path*',
-    '/favorites/:path*',
-    '/profile/:path*',
-    '/admin/:path*',
-    '/api/user-settings/:path*',
+    '/((?!_next|.*\\..*|api).*)',
   ],
-}; 
+};

@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import { Settings, Shield, Users, FileText, Bell, Database, Lock, Save, Eye, EyeOff } from 'lucide-react';
+import { Settings, Shield, Users, FileText, Bell, Database, Lock, Save, Eye, EyeOff, FileEdit } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../context/AuthContext';
@@ -17,6 +17,14 @@ interface AdminSettings {
   maintenance_mode: boolean;
   site_announcement: string;
   contact_email: string;
+}
+
+interface TermsAndConditions {
+  id: string | null;
+  title: string;
+  content: string;
+  version: number;
+  last_updated: string;
 }
 
 interface SystemStats {
@@ -43,15 +51,19 @@ const AdminSettingsPage = () => {
   const [systemStats, setSystemStats] = useState<SystemStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'general' | 'listings' | 'users' | 'system' | 'security'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'listings' | 'users' | 'system' | 'security' | 'terms'>('general');
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [adminUsers, setAdminUsers] = useState<any[]>([]);
   const [showApiKeys, setShowApiKeys] = useState(false);
+  const [terms, setTerms] = useState<TermsAndConditions | null>(null);
+  const [termsLoading, setTermsLoading] = useState(false);
+  const [termsSaving, setTermsSaving] = useState(false);
 
   useEffect(() => {
     fetchSettings();
     fetchSystemStats();
     fetchAdminUsers();
+    fetchTerms();
   }, []);
 
   const fetchSettings = async () => {
@@ -96,6 +108,64 @@ const AdminSettingsPage = () => {
       console.error('Error fetching system stats:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTerms = async () => {
+    try {
+      setTermsLoading(true);
+      const response = await fetch('/api/terms');
+      if (!response.ok) {
+        throw new Error('Failed to fetch terms');
+      }
+      const data = await response.json();
+      setTerms(data);
+    } catch (error) {
+      console.error('Error fetching terms:', error);
+      toast.error('Failed to load terms and conditions');
+    } finally {
+      setTermsLoading(false);
+    }
+  };
+
+  const saveTerms = async () => {
+    if (!terms) return;
+    
+    try {
+      setTermsSaving(true);
+      
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('You must be logged in to save terms');
+        return;
+      }
+
+      const response = await fetch('/api/terms', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          title: terms.title,
+          content: terms.content,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save terms');
+      }
+
+      const updatedTerms = await response.json();
+      setTerms(updatedTerms);
+      toast.success('Terms and conditions updated successfully');
+    } catch (error) {
+      console.error('Error saving terms:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to save terms and conditions');
+    } finally {
+      setTermsSaving(false);
     }
   };
 
@@ -246,7 +316,8 @@ const AdminSettingsPage = () => {
     { id: 'listings', label: 'Listings', icon: FileText },
     { id: 'users', label: 'Users', icon: Users },
     { id: 'system', label: 'System', icon: Database },
-    { id: 'security', label: 'Security', icon: Lock }
+    { id: 'security', label: 'Security', icon: Lock },
+    { id: 'terms', label: 'Terms', icon: FileEdit }
   ] as const;
 
   if (loading) {
@@ -603,6 +674,81 @@ const AdminSettingsPage = () => {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Terms and Conditions Editor */}
+          {activeTab === 'terms' && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Terms and Conditions Editor</h3>
+                
+                {termsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#bf5700]"></div>
+                    <span className="ml-2 text-gray-600">Loading terms...</span>
+                  </div>
+                ) : terms ? (
+                  <div className="space-y-4">
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium text-gray-900">Current Version</h4>
+                        <span className="text-sm text-gray-500">v{terms.version}</span>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        Last updated: {new Date(terms.last_updated).toLocaleString()}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-900 mb-2">Title</label>
+                      <input
+                        type="text"
+                        value={terms.title}
+                        onChange={(e) => setTerms({...terms, title: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#bf5700] focus:border-transparent"
+                        placeholder="Terms and Conditions"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-900 mb-2">Content (Markdown supported)</label>
+                      <textarea
+                        value={terms.content}
+                        onChange={(e) => setTerms({...terms, content: e.target.value})}
+                        rows={20}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#bf5700] focus:border-transparent font-mono text-sm"
+                        placeholder="Enter terms and conditions content..."
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        You can use Markdown formatting. The content will be displayed in the signup modal.
+                      </p>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <button
+                        onClick={saveTerms}
+                        disabled={termsSaving}
+                        className="flex items-center px-6 py-2 bg-[#bf5700] text-white rounded-lg hover:bg-[#a54700] transition-colors disabled:opacity-50"
+                      >
+                        <Save size={16} className="mr-2" />
+                        {termsSaving ? 'Saving...' : 'Save Changes'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <FileEdit size={48} className="mx-auto text-gray-400 mb-4" />
+                    <p className="text-gray-600">Failed to load terms and conditions</p>
+                    <button
+                      onClick={fetchTerms}
+                      className="mt-2 px-4 py-2 bg-[#bf5700] text-white rounded-lg hover:bg-[#a54700] transition-colors"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}

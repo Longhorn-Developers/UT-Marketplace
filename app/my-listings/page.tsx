@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { supabase } from "../lib/supabaseClient";
-import { useAuth } from "../context/AuthContext";
+import { useAuthGuard } from "../lib/hooks/useAuthGuard";
 import { useRouter } from "next/navigation";
 import { Edit, Trash2, Eye, Send, Clock, CheckCircle, XCircle, RefreshCw } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
@@ -20,6 +20,7 @@ import {
 import BrowseLoader from "../browse/components/BrowseLoader";
 import * as timeago from "timeago.js";
 import { processListingsWithStatus } from "../lib/utils/statusUtils";
+import NotLoggedIn from "../../components/globals/NotLoggedIn";
 
 interface Listing {
   id: string;
@@ -33,6 +34,7 @@ interface Listing {
   location: string;
   condition: string;
   description: string;
+  tags?: string[];
   status: 'pending' | 'approved' | 'denied';
   denial_reason?: string;
 }
@@ -54,17 +56,13 @@ const leaseOptions = ["6 months", "12 months", "Summer", "Flexible"];
 const MyListings = () => {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isProtected } = useAuthGuard();
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<any | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/auth/signin");
-      return;
-    }
     if (!authLoading && user) {
       fetchListings();
     }
@@ -116,7 +114,7 @@ const MyListings = () => {
         return false;
       }
     }
-    if (Number(listing.price) <= 0) return false;
+    if (Number(listing.price) < 0) return false;
     return true;
   };
 
@@ -184,6 +182,7 @@ const MyListings = () => {
       category: listing.category,
       condition: listing.condition,
       description: listing.description,
+      tags: listing.tags || [],
       images: listing.images || [],
       is_draft: listing.is_draft,
     });
@@ -218,6 +217,28 @@ const MyListings = () => {
       fetchListings();
     }
   };
+
+  // Show loading while auth is being checked
+  if (authLoading) {
+    return <BrowseLoader />;
+  }
+
+  // Show not logged in component if user is not authenticated
+  if (isProtected && !user) {
+    return (
+      <motion.div 
+        className="bg-gray-50 min-h-screen"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <NotLoggedIn 
+          message="Please log in to view your listings"
+          className="py-8"
+        />
+      </motion.div>
+    );
+  }
 
   if (loading) {
     return <BrowseLoader />;

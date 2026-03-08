@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Bell, ShieldAlert, ShieldX, ShieldCheck, AlertTriangle, Info } from 'lucide-react';
 import { supabase } from '../../app/lib/supabaseClient';
 import * as timeago from 'timeago.js';
@@ -25,7 +25,16 @@ const SYSTEM_NOTIFICATION_BG: Record<string, string> = {
   report_received: 'bg-blue-50',
 };
 
-const Notifications = () => {
+type NotificationsProps = {
+  buttonClassName?: string;
+  iconClassName?: string;
+  badgeClassName?: string;
+};
+
+const mergeClasses = (...classes: Array<string | undefined | null>) =>
+  classes.filter(Boolean).join(' ');
+
+const Notifications = ({ buttonClassName, iconClassName, badgeClassName }: NotificationsProps) => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [systemNotifications, setSystemNotifications] = useState<AppNotification[]>([]);
@@ -36,6 +45,33 @@ const Notifications = () => {
   const unreadCount =
     notifications.filter(n => !n.read).length +
     systemNotifications.filter(n => !n.is_read).length;
+
+  const fetchNotifications = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const { data: messages, error } = await supabase
+        .from('messages')
+        .select('*, sender:user_settings!sender_id(display_name)')
+        .eq('receiver_id', user.id)
+        .eq('is_read', false)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (error) throw error;
+
+      setNotifications(
+        (messages || []).map(msg => ({
+          id: msg.id,
+          sender_name: msg.sender?.display_name || 'Unknown User',
+          content: msg.content,
+          created_at: msg.created_at,
+          read: msg.is_read,
+        }))
+      );
+    } catch (error) {
+      dbLogger.error('Error fetching notifications', error);
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -80,34 +116,7 @@ const Notifications = () => {
       messageSubscription.unsubscribe();
       supabase.removeChannel(systemSubscription);
     };
-  }, [user]);
-
-  const fetchNotifications = async () => {
-    if (!user?.id) return;
-    try {
-      const { data: messages, error } = await supabase
-        .from('messages')
-        .select('*, sender:user_settings!sender_id(display_name)')
-        .eq('receiver_id', user.id)
-        .eq('is_read', false)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      if (error) throw error;
-
-      setNotifications(
-        (messages || []).map(msg => ({
-          id: msg.id,
-          sender_name: msg.sender?.display_name || 'Unknown User',
-          content: msg.content,
-          created_at: msg.created_at,
-          read: msg.is_read,
-        }))
-      );
-    } catch (error) {
-      dbLogger.error('Error fetching notifications', error);
-    }
-  };
+  }, [user?.id, fetchNotifications]);
 
   const fetchSystemNotifications = async () => {
     if (!user?.id) return;
@@ -232,12 +241,23 @@ const Notifications = () => {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setShowDropdown(!showDropdown)}
-        className="relative p-2 rounded-full transition-all duration-300 group"
+        className={mergeClasses(
+          "relative inline-flex items-center justify-center rounded-full transition-colors",
+          buttonClassName ?? "p-2 text-white/90 hover:text-white hover:bg-white/10"
+        )}
+        aria-label="Notifications"
       >
-        <Bell size={20} className="text-white relative z-10 group-hover:text-white transition-colors duration-300" />
-        <span className="absolute inset-0 bg-white/10 rounded-full scale-0 group-hover:scale-100 transition-transform duration-300 origin-center" />
+        <Bell
+          size={18}
+          className={mergeClasses("transition-colors text-current", iconClassName)}
+        />
         {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 bg-[#bf5700] text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+          <span
+            className={mergeClasses(
+              "absolute -top-1 -right-1 bg-[#bf5700] text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full",
+              badgeClassName
+            )}
+          >
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}

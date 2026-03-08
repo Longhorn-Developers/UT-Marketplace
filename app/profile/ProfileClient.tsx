@@ -7,7 +7,7 @@ import * as timeago from "timeago.js";
 import { Mail, Star, CheckCircle2 } from "lucide-react";
 import { Listing } from "../props/listing";
 import { Rating } from "../props/rating";
-import { useAuth } from '../context/AuthContext';
+import { useAuthGuard } from '../lib/hooks/useAuthGuard';
 import { useRouter } from 'next/navigation';
 import UserRatingDisplay from "../../components/user/UserRatingDisplay";
 import Image from 'next/image';
@@ -15,7 +15,7 @@ import { ListingService } from "../lib/database/ListingService";
 import { UserService } from "../lib/database/UserService";
 
 export default function ProfileClient() {
-  const { user } = useAuth();
+  const { user, isProtected } = useAuthGuard();
   const router = useRouter();
   const [listings, setListings] = useState<Listing[]>([]);
   const [ratings, setRatings] = useState<Rating[]>([]);
@@ -26,7 +26,7 @@ export default function ProfileClient() {
 
   useEffect(() => {
     const fetchUserData = async () => {
-      if (!user?.id) {
+      if (isProtected && !user?.id) {
         router.push('/auth/signin');
         return;
       }
@@ -67,7 +67,7 @@ export default function ProfileClient() {
     if (user) {
       fetchUserData();
     }
-  }, [user, router]);
+  }, [user, router, isProtected]);
 
   const activeListings = listings.filter((listing) => !listing.is_sold);
   const soldListings = listings.filter((listing) => listing.is_sold);

@@ -11,7 +11,10 @@ interface AuthContextType {
   isSuspended: boolean;
   suspensionUntil: Date | null;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signUp: (
+    email: string,
+    password: string
+  ) => Promise<{ error: AuthError | null; status?: 'sent' | 'existing-confirmed' | 'existing-unverified' }>;
   signOut: () => Promise<void>;
 }
 
@@ -26,6 +29,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
 
   useEffect(() => {
+    let loadingTimeout: ReturnType<typeof setTimeout> | null = null;
+    loadingTimeout = setTimeout(() => {
+      setLoading(false);
+    }, 4000);
+
     // Check active sessions and sets the user
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -37,6 +45,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSuspensionUntil(null);
       }
       setLoading(false);
+      if (loadingTimeout) {
+        clearTimeout(loadingTimeout);
+      }
     });
 
     // Listen for changes on auth state (signed in, signed out, etc.)
@@ -53,7 +64,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       router.refresh();
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      if (loadingTimeout) {
+        clearTimeout(loadingTimeout);
+      }
+      subscription.unsubscribe();
+    };
   }, [router]);
 
   const checkUserStatus = async (userId: string) => {
@@ -94,16 +110,41 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return { error };
   };
 
-  const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({
+  const signUp: AuthContextType['signUp'] = async (email: string, password: string) => {
+    // Validate email domain for UT Austin
+    if (!email.toLowerCase().endsWith('@utexas.edu')) {
+      return { 
+        error: { 
+          message: 'Please use your UT Austin email address',
+          name: 'AuthError',
+          status: 400
+        } as AuthError 
+      };
+    }
+    
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback?type=signup&email=${encodeURIComponent(email)}`,
       },
     });
+
+    if (error) {
+      // Handle duplicate confirmed accounts
+      const message = (error.message || '').toLowerCase();
+      if (message.includes('already registered') || message.includes('user already') || message.includes('registered')) {
+        return { error, status: 'existing-confirmed' };
+      }
+      return { error };
+    }
+
+    // Supabase returns an empty identities array when the email already exists but is unconfirmed.
+    if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      return { error: null, status: 'existing-unverified' };
+    }
     
-    return { error };
+    return { error: null, status: 'sent' };
   };
 
   const signOut = async () => {

@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabaseClient';
 import { Camera, Loader2 } from 'lucide-react';
 import Image from 'next/image';
-import { useAuth } from '../context/AuthContext';
+import { useAuthGuard } from '../lib/hooks/useAuthGuard';
 import BrowseLoader from "../browse/components/BrowseLoader";
 import { UserService } from '../lib/database/UserService';
 
@@ -20,11 +20,12 @@ interface UserSettings {
 }
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user, isProtected } = useAuthGuard();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
+  const [devActionLoading, setDevActionLoading] = useState(false);
   const [settings, setSettings] = useState<UserSettings>({
     display_name: '',
     bio: '',
@@ -34,16 +35,16 @@ export default function SettingsPage() {
     },
     profile_image_url: null,
   });
+  const [searchHistoryCleared, setSearchHistoryCleared] = useState(false);
 
-  useEffect(() => {
-    if (!user?.id) {
-      router.push('/auth/signin');
-      return;
-    }
-    fetchUserSettings();
-  }, [user]);
+  const clearSearchHistory = () => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.removeItem('utm_recent_searches');
+    setSearchHistoryCleared(true);
+    setTimeout(() => setSearchHistoryCleared(false), 2000);
+  };
 
-  const fetchUserSettings = async () => {
+  const fetchUserSettings = useCallback(async () => {
     if (!user?.id) return;
 
     try {
@@ -79,7 +80,15 @@ export default function SettingsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id, user?.email, user?.user_metadata?.name]);
+
+  useEffect(() => {
+    if (isProtected && !user?.id) {
+      router.push('/auth/signin');
+      return;
+    }
+    fetchUserSettings();
+  }, [user?.id, router, fetchUserSettings, isProtected]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -177,6 +186,33 @@ export default function SettingsPage() {
       alert('Failed to save settings. Please try again.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const resetOnboarding = async (redirectToOnboarding: boolean) => {
+    if (!user?.id) return;
+
+    try {
+      setDevActionLoading(true);
+      const updatedProfile = await UserService.updateUserProfile({
+        id: user.id,
+        onboard_complete: false,
+      });
+
+      if (!updatedProfile) {
+        throw new Error('Failed to reset onboarding status');
+      }
+
+      alert('Onboarding status cleared for this account.');
+
+      if (redirectToOnboarding) {
+        router.push('/auth/confirmation/onboard');
+      }
+    } catch (error) {
+      console.error('Error resetting onboarding status:', error);
+      alert('Failed to reset onboarding status. Please try again.');
+    } finally {
+      setDevActionLoading(false);
     }
   };
 
@@ -300,6 +336,47 @@ export default function SettingsPage() {
             />
             <span className="ml-2 text-gray-700">Browser Notifications</span>
           </label>
+        </div>
+      </div>
+
+      {/* Search History */}
+      <div className="bg-white rounded-lg shadow p-6 mb-8">
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Search</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Clear your recent search history.
+        </p>
+        <button
+          onClick={clearSearchHistory}
+          className="px-4 py-2 bg-gray-100 text-gray-900 rounded-lg hover:bg-gray-200 transition"
+        >
+          Clear Search History
+        </button>
+        {searchHistoryCleared && (
+          <p className="text-sm text-green-600 mt-2">Search history cleared.</p>
+        )}
+      </div>
+
+      {/* Developer Tools */}
+      <div className="bg-white rounded-lg shadow p-6 mb-8 border border-dashed border-gray-200">
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Developer Tools</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Temporary controls for QA. These should be removed before launch.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => resetOnboarding(true)}
+            disabled={devActionLoading}
+            className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-black transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Relaunch Onboarding
+          </button>
+          <button
+            onClick={() => resetOnboarding(false)}
+            disabled={devActionLoading}
+            className="px-4 py-2 bg-gray-100 text-gray-900 rounded-lg hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Clear Onboarding Status
+          </button>
         </div>
       </div>
 

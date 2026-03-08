@@ -1,6 +1,7 @@
 // Shared animation variants for consistent animations across pages
+import { Variants } from "framer-motion";
 
-export const containerVariants = {
+export const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -11,7 +12,7 @@ export const containerVariants = {
   }
 };
 
-export const headerVariants = {
+export const headerVariants: Variants = {
   hidden: { opacity: 0, y: -20 },
   visible: {
     opacity: 1,
@@ -23,7 +24,7 @@ export const headerVariants = {
   }
 };
 
-export const searchBarVariants = {
+export const searchBarVariants: Variants = {
   hidden: { opacity: 0, y: -20 },
   visible: {
     opacity: 1,
@@ -35,7 +36,7 @@ export const searchBarVariants = {
   }
 };
 
-export const itemVariants = {
+export const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20, scale: 0.95 },
   visible: {
     opacity: 1,
@@ -48,7 +49,7 @@ export const itemVariants = {
   }
 };
 
-export const emptyStateVariants = {
+export const emptyStateVariants: Variants = {
   hidden: { opacity: 0, scale: 0.9 },
   visible: {
     opacity: 1,
@@ -60,7 +61,7 @@ export const emptyStateVariants = {
   }
 };
 
-export const loadingVariants = {
+export const loadingVariants: Variants = {
   hidden: { opacity: 0, y: 10 },
   visible: {
     opacity: 1,
@@ -72,7 +73,7 @@ export const loadingVariants = {
   }
 };
 
-export const overlayVariants = {
+export const overlayVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -83,7 +84,7 @@ export const overlayVariants = {
   }
 };
 
-export const modalVariants = {
+export const modalVariants: Variants = {
   hidden: { 
     opacity: 0, 
     scale: 0.8, 

@@ -5,6 +5,7 @@ import { supabase } from "../../lib/supabaseClient";
 import ListingCard from "../../browse/components/ListingCard";
 import * as timeago from "timeago.js";
 import { Star, CheckCircle2, MessageCircle, Flag } from "lucide-react";
+import Image from "next/image";
 import { useAuth } from '../../context/AuthContext';
 import { Listing } from "../../props/listing";
 import { Rating } from "../../props/rating";
@@ -21,8 +22,10 @@ const PublicProfile = () => {
   const [userRating, setUserRating] = useState<number>(0);
   const [ratingComment, setRatingComment] = useState("");
   const [showRatingForm, setShowRatingForm] = useState(false);
+  const [hoveredRating, setHoveredRating] = useState<number>(0);
   const [userName, setUserName] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  const [profileUserId, setProfileUserId] = useState<string | null>(null);
   const [userHasRated, setUserHasRated] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -56,7 +59,8 @@ const PublicProfile = () => {
       setDisplayName(userData.display_name || null);
       setProfileImage(userData.profile_image_url || null);
       setBio(userData.bio || null);
-      setUserEmail(userData.email);
+
+      setProfileUserId(userData.id);
       setUserName(userData.display_name || userData.email?.split('@')[0] || 'User');
 
       // Fetch user's listings by user_id
@@ -227,7 +231,13 @@ const PublicProfile = () => {
         <div className="flex flex-col md:flex-row gap-6 items-center md:items-start">
           <div className="w-32 h-32 rounded-full bg-gray-100 flex items-center justify-center text-4xl font-bold text-gray-400">
             {profileImage ? (
-              <img src={profileImage} alt={displayName || 'User'} className="w-32 h-32 rounded-full object-cover" />
+              <Image
+                src={profileImage}
+                alt={displayName || 'User'}
+                width={128}
+                height={128}
+                className="w-32 h-32 rounded-full object-cover"
+              />
             ) : (
               <span>{displayName?.[0]?.toUpperCase() || '?'}</span>
             )}
@@ -256,10 +266,10 @@ const PublicProfile = () => {
               </div>
             </div>
             {/* Action Buttons */}
-            {user?.id && user.id !== userEmail && (
+            {user?.id && user.id !== profileUserId ? (
               <div className="mt-6 flex flex-wrap gap-3">
                 <button
-                  onClick={() => router.push(`/messages?user=${userEmail}`)}
+                  onClick={() => router.push(`/messages?user=${profileUserId}`)}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[#bf5700] text-[#bf5700] text-sm hover:bg-[#bf5700] hover:text-white transition"
                 >
                   <MessageCircle size={16} />
@@ -272,7 +282,6 @@ const PublicProfile = () => {
                   <Flag size={16} />
                   Report User
                 </button>
-                <div>
                 {!showRatingForm ? (
                   userHasRated ? (
                     <button
@@ -289,45 +298,25 @@ const PublicProfile = () => {
                       Rate this User
                     </button>
                   )
-                ) : (
-                  <div className="mt-4 space-y-4">
-                    <div className="flex gap-2">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          onClick={() => setUserRating(star)}
-                          className={`text-2xl ${star <= userRating ? 'text-yellow-400' : 'text-gray-300'}`}
-                        >
-                          ★
-                        </button>
-                      ))}
-                    </div>
-                    <textarea
-                      value={ratingComment}
-                      onChange={(e) => setRatingComment(e.target.value)}
-                      placeholder="Write a review (optional)"
-                      className="w-full p-2 border rounded-lg"
-                      rows={3}
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        onClick={handleSubmitRating}
-                        className="px-4 py-2 rounded-lg bg-[#bf5700] text-white text-sm hover:bg-[#a54700] transition"
-                      >
-                        {userHasRated ? "Update Review" : "Submit Rating"}
-                      </button>
-                      <button
-                        onClick={() => setShowRatingForm(false)}
-                        className="px-4 py-2 rounded-lg border border-gray-300 text-gray-600 text-sm hover:bg-gray-50 transition"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-                </div>
+                ) : null}
               </div>
-            )}
+            ) : !user?.id ? (
+              <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => router.push('/auth/signin')}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[#bf5700] text-[#bf5700] text-sm hover:bg-[#bf5700] hover:text-white transition"
+                >
+                  <MessageCircle size={16} />
+                  Sign in to Message
+                </button>
+                <button
+                  onClick={() => router.push('/auth/signin')}
+                  className="px-4 py-2 rounded-lg bg-[#bf5700] text-white text-sm hover:bg-[#a54700] transition"
+                >
+                  Sign in to Rate
+                </button>
+              </div>
+            ) : null}
             {/* Recent Ratings */}
             {ratings.length > 0 && (
               <div className="mt-6">
@@ -432,6 +421,76 @@ const PublicProfile = () => {
         reportedUserName={displayName || userName || 'User'}
         reporterId={user?.id || null}
       />
+
+      {/* Rating Modal */}
+      {showRatingForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3">
+                <span className="text-2xl font-bold text-gray-600">
+                  {displayName?.[0]?.toUpperCase() || '?'}
+                </span>
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">
+                {displayName || 'Unknown User'}
+              </h2>
+              <p className="text-gray-600 text-sm mt-1">Share your experience with this user</p>
+            </div>
+
+            <div className="space-y-4">
+              <div
+                className="flex justify-center gap-1"
+                onMouseLeave={() => setHoveredRating(0)}
+              >
+                {[1, 2, 3, 4, 5].map((star) => {
+                  const isSelected = star <= userRating;
+                  const isHovered = star <= hoveredRating;
+                  const shouldHighlight = isSelected || (hoveredRating > 0 && isHovered);
+
+                  return (
+                    <button
+                      key={star}
+                      onClick={() => setUserRating(star)}
+                      onMouseEnter={() => setHoveredRating(star)}
+                      className={`text-4xl transition-all duration-200 ${
+                        shouldHighlight
+                          ? 'text-yellow-400 scale-110'
+                          : 'text-gray-300'
+                      }`}
+                    >
+                      ★
+                    </button>
+                  );
+                })}
+              </div>
+
+              <textarea
+                value={ratingComment}
+                onChange={(e) => setRatingComment(e.target.value)}
+                placeholder="Write a review (optional)"
+                className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-[#bf5700] focus:border-transparent"
+                rows={4}
+              />
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={handleSubmitRating}
+                  className="flex-1 px-4 py-2 rounded-lg bg-[#bf5700] text-white font-medium hover:bg-[#a54700] transition"
+                >
+                  Submit Rating
+                </button>
+                <button
+                  onClick={() => setShowRatingForm(false)}
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

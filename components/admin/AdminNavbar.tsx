@@ -73,12 +73,6 @@ const AdminNavbar = () => {
               >
                 Reports
               </Link>
-              <Link
-                href="/admin/analytics"
-                className="text-white/90 hover:text-white font-medium transition-colors duration-200"
-              >
-                Analytics
-              </Link>
             </nav>
 
             {/* Admin Actions */}
@@ -172,13 +166,6 @@ const AdminNavbar = () => {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Reports
-              </Link>
-              <Link
-                href="/admin/analytics"
-                className="text-white/90 hover:text-white font-medium transition-colors duration-200"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Analytics
               </Link>
               
               <div className="border-t border-white/20 pt-4 mt-4">

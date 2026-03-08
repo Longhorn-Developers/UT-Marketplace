@@ -1,19 +1,26 @@
 "use client"
 import React, { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import Hero from "../components/home/Hero";
 import Testomonials from "../components/home/Testomonials";
 import RecentListings from "../components/home/Recents";
 import CategorySection from "../components/home/CategorySection";
-import { ShieldCheck, Zap, MessageCircle, Users, Star, CheckCircle, Flame, TrendingUp, Smile } from 'lucide-react';
+import { ShieldCheck, MessageCircle, Users, Star, CheckCircle } from 'lucide-react';
 import BetaPopup from '../components/home/BetaPopup';
+import { FaPlus, FaSearch } from "react-icons/fa";
+import { motion, AnimatePresence, Variants } from "framer-motion";
+import Link from "next/link";
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: 'easeOut' } },
+};
 
 const LiveTicker = () => {
   const [messages] = useState([
-    "🔥 34 items sold in the last hour!",
-    "🎉 169 new listings today!",
-    "👀 26 students browsing now!",
-    "⭐ 500+ positive reviews!",
+    "34 items sold in the last hour!",
+    "169 new listings today!",
+    "26 students browsing now!",
+    "500+ positive reviews!",
   ]);
   const [index, setIndex] = useState(0);
   useEffect(() => {
@@ -55,15 +62,14 @@ const Mascot = () => (
     animate={{ scale: 1, rotate: [0, 10, -10, 0] }}
     transition={{ duration: 2, repeat: Infinity }}
   >
-    <span className="text-[80px] md:text-[120px]">🤘</span>
     <span className="text-[#bf5700] font-bold text-lg mt-2">Hook&apos;em!</span>
   </motion.div>
 );
 
 const HowItWorks = () => (
   <section className="py-12 px-4 md:px-6 max-w-6xl mx-auto">
-    <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center flex items-center justify-center gap-2">
-      <Zap className="text-ut-orange" /> How It Works
+    <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">
+      How It Works
     </h2>
     <div className="grid md:grid-cols-4 gap-8">
       <div className="flex flex-col items-center text-center">
@@ -92,17 +98,27 @@ const HowItWorks = () => (
 
 const CallToActionBanner = () => (
   <section className="relative py-8 px-4 md:px-0">
-    <div className="max-w-4xl mx-auto bg-gradient-to-r from-[#bf5700] to-orange-400 rounded-2xl shadow-lg flex flex-col md:flex-row items-center justify-between gap-6 p-8 text-white">
+    <div className="max-w-4xl mx-auto bg-ut-orange rounded-2xl shadow-lg flex flex-col md:flex-row items-center justify-between gap-6 p-8 text-white">
       <div className="flex-1">
         <h2 className="text-2xl md:text-3xl font-bold mb-2">Ready to make a deal?</h2>
         <p className="text-lg mb-4">Create a listing or browse hundreds of items from fellow Longhorns!</p>
-        <div className="flex gap-4">
-          <a href="/create" className="bg-white text-[#bf5700] font-semibold px-6 py-2 rounded-lg shadow hover:bg-orange-100 transition">Create Listing</a>
-          <a href="/browse" className="bg-[#bf5700] border border-white font-semibold px-6 py-2 rounded-lg hover:bg-orange-600 transition">Browse Items</a>
-        </div>
+        <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto justify-center md:justify-start">
+            <Link
+              href="/create"
+              className="flex items-center justify-center bg-ut-orange text-white px-6 py-3 rounded-lg font-semibold text-lg transition-all duration-300 hover:scale-105 hover:-translate-y-1 border-1 border-ut-white"
+            >
+              <FaPlus className="mr-2" />
+              Create Listing
+            </Link>
+            <Link
+              href="/browse"
+              className="flex items-center justify-center px-6 py-3 rounded-lg font-semibold text-lg transition-all duration-300  bg-white text-ut-orange shadow-md hover:scale-105 hover:-translate-y-1"
+            >
+              <FaSearch className="mr-2" /> Browse Items
+            </Link>
+          </motion.div>
       </div>
       <Mascot />
-      <ShieldCheck className="w-24 h-24 text-white/80 hidden md:block" />
     </div>
   </section>
 );
@@ -116,12 +132,7 @@ const SafetyBadge = () => (
 
 const Home = () => {
   return (
-    <div className="relative bg-gradient-to-br from-orange-100 via-white overflow-hidden">
-      {/* Background Pattern or Overlay */}
-      <div
-        className="absolute inset-0 bg-[url('/pattern.jpg')] opacity-30 pointer-events-none"
-        aria-hidden="true"
-      />
+    <div className="relative overflow-hidden">      
       <div className="relative z-10">
         <Hero />
         <LiveTicker />

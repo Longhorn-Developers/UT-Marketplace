@@ -1,127 +1,136 @@
-import React from 'react'
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import { FileText, Clock, Loader2, AlertTriangle } from 'lucide-react';
+
+interface TermsData {
+  id: string | null;
+  title: string;
+  content: string;
+  version: number;
+  last_updated: string;
+}
 
 const TermsPage = () => {
+  const [terms, setTerms] = useState<TermsData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchTerms();
+  }, []);
+
+  const fetchTerms = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch('/api/terms');
+      if (!response.ok) {
+        throw new Error('Failed to fetch terms');
+      }
+      const data = await response.json();
+      setTerms(data);
+    } catch (error) {
+      console.error('Error fetching terms:', error);
+      setError('Failed to load terms and conditions');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderMarkdownContent = (content: string) => {
+    // Simple markdown to HTML conversion for basic formatting
+    return content
+      .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold text-gray-900 mb-4">$1</h1>')
+      .replace(/^## (.*$)/gim, '<h2 class="text-xl font-semibold text-gray-900 mb-3 mt-6">$1</h2>')
+      .replace(/^### (.*$)/gim, '<h3 class="text-lg font-medium text-gray-900 mb-2 mt-4">$1</h3>')
+      .replace(/\*\*(.*?)\*\*/gim, '<strong class="font-semibold">$1</strong>')
+      .replace(/\*(.*?)\*/gim, '<em class="italic">$1</em>')
+      .replace(/^- (.*$)/gim, '<li class="flex items-start gap-2 mb-2"><span class="w-2 h-2 bg-[#bf5700] rounded-full mt-2 flex-shrink-0"></span><span>$1</span></li>')
+      .replace(/\n\n/gim, '</p><p class="text-gray-700 leading-relaxed mb-4">')
+      .replace(/\n/gim, '<br>');
+  };
+
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8">
-      <div className="bg-white rounded-lg shadow-lg p-8">
-        <h1 className="text-3xl font-bold text-orange-600 mb-2 border-b-2 border-orange-600 pb-2">
-          UT Marketplace Terms of Use
-        </h1>
-        
-        <div className="text-sm text-gray-600 mb-8 italic">
-          Effective Date: September 9, 2024<br />
-          Last Updated: September 9, 2024
-        </div>
-
-        <div className="space-y-6 text-gray-800 leading-relaxed">
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">1. Acceptance of Terms</h2>
-            <p>By accessing or using UT Marketplace (&quot;the App&quot;), you agree to be bound by these Terms of Use. If you do not agree, please do not use the App.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">2. Description of Service</h2>
-            <p>UT Marketplace is a student-to-student marketplace platform that allows University of Texas students to buy, sell, and trade items within the campus community.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">3. User Eligibility</h2>
-            <p>You must be a current University of Texas student with a valid .utexas.edu email address to use this App. You must be at least 18 years old or have parental consent.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">4. User Responsibilities</h2>
-            <p>You agree to:</p>
-            <ul className="list-disc list-inside ml-4 space-y-1">
-              <li>Provide accurate information about items you list</li>
-              <li>Complete transactions in good faith</li>
-              <li>Meet in safe, public locations for exchanges</li>
-              <li>Not post illegal, harmful, or inappropriate content</li>
-              <li>Not use the App for commercial business purposes</li>
-              <li>Respect other users and follow community guidelines</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">5. Prohibited Items</h2>
-            <p>You may not list or sell:</p>
-            <ul className="list-disc list-inside ml-4 space-y-1">
-              <li>Illegal items or substances</li>
-              <li>Weapons or dangerous items</li>
-              <li>Stolen goods</li>
-              <li>Academic materials that violate academic integrity policies</li>
-              <li>Items that infringe intellectual property rights</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">6. Transactions and Disputes</h2>
-            <p>UT Marketplace facilitates connections between users but is not a party to any transactions. We are not responsible for:</p>
-            <ul className="list-disc list-inside ml-4 space-y-1">
-              <li>Quality, safety, or legality of items</li>
-              <li>Payment processing or disputes</li>
-              <li>Meeting arrangements or safety</li>
-              <li>Resolution of disagreements between users</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">7. Content and Intellectual Property</h2>
-            <p>You retain ownership of content you post but grant us a license to display it on the App. You may not post content that infringes others&apos; rights or violates these terms.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">8. Privacy</h2>
-            <p>Your privacy is important to us. Please review our <a href="/privacy" className="text-orange-600 hover:text-orange-800 underline">Privacy Policy</a> to understand how we collect and use your information.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">9. Account Termination</h2>
-            <p>We may suspend or terminate accounts that violate these terms. You may delete your account at any time through the App settings.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">10. Disclaimers</h2>
-            <p className="uppercase font-semibold">The App is provided &quot;as is&quot; without warranties. We disclaim all liability for damages arising from use of the App, including but not limited to issues with transactions, safety, or data loss.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">11. Limitation of Liability</h2>
-            <p className="uppercase font-semibold">To the maximum extent permitted by law, our liability is limited to $100 or the amount you paid to use the App, whichever is less.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">12. Indemnification</h2>
-            <p>You agree to indemnify and hold us harmless from claims arising from your use of the App or violation of these terms.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">13. Governing Law</h2>
-            <p>These terms are governed by Texas law. Any disputes will be resolved in Travis County, Texas courts.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">14. Changes to Terms</h2>
-            <p>We may update these terms at any time. Continued use of the App after changes constitutes acceptance of the new terms.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">15. Severability</h2>
-            <p>If any provision of these terms is found invalid, the remaining provisions will continue in effect.</p>
-          </section>
-
-          <section className="bg-gray-50 p-6 rounded-lg">
-            <h2 className="text-xl font-semibold text-gray-700 mb-3">Contact Information</h2>
-            <p>For questions about these terms, contact us at:</p>
-            <p className="mt-2">
-              Email: support@utmarketplace.com<br />
-              Website: https://utmarketplace.com
+    <div className="min-h-screen bg-gray-50 py-12">
+      <div className="max-w-4xl mx-auto px-4">
+        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-[#bf5700] to-[#a54700] text-white p-8">
+            <h1 className="text-4xl font-bold mb-2">{terms?.title || 'Terms and Conditions'}</h1>
+            <p className="text-xl text-white/90">
+              UT Marketplace - The official marketplace for UT Austin community
             </p>
-          </section>
+            {terms && (
+              <div className="flex items-center gap-2 mt-2">
+                <Clock className="w-4 h-4 text-white/80" />
+                <p className="text-sm text-white/80">
+                  Last updated: {new Date(terms.last_updated).toLocaleDateString()} • Version {terms.version}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Content */}
+          <div className="p-8">
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-[#bf5700] mr-3" />
+                <span className="text-gray-600">Loading terms and conditions...</span>
+              </div>
+            ) : error ? (
+              <div className="text-center py-12">
+                <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Terms</h3>
+                <p className="text-gray-600 mb-4">{error}</p>
+                <button
+                  onClick={fetchTerms}
+                  className="px-4 py-2 bg-[#bf5700] text-white rounded-lg hover:bg-[#a54700] transition-colors"
+                >
+                  Try Again
+                </button>
+              </div>
+            ) : terms ? (
+              <div className="prose prose-lg max-w-none">
+                {/* Header Info */}
+                <div className="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200">
+                  <div className="flex items-center gap-3">
+                    <FileText className="w-5 h-5 text-[#bf5700]" />
+                    <div>
+                      <p className="text-gray-600 text-sm">
+                        <strong>Last updated:</strong> {new Date(terms.last_updated).toLocaleDateString()}
+                      </p>
+                      <p className="text-gray-500 text-xs">Version {terms.version}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dynamic Content */}
+                <div 
+                  className="prose prose-lg max-w-none"
+                  dangerouslySetInnerHTML={{ 
+                    __html: `<p class="text-gray-700 leading-relaxed mb-4">${renderMarkdownContent(terms.content)}</p>` 
+                  }}
+                />
+
+                <div className="mt-8 p-6 bg-[#bf5700] bg-opacity-10 rounded-lg border-l-4 border-[#bf5700]">
+                  <p className="text-white font-medium text-lg">
+                    By using UT Marketplace, you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Terms Available</h3>
+                <p className="text-gray-600">Terms and conditions are not currently available.</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default TermsPage
+export default TermsPage;

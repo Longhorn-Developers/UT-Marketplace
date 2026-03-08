@@ -11,6 +11,7 @@ import ReportListingModal from "../../../components/modals/ReportListingModal";
 import ReportUserModal from "../../../components/modals/ReportUserModal";
 import Image from "next/image";
 import dynamic from "next/dynamic";
+import * as timeago from 'timeago.js';
 
 const MapPicker = dynamic(() => import("./MapPicker"), { ssr: false });
 
@@ -30,6 +31,7 @@ const ListingPage: React.FC<ListingPageProps> = ({
   location_lat,
   location_lng,
   status,
+  priceHistory = [],
 }) => {
   const [selectedImageIdx, setSelectedImageIdx] = useState(0);
   const { user: currentUser } = useAuth();
@@ -192,6 +194,7 @@ const ListingPage: React.FC<ListingPageProps> = ({
   };
 
   const isOwner = currentUser?.id === listingUserEmail;
+  const isSignedIn = Boolean(currentUser?.id);
 
   return (
     <>
@@ -209,14 +212,15 @@ const ListingPage: React.FC<ListingPageProps> = ({
     <div className="max-w-6xl mx-auto mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
       {/* Left: Image section */}
       <div className="flex flex-col gap-4">
-        <div className="aspect-[4/3] bg-gray-100 rounded-xl overflow-hidden">
+        <div className="aspect-[4/3] bg-gray-100 rounded-xl overflow-hidden relative">
           {images && images[selectedImageIdx] ? (
             <Image
               src={images[selectedImageIdx]}
               alt={title}
-              width={100}
-              height={100}
-              className="w-full h-full object-cover"
+              fill
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="object-cover"
+              priority
             /> 
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-400 text-2xl">
@@ -238,8 +242,9 @@ const ListingPage: React.FC<ListingPageProps> = ({
                 <Image
                   src={img}
                   alt={`Thumbnail ${idx + 1}`}
-                  width={100}
-                  height={100}
+                  width={160}
+                  height={120}
+                  sizes="80px"
                   className="w-full h-[80px] object-cover"
                 />
               </button>
@@ -274,6 +279,23 @@ const ListingPage: React.FC<ListingPageProps> = ({
             <h3 className="text-lg font-semibold text-gray-800 mb-1">Description</h3>
             <p className="text-gray-700 text-base leading-relaxed whitespace-pre-line">{description}</p>
           </div>
+
+          {priceHistory.length > 0 && (
+            <div className="mb-6 border border-gray-200 rounded-xl p-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Price history</h3>
+              <div className="space-y-2">
+                {priceHistory.map((entry, index) => (
+                  <div key={`${entry.changed_at}-${index}`} className="flex items-center justify-between text-sm text-gray-600">
+                    <span>
+                      {entry.old_price !== null ? `$${entry.old_price} → ` : ''}
+                      ${entry.new_price}
+                    </span>
+                    <span className="text-xs text-gray-400">{timeago.format(entry.changed_at)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Seller Info */}
@@ -339,34 +361,34 @@ const ListingPage: React.FC<ListingPageProps> = ({
               <div className="flex gap-2">
                 <button 
                   onClick={handleToggleFavorite}
-                  disabled={favoriteLoading || currentUser?.id === listingUserEmail}
+                  disabled={!isSignedIn || favoriteLoading || currentUser?.id === listingUserEmail}
                   className={`flex-1 border py-2 rounded text-sm transition flex items-center justify-center gap-1 ${
                     isFavorited 
                       ? 'border-red-500 bg-red-50 text-red-600' 
                       : 'border-gray-300 hover:bg-gray-50'
-                  } ${favoriteLoading || currentUser?.id === listingUserEmail ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  } ${!isSignedIn || favoriteLoading || currentUser?.id === listingUserEmail ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <Heart 
                     size={16} 
                     className={isFavorited ? 'text-red-500' : ''} 
                     fill={isFavorited ? 'currentColor' : 'none'}
                   />
-                  {favoriteLoading ? 'Saving...' : isFavorited ? 'Saved' : 'Save'}
+                  {!isSignedIn ? 'Sign in to Save' : favoriteLoading ? 'Saving...' : isFavorited ? 'Saved' : 'Save'}
                 </button>
                 <button 
                   onClick={handleToggleWatchlist}
-                  disabled={watchlistLoading || currentUser?.id === listingUserEmail}
+                  disabled={!isSignedIn || watchlistLoading || currentUser?.id === listingUserEmail}
                   className={`flex-1 border py-2 rounded text-sm transition flex items-center justify-center gap-1 ${
                     isWatchlisted 
                       ? 'border-blue-500 bg-blue-50 text-blue-600' 
                       : 'border-gray-300 hover:bg-gray-50'
-                  } ${watchlistLoading || currentUser?.id === listingUserEmail ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  } ${!isSignedIn || watchlistLoading || currentUser?.id === listingUserEmail ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <Eye 
                     size={16} 
                     className={isWatchlisted ? 'text-blue-500' : ''}
                   />
-                  {watchlistLoading ? 'Adding...' : isWatchlisted ? 'Watching' : 'Watch'}
+                  {!isSignedIn ? 'Sign in to Watch' : watchlistLoading ? 'Adding...' : isWatchlisted ? 'Watching' : 'Watch'}
                 </button>
                 <button 
                   onClick={handleShare}
@@ -386,7 +408,7 @@ const ListingPage: React.FC<ListingPageProps> = ({
                       : 'text-gray-500 hover:text-red-600'
                   }`}
                 >
-                  Report this listing
+                  {!currentUser ? 'Sign in to report' : 'Report this listing'}
                 </button>
                 {currentUser && currentUser.id !== listingUserEmail && (
                   <>
@@ -408,17 +430,32 @@ const ListingPage: React.FC<ListingPageProps> = ({
 
     {/* Map Section */}
     {(location_lat && location_lng) && (
-      <div className="max-w-6xl mx-auto mt-8">
-        <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
-          <MapPin size={18} className="text-[#bf5700]" />
-          Location on Map
-        </h2>
-        <div className="rounded-xl overflow-hidden border">
+      <div className="max-w-6xl mx-auto mt-10">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-[#fff2e6] text-[#bf5700] flex items-center justify-center shadow-sm">
+              <MapPin size={18} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Location</p>
+              <p className="text-xs text-gray-500">
+                Approximate area {location ? `• ${location}` : ""}
+              </p>
+            </div>
+          </div>
+          <span className="text-xs text-gray-400">Map data © OpenStreetMap</span>
+        </div>
+        <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_20px_60px_-40px_rgba(15,23,42,0.6)]">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.7),transparent_55%)]" />
           <MapPicker
             value={{ lat: location_lat, lng: location_lng }}
             onChange={undefined}
-            height="250px"
+            height="260px"
           />
+          <div className="pointer-events-none absolute bottom-4 left-4 flex items-center gap-2 rounded-full border border-white/70 bg-white/90 px-3 py-1.5 text-xs text-gray-700 shadow-lg backdrop-blur">
+            <MapPin size={14} className="text-[#bf5700]" />
+            {location || "UT Austin area"}
+          </div>
         </div>
       </div>
     )}

@@ -1,6 +1,6 @@
 "use client";
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useAuthGuard } from '../lib/hooks/useAuthGuard';
 import { ListingService } from '../lib/database/ListingService';
 import { Listing } from '../props/listing';
 import Link from 'next/link';
@@ -8,20 +8,13 @@ import { Heart, Eye, MapPin, Calendar, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 
 export default function FavoritesPage() {
-  const { user } = useAuth();
+  const { user, isProtected } = useAuthGuard();
   const [activeTab, setActiveTab] = useState<'favorite' | 'watchlist'>('favorite');
   const [favorites, setFavorites] = useState<Listing[]>([]);
   const [watchlist, setWatchlist] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchFavorites();
-      fetchWatchlist();
-    }
-  }, [user?.id]);
-
-  const fetchFavorites = async () => {
+  const fetchFavorites = useCallback(async () => {
     if (!user?.id) return;
     setLoading(true);
     try {
@@ -32,9 +25,9 @@ export default function FavoritesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id]);
 
-  const fetchWatchlist = async () => {
+  const fetchWatchlist = useCallback(async () => {
     if (!user?.id) return;
     setLoading(true);
     try {
@@ -45,7 +38,14 @@ export default function FavoritesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchFavorites();
+      fetchWatchlist();
+    }
+  }, [user?.id, fetchFavorites, fetchWatchlist]);
 
   const handleRemoveItem = async (listingId: string, type: 'favorite' | 'watchlist') => {
     if (!user?.id) return;
@@ -68,7 +68,7 @@ export default function FavoritesPage() {
     }
   };
 
-  if (!user) {
+  if (isProtected && !user) {
     return (
       <div className="bg-gray-50 min-h-screen py-8">
         <div className="max-w-6xl mx-auto px-4 text-center">
