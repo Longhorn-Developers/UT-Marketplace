@@ -345,7 +345,14 @@ const SearchBar = forwardRef((props: SearchBarProps, ref) => {
       postedBeforeValue,
       showCustomRange,
     };
-  }, [showFilters]);
+  }, [
+    showFilters,
+    minPriceValue,
+    maxPriceValue,
+    postedAfterValue,
+    postedBeforeValue,
+    showCustomRange,
+  ]);
 
   return (
     <div className="w-full flex flex-col gap-4 px-4">

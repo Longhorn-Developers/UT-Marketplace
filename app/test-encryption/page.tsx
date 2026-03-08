@@ -176,9 +176,9 @@ export default function TestEncryptionPage() {
         <div className="bg-blue-50 border border-blue-300 rounded-lg p-6">
           <h3 className="font-semibold mb-2">How it works:</h3>
           <ol className="list-decimal list-inside space-y-1 text-sm text-gray-700">
-            <li>Click "Generate Key Pair" to create public and private keys</li>
-            <li>Type a message and click "Encrypt Message" (uses public key)</li>
-            <li>Click "Decrypt Message" to get the original back (uses private key)</li>
+            <li>Click &quot;Generate Key Pair&quot; to create public and private keys</li>
+            <li>Type a message and click &quot;Encrypt Message&quot; (uses public key)</li>
+            <li>Click &quot;Decrypt Message&quot; to get the original back (uses private key)</li>
           </ol>
           <p className="text-sm text-gray-600 mt-4">
             💡 This is exactly what happens when users send messages - but their keys are stored securely in the database.

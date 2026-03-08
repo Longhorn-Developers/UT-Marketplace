@@ -233,7 +233,7 @@ function ActionModal({ report, onClose, onActionTaken, adminId }: ActionModalPro
               <p className="text-xs text-purple-600 mt-1">User: {report.reported_user_name}</p>
             )}
             {report.description && (
-              <p className="text-xs text-gray-500 mt-2 italic">"{report.description}"</p>
+              <p className="text-xs text-gray-500 mt-2 italic">&quot;{report.description}&quot;</p>
             )}
           </div>
 
@@ -322,15 +322,15 @@ function ActionModal({ report, onClose, onActionTaken, adminId }: ActionModalPro
           {/* Notification preview */}
           <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600 space-y-1">
             <p className="font-medium text-gray-700">Notifications that will be sent:</p>
-            <p>• <span className="font-medium">Reporter:</span> "Update: The account you reported has been actioned..."</p>
+            <p>• <span className="font-medium">Reporter:</span> &quot;Update: The account you reported has been actioned...&quot;</p>
             {action === 'warn' && (
-              <p>• <span className="font-medium">Reported user:</span> "Your listing was removed for violating... This is a warning."</p>
+              <p>• <span className="font-medium">Reported user:</span> &quot;Your listing was removed for violating... This is a warning.&quot;</p>
             )}
             {action === 'temp_suspend' && (
-              <p>• <span className="font-medium">Reported user:</span> "Your account is temporarily restricted until [date]."</p>
+              <p>• <span className="font-medium">Reported user:</span> &quot;Your account is temporarily restricted until [date].&quot;</p>
             )}
             {action === 'ban' && (
-              <p>• <span className="font-medium">Reported user:</span> "Your account has been permanently removed..."</p>
+              <p>• <span className="font-medium">Reported user:</span> &quot;Your account has been permanently removed...&quot;</p>
             )}
             {action === 'dismiss' && (
               <p className="text-gray-400 italic">No notifications sent on dismiss.</p>

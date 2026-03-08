@@ -1,16 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useCrypto } from '../../context/CryptoContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import TermsModal from '../../../components/modals/TermsModal';
 import { ensureUserHasKeys } from '../../lib/database/KeyService';
 
-export default function SignIn() {
+function SignInContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -683,4 +683,12 @@ export default function SignIn() {
       />
     </div>
   );
-} 
+}
+
+export default function SignIn() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50" />}>
+      <SignInContent />
+    </Suspense>
+  );
+}

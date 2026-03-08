@@ -73,6 +73,23 @@ const Notifications = ({ buttonClassName, iconClassName, badgeClassName }: Notif
     }
   }, [user?.id]);
 
+  const fetchSystemNotifications = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+      setSystemNotifications(data || []);
+    } catch (error) {
+      dbLogger.error('Error fetching system notifications', error);
+    }
+  }, [user?.id]);
+
   useEffect(() => {
     if (!user?.id) return;
 
@@ -116,24 +133,7 @@ const Notifications = ({ buttonClassName, iconClassName, badgeClassName }: Notif
       messageSubscription.unsubscribe();
       supabase.removeChannel(systemSubscription);
     };
-  }, [user?.id, fetchNotifications]);
-
-  const fetchSystemNotifications = async () => {
-    if (!user?.id) return;
-    try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (error) throw error;
-      setSystemNotifications(data || []);
-    } catch (error) {
-      dbLogger.error('Error fetching system notifications', error);
-    }
-  };
+  }, [user?.id, fetchNotifications, fetchSystemNotifications]);
 
   const handleNewMessage = async (message: Message) => {
     try {

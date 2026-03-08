@@ -163,7 +163,7 @@ export default function TestServicePage() {
             disabled={!encryptedMessage}
             className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 disabled:bg-gray-400"
           >
-            Try to Decrypt with User 1's Key (Should Fail)
+            Try to Decrypt with User 1&apos;s Key (Should Fail)
           </button>
           {decryptedMessage && (
             <div className="mt-4 bg-green-50 border border-green-300 p-4 rounded">
