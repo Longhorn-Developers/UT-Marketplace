@@ -18,6 +18,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import ListingCard from '../../../browse/components/ListingCard';
+import { UT_AUSTIN_EMAIL_DOMAIN_LABEL } from '../../../lib/auth/emailDomain';
 
 const categoryLabels: Record<string, string> = {
   furniture: 'Furniture',
@@ -57,7 +58,7 @@ const buildSlides = (listingPreview: ReactNode) => ([
     title: 'Welcome to UT Marketplace',
     subtitle: 'A UT-only community for safer buying and selling.',
     points: [
-      'Verified @utexas.edu accounts only',
+      `Verified ${UT_AUSTIN_EMAIL_DOMAIN_LABEL} accounts only`,
       'Listings reviewed before going live',
       'Built-in reporting and moderation tools',
     ],

@@ -9,6 +9,7 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import TermsModal from '../../../components/modals/TermsModal';
 import { ensureUserHasKeys } from '../../lib/database/KeyService';
+import { isAllowedUtAustinEmail, UT_AUSTIN_EMAIL_ERROR_MESSAGE } from '../../lib/auth/emailDomain';
 
 function SignInContent() {
   const [email, setEmail] = useState('');
@@ -42,11 +43,6 @@ function SignInContent() {
     }
   }, []);
 
-  // Validate email domain for UT Austin
-  const validateEmailDomain = (email: string): boolean => {
-    return email.toLowerCase().endsWith('@utexas.edu');
-  };
-
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newEmail = e.target.value;
     setEmail(newEmail);
@@ -57,9 +53,9 @@ function SignInContent() {
     }
     
     // Validate domain only if user is signing up and has entered an email
-    if (isSignUp && newEmail && !validateEmailDomain(newEmail)) {
-      setEmailError('Please use your UT Austin email');
-    } else if (isSignUp && newEmail && validateEmailDomain(newEmail)) {
+    if (isSignUp && newEmail && !isAllowedUtAustinEmail(newEmail)) {
+      setEmailError(UT_AUSTIN_EMAIL_ERROR_MESSAGE);
+    } else if (isSignUp && newEmail && isAllowedUtAustinEmail(newEmail)) {
       setEmailError(null);
     }
   };
@@ -108,10 +104,12 @@ function SignInContent() {
     console.log('🚀 handleSubmit called, isSignUp:', isSignUp);
 
     try {
+      const normalizedEmail = email.trim();
+
       if (isSignUp) {
         // Validate email domain before attempting sign up
-        if (!validateEmailDomain(email)) {
-          setEmailError('Please use your UT Austin email');
+        if (!isAllowedUtAustinEmail(normalizedEmail)) {
+          setEmailError(UT_AUSTIN_EMAIL_ERROR_MESSAGE);
           setLoading(false);
           return;
         }
@@ -134,7 +132,7 @@ function SignInContent() {
         const { data: bannedEntry } = await supabase
           .from('banned_emails')
           .select('email')
-          .eq('email', email.toLowerCase())
+          .eq('email', normalizedEmail.toLowerCase())
           .maybeSingle();
 
         if (bannedEntry) {
@@ -143,7 +141,7 @@ function SignInContent() {
           return;
         }
 
-        const { error, status } = await signUp(email, password);
+        const { error, status } = await signUp(normalizedEmail, password);
 
         if (status === 'existing-confirmed') {
           setError('This email is already associated with an existing account.');
@@ -154,7 +152,7 @@ function SignInContent() {
         if (status === 'existing-unverified') {
           setError('Please check your email to complete verification.');
           // Send them to confirmation page where they can resend
-          router.push(`/auth/confirmation?email=${encodeURIComponent(email)}`);
+          router.push(`/auth/confirmation?email=${encodeURIComponent(normalizedEmail)}`);
           setLoading(false);
           return;
         }
@@ -162,11 +160,11 @@ function SignInContent() {
         if (error) throw error;
         
         // Redirect to confirmation page with email
-        router.push(`/auth/confirmation?email=${encodeURIComponent(email)}`);
+        router.push(`/auth/confirmation?email=${encodeURIComponent(normalizedEmail)}`);
         return;
       } else {
-        console.log('📧 Attempting sign in with email:', email);
-        const { error } = await signIn(email, password);
+        console.log('📧 Attempting sign in with email:', normalizedEmail);
+        const { error } = await signIn(normalizedEmail, password);
         if (error) throw error;
 
         console.log('✅ Sign in successful, getting user info...');

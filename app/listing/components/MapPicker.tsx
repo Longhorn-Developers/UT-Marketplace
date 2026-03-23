@@ -1,5 +1,5 @@
-import React from "react";
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import React, { useEffect } from "react";
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
 import L, { LatLngTuple } from "leaflet";
 
 import "leaflet/dist/leaflet.css";
@@ -33,6 +33,21 @@ const LocationMarker: React.FC<{
   ) : null;
 };
 
+const MapViewportSync: React.FC<{
+  value?: { lat: number; lng: number };
+}> = ({ value }) => {
+  const map = useMap();
+  const lat = value?.lat;
+  const lng = value?.lng;
+
+  useEffect(() => {
+    if (lat === undefined || lng === undefined) return;
+    map.setView([lat, lng], map.getZoom(), { animate: false });
+  }, [lat, lng, map]);
+
+  return null;
+};
+
 const MapPicker: React.FC<MapPickerProps> = ({ value, onChange, height = "300px", width = "100%" }) => {
   const position: LatLngTuple = value ? [value.lat, value.lng] : DEFAULT_POSITION;
   const isEditable = Boolean(onChange);
@@ -41,7 +56,6 @@ const MapPicker: React.FC<MapPickerProps> = ({ value, onChange, height = "300px"
   return (
     <div style={{ height, width }} className="relative z-10">
       <MapContainer
-        key={`${position[0]}-${position[1]}`}
         className="ut-map"
         style={{ height: "100%", width: "100%", background: "#f8fafc" }}
         zoom={zoom}
@@ -60,6 +74,7 @@ const MapPicker: React.FC<MapPickerProps> = ({ value, onChange, height = "300px"
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         />
+        <MapViewportSync value={value} />
         <LocationMarker value={value} onChange={onChange} />
       </MapContainer>
     </div>

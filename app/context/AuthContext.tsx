@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { User, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabaseClient';
 import { useRouter } from 'next/navigation';
+import { isAllowedUtAustinEmail, UT_AUSTIN_EMAIL_ERROR_MESSAGE } from '../lib/auth/emailDomain';
 
 interface AuthContextType {
   user: User | null;
@@ -106,16 +107,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     return { error };
   };
 
   const signUp: AuthContextType['signUp'] = async (email: string, password: string) => {
-    // Validate email domain for UT Austin
-    if (!email.toLowerCase().endsWith('@utexas.edu')) {
+    const normalizedEmail = email.trim();
+
+    if (!isAllowedUtAustinEmail(normalizedEmail)) {
       return { 
         error: { 
-          message: 'Please use your UT Austin email address',
+          message: UT_AUSTIN_EMAIL_ERROR_MESSAGE,
           name: 'AuthError',
           status: 400
         } as AuthError 
@@ -123,10 +125,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
     
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: normalizedEmail,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?type=signup&email=${encodeURIComponent(email)}`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?type=signup&email=${encodeURIComponent(normalizedEmail)}`,
       },
     });
 

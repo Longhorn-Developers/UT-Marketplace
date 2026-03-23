@@ -3,11 +3,7 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { UserService } from '../../lib/database/UserService';
-
-// Validate email domain for UT Austin
-const validateEmailDomain = (email: string): boolean => {
-  return email.toLowerCase().endsWith('@utexas.edu');
-};
+import { isAllowedUtAustinEmail, UT_AUSTIN_EMAIL_ERROR_MESSAGE } from '../../lib/auth/emailDomain';
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
@@ -57,10 +53,10 @@ export async function GET(request: NextRequest) {
   
   if (user) {
     // Validate email domain for new users
-    if (user.email && !validateEmailDomain(user.email)) {
+    if (user.email && !isAllowedUtAustinEmail(user.email)) {
       console.error('Invalid email domain for user:', user.email);
       return NextResponse.redirect(
-        `${requestUrl.origin}/auth/signin?error=${encodeURIComponent('Please use your UT Austin email address')}`
+        `${requestUrl.origin}/auth/signin?error=${encodeURIComponent(UT_AUSTIN_EMAIL_ERROR_MESSAGE)}`
       );
     }
     

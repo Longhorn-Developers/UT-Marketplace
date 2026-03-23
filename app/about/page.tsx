@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { UT_AUSTIN_EMAIL_DOMAIN_LABEL } from "../lib/auth/emailDomain";
 
 export default function AboutPage() {
   return (
@@ -20,7 +21,7 @@ export default function AboutPage() {
           <h2 className="text-xl font-semibold text-gray-900">How to Use UTMP</h2>
           <ul className="list-disc pl-6 space-y-2 text-gray-700">
             <li>
-              <span className="font-semibold">Create account:</span> Sign up using your UT email (utexas domain) to
+              <span className="font-semibold">Create account:</span> Sign up using your UT email ({UT_AUSTIN_EMAIL_DOMAIN_LABEL}) to
               access UT Marketplace. This helps keep the platform limited to the UT community and improves trust
               between buyers and sellers.
             </li>
