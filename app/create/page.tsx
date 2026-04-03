@@ -42,6 +42,11 @@ const Create = () => {
   const [locationLat, setLocationLat] = useState<number | null>(null);
   const [locationLng, setLocationLng] = useState<number | null>(null);
   const [showMapPicker, setShowMapPicker] = useState(false);
+  const [mapSearch, setMapSearch] = useState("");
+  const [mapSearchResults, setMapSearchResults] = useState<{ place_id: number; display_name: string; lat: string; lon: string }[]>([]);
+  const [showMapDropdown, setShowMapDropdown] = useState(false);
+  const mapSearchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mapSearchRef = useRef<HTMLDivElement>(null);
   const [condition, setCondition] = useState("");
   const [saving, setSaving] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -457,20 +462,67 @@ const Create = () => {
               </label>
             </div>
             {showMapPicker && (
-              <div className="my-3 rounded-xl border border-gray-200 overflow-hidden">
-                <MapPicker
-                  value={locationLat && locationLng ? { lat: locationLat, lng: locationLng } : undefined}
-                  onChange={({ lat, lng }) => {
-                    setLocationLat(lat);
-                    setLocationLng(lng);
-                  }}
-                  height="240px"
-                />
-                <div className="text-xs text-gray-500 px-3 py-2 bg-gray-50">
-                  Click the map to drop a pin. Buyers will see an approximate area, not your exact address.
-                  {locationLat && locationLng && (
-                    <span className="ml-2 text-green-600">Pin saved.</span>
+              <div className="my-3">
+                {/* Search bar */}
+                <div ref={mapSearchRef} className="relative mb-2">
+                  <input
+                    type="text"
+                    value={mapSearch}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setMapSearch(val);
+                      if (mapSearchDebounce.current) clearTimeout(mapSearchDebounce.current);
+                      if (!val.trim()) { setMapSearchResults([]); setShowMapDropdown(false); return; }
+                      mapSearchDebounce.current = setTimeout(async () => {
+                        try {
+                          const params = new URLSearchParams({ q: val, format: "json", limit: "6", countrycodes: "us" });
+                          const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, { headers: { "Accept-Language": "en" } });
+                          const data = await res.json();
+                          setMapSearchResults(data);
+                          setShowMapDropdown(data.length > 0);
+                        } catch { setMapSearchResults([]); setShowMapDropdown(false); }
+                      }, 350);
+                    }}
+                    onBlur={() => setTimeout(() => setShowMapDropdown(false), 150)}
+                    placeholder="Search for a building or landmark..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#bf5700] shadow-sm"
+                  />
+                  {showMapDropdown && mapSearchResults.length > 0 && (
+                    <ul className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-56 overflow-y-auto z-50">
+                      {mapSearchResults.map((r) => (
+                        <li
+                          key={r.place_id}
+                          onMouseDown={() => {
+                            const coords = { lat: parseFloat(r.lat), lng: parseFloat(r.lon) };
+                            setLocationLat(coords.lat);
+                            setLocationLng(coords.lng);
+                            setMapSearch(r.display_name.split(",")[0]);
+                            setShowMapDropdown(false);
+                          }}
+                          className="px-3 py-2 text-sm text-gray-800 hover:bg-orange-50 hover:text-[#bf5700] cursor-pointer border-b last:border-b-0 border-gray-100"
+                        >
+                          {r.display_name}
+                        </li>
+                      ))}
+                    </ul>
                   )}
+                </div>
+                {/* Map */}
+                <div className="rounded-xl border border-gray-200 overflow-hidden">
+                  <MapPicker
+                    value={locationLat && locationLng ? { lat: locationLat, lng: locationLng } : undefined}
+                    onChange={({ lat, lng }) => {
+                      setLocationLat(lat);
+                      setLocationLng(lng);
+                    }}
+                    height="240px"
+                  />
+                  <div className="text-xs text-gray-500 px-3 py-2 bg-gray-50">
+                    Click the map to drop a pin. Buyers will see an approximate area, not your exact address.
+                    {locationLat && locationLng && (
+                      <span className="ml-2 text-green-600">Pin saved.</span>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
