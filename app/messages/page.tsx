@@ -187,9 +187,14 @@ const MessagesPage = () => {
               (listingId !== "general" && messageListingId === listingId)
             ) {
               setMessages((prev) => {
-                // Don't add duplicates
                 const exists = prev.find(msg => msg.id === message.id);
-                return exists ? prev : [...prev, message];
+                if (exists) {
+                  // Update is_read on existing message (e.g. receiver opened chat)
+                  return prev.map(msg =>
+                    msg.id === message.id ? { ...msg, is_read: message.is_read } : msg
+                  );
+                }
+                return [...prev, message];
               });
             }
           }
