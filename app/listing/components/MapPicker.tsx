@@ -42,7 +42,7 @@ const MapViewportSync: React.FC<{
 
   useEffect(() => {
     if (lat === undefined || lng === undefined) return;
-    map.setView([lat, lng], map.getZoom(), { animate: false });
+    map.flyTo([lat, lng], 17, { animate: true, duration: 1 });
   }, [lat, lng, map]);
 
   return null;
@@ -51,8 +51,8 @@ const MapViewportSync: React.FC<{
 const MapPicker: React.FC<MapPickerProps> = ({ value, onChange, height = "300px", width = "100%" }) => {
   const position: LatLngTuple = value ? [value.lat, value.lng] : DEFAULT_POSITION;
   const isEditable = Boolean(onChange);
-  const zoom = value ? 14 : 13;
-  
+  const zoom = value ? 17 : 13;
+
   return (
     <div style={{ height, width }} className="relative z-10">
       <MapContainer
@@ -81,4 +81,4 @@ const MapPicker: React.FC<MapPickerProps> = ({ value, onChange, height = "300px"
   );
 };
 
-export default MapPicker; 
+export default MapPicker;
