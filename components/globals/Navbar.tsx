@@ -124,6 +124,10 @@ const Navbar = () => {
   useEffect(() => {
     setMenuOpen(false);
     setProfileMenuOpen(false);
+    if (!pathname.startsWith("/browse")) {
+      setSearchValue("");
+      setSuggestions([]);
+    }
   }, [pathname]);
 
   useEffect(() => {
