@@ -209,11 +209,16 @@ export const ChatWindow = ({
           </div>
         </div>
 
-        {messages.map((message) => (
+        {(() => {
+          const lastSeenMsgId = messages
+            .filter(m => m.sender_id === currentUserId && m.is_read)
+            .at(-1)?.id;
+
+          return messages.map((message) => (
           <div
             key={message.id}
-            className={`flex ${
-              message.sender_id === currentUserId ? "justify-end" : "justify-start"
+            className={`flex flex-col ${
+              message.sender_id === currentUserId ? "items-end" : "items-start"
             } px-1 sm:px-0`}
           >
             <div
@@ -241,8 +246,12 @@ export const ChatWindow = ({
                 </button>
               )}
             </div>
+            {message.id === lastSeenMsgId && (
+              <p className="text-[11px] text-gray-400 mt-0.5 pr-1">Seen</p>
+            )}
           </div>
-        ))}
+        ));
+        })()}
         <div ref={messagesEndRef} />
       </div>
 

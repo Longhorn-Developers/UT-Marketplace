@@ -410,17 +410,6 @@ const ListingPage: React.FC<ListingPageProps> = ({
                 >
                   {!currentUser ? 'Sign in to report' : 'Report this listing'}
                 </button>
-                {currentUser && currentUser.id !== listingUserEmail && (
-                  <>
-                    <span className="text-gray-300">•</span>
-                    <button 
-                      onClick={() => setShowReportUserModal(true)}
-                      className="text-sm text-gray-500 hover:text-red-600 hover:underline text-left"
-                    >
-                      Report seller
-                    </button>
-                  </>
-                )}
               </div>
             </>
           )}
